@@ -1,0 +1,39 @@
+# ======== Dependencies ========
+node_modules/
+.pnpm-store/
+
+# ======== Build output ========
+target/
+dist/
+*.class
+*.jar
+*.war
+
+# ======== Environment ========
+.env
+.env.local
+.env.*.local
+
+# ======== IDE ========
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+*~
+
+# ======== OS ========
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ======== Docs (local only) ========
+docs/
+
+# ======== Logs ========
+*.log
+logs/
+
+# ======== Docker volumes ========
+mysql_data/
+minio_data/
