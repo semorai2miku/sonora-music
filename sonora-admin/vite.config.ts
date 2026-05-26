@@ -23,8 +23,13 @@ export default ({ mode }: ConfigEnv): UserConfigExport => {
       // 端口号
       port: VITE_PORT,
       host: "0.0.0.0",
-      // 本地跨域代理 https://cn.vitejs.dev/config/server-options.html#server-proxy
-      proxy: {},
+      // 本地跨域代理 — 转发到 Sonora 后端
+      proxy: {
+        "/login": "http://localhost:8080",
+        "/refresh-token": "http://localhost:8080",
+        "/get-async-routes": "http://localhost:8080",
+        "/api": "http://localhost:8080"
+      },
       // 预热文件以提前转换和缓存结果，降低启动期间的初始页面加载时长并防止转换瀑布
       warmup: {
         clientFiles: ["./index.html", "./src/{views,components}/*"]

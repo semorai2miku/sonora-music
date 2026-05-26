@@ -37,3 +37,6 @@ logs/
 # ======== Docker volumes ========
 mysql_data/
 minio_data/
+
+# ======== Resources Files ========
+test-music/

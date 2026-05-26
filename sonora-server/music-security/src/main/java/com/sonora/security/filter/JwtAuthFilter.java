@@ -3,7 +3,7 @@ package com.sonora.security.filter;
 import cn.hutool.core.util.StrUtil;
 import com.auth0.jwt.exceptions.TokenExpiredException;
 import com.sonora.common.constant.Constants;
-import com.sonora.security.util.JwtUtil;
+import com.sonora.common.util.JwtUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -43,12 +43,17 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             var decoded = JwtUtil.verify(token);
             Long userId = Long.valueOf(decoded.getSubject());
 
-            // 从 Token Claims 中获取角色（后续接入 Redis 后改为从 Redis 读取）
-            List<SimpleGrantedAuthority> authorities = decoded.getClaims().containsKey("roles")
-                    ? decoded.getClaims().get("roles").asList(String.class).stream()
+            // 从 Token Claims 中获取角色
+            List<SimpleGrantedAuthority> authorities;
+            try {
+                authorities = decoded.getClaim("roles").asList(String.class).stream()
                         .map(r -> new SimpleGrantedAuthority("ROLE_" + r))
-                        .toList()
-                    : List.of();
+                        .toList();
+            } catch (Exception e) {
+                log.debug("无法解析 roles claim: {}", e.getMessage());
+                authorities = List.of();
+            }
+            log.debug("Token userId={}, authorities={}", userId, authorities);
 
             var authentication = new UsernamePasswordAuthenticationToken(
                     userId, null, authorities);

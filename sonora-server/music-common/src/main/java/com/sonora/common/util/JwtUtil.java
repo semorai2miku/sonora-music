@@ -1,6 +1,5 @@
-package com.sonora.security.util;
+package com.sonora.common.util;
 
-import cn.hutool.core.date.DateUtil;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
@@ -8,6 +7,7 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Date;
+import java.util.List;
 
 /**
  * JWT 工具类 — 生成 / 验证 / 解析 Token
@@ -31,15 +31,21 @@ public final class JwtUtil {
 
     private static final Algorithm ALGORITHM = Algorithm.HMAC256(SECRET);
 
-    /** 生成 AccessToken */
-    public static String createAccessToken(Long userId, String username) {
+    /** 生成 AccessToken (含角色信息) */
+    public static String createAccessToken(Long userId, String username, List<String> roles) {
         return JWT.create()
                 .withIssuer(ISSUER)
                 .withSubject(String.valueOf(userId))
                 .withClaim("username", username)
+                .withArrayClaim("roles", roles.toArray(new String[0]))
                 .withIssuedAt(new Date())
                 .withExpiresAt(new Date(System.currentTimeMillis() + ACCESS_EXPIRE_MS))
                 .sign(ALGORITHM);
+    }
+
+    /** 生成 AccessToken (无角色) */
+    public static String createAccessToken(Long userId, String username) {
+        return createAccessToken(userId, username, List.of());
     }
 
     /** 生成 RefreshToken */
