@@ -1,32 +1,75 @@
 <script setup lang="ts">
-import { useAudio } from '@/composables/useAudio'
+import { likedSongs } from '@/api'
 import LazyImage from '@/components/Ui/LazyImage.vue'
+import { useAudio } from '@/composables/useAudio'
+import { useUserStore } from '@/stores/modules/user'
+import type { Song } from '@/stores/interface'
+import { transformSong } from '@/utils/transformers'
 
-const { playlist } = useAudio()
+const userStore = useUserStore()
+const { setPlaylist, play } = useAudio()
+const songs = ref<Song[]>([])
+const loading = ref(false)
 
-const likedSongs = computed(() => (playlist.value || []).filter(s => s.liked))
-const playSong = (s: any) => {
-  const { play } = useAudio()
-  play(s, 0)
+const loadLikedSongs = async () => {
+  if (!userStore.isLoggedIn) {
+    songs.value = []
+    return
+  }
+  loading.value = true
+  try {
+    const res = await likedSongs()
+    songs.value = (res?.data || []).map(item => ({ ...transformSong(item), liked: true }))
+  } finally {
+    loading.value = false
+  }
 }
+
+const playSong = (song: Song, index: number) => {
+  setPlaylist(songs.value, index)
+  play(song, index)
+}
+
+onMounted(loadLikedSongs)
+watch(() => userStore.isLoggedIn, loadLikedSongs)
 </script>
 
 <template>
   <div class="flex-1 overflow-auto px-3 pb-6">
-    <template v-if="!likedSongs.length">
+    <div class="mb-3 px-1">
+      <h1 class="text-primary text-xl font-bold">我喜欢的音乐</h1>
+      <p class="text-primary/60 mt-1 text-xs">
+        {{ userStore.isLoggedIn ? `共 ${songs.length} 首歌曲` : '登录后同步喜欢的歌曲' }}
+      </p>
+    </div>
+
+    <div v-if="loading" class="py-10 text-center text-primary/70">加载中...</div>
+    <template v-else-if="!songs.length">
       <div class="py-10 text-center text-primary/70">{{ $t('likes.empty') }}</div>
     </template>
     <div v-else class="space-y-3">
-      <div v-for="s in likedSongs" :key="s.id" class="glass-card flex items-center gap-3 p-3" @click="playSong(s)">
+      <div
+        v-for="(song, index) in songs"
+        :key="song.id"
+        class="glass-card flex items-center gap-3 p-3"
+        @click="playSong(song, index)"
+      >
         <div class="h-12 w-12 shrink-0 overflow-hidden rounded-lg">
-          <LazyImage v-if="s.cover" :src="s.cover+'?param=200y200'" alt="cover" imgClass="h-full w-full object-cover" />
-          <div v-else class="flex h-full w-full items-center justify-center rounded-lg glass-button">🎵</div>
+          <LazyImage
+            v-if="song.cover"
+            :src="song.cover + '?param=200y200'"
+            alt="cover"
+            imgClass="h-full w-full object-cover"
+          />
+          <div v-else class="glass-button flex h-full w-full items-center justify-center rounded-lg">
+            <span class="icon-[mdi--music-note] h-5 w-5"></span>
+          </div>
         </div>
         <div class="min-w-0 flex-1">
-          <p class="truncate text-sm font-medium text-primary">{{ s.name }}</p>
-          <p class="truncate text-xs text-primary/70">{{ s.artist }}</p>
+          <p class="text-primary truncate text-sm font-medium">{{ song.name }}</p>
+          <p class="text-primary/70 truncate text-xs">{{ song.artist }}</p>
         </div>
-        <span class="icon-[mdi--heart] h-5 w-5 text-primary/70"></span>
+        <span class="icon-[mdi--heart] h-5 w-5 text-pink-400"></span>
       </div>
     </div>
   </div>

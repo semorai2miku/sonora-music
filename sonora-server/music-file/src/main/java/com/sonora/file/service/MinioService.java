@@ -2,7 +2,8 @@ package com.sonora.file.service;
 
 import io.minio.*;
 import io.minio.http.Method;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -14,9 +15,10 @@ import java.util.concurrent.TimeUnit;
 /**
  * MinIO 文件服务
  */
-@Slf4j
 @Service
 public class MinioService {
+
+    private static final Logger log = LoggerFactory.getLogger(MinioService.class);
 
     private final MinioClient minioClient;
 

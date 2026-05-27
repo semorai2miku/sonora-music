@@ -6,7 +6,6 @@ import com.sonora.model.entity.Song;
 import com.sonora.service.SongService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -19,10 +18,13 @@ import java.util.Map;
 @Tag(name = "管理端-歌曲管理", description = "歌曲的增删改查")
 @RestController
 @RequestMapping("/api/admin/songs")
-@RequiredArgsConstructor
 public class SongController {
 
     private final SongService songService;
+
+    public SongController(SongService songService) {
+        this.songService = songService;
+    }
 
     @Operation(summary = "分页查询歌曲列表")
     @GetMapping

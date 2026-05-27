@@ -20,7 +20,7 @@ public final class Constants {
     public static final String TOKEN_BLACKLIST_PREFIX = "token:blacklist:";
 
     /** 用户默认头像 */
-    public static final String DEFAULT_AVATAR = "https://minio.example.com/default/avatar.png";
+    public static final String DEFAULT_AVATAR = "/default-avatar.svg";
 
     /** 默认分页大小 */
     public static final int DEFAULT_PAGE_SIZE = 20;

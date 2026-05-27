@@ -2,8 +2,10 @@
 import { useRoute, useRouter } from 'vue-router'
 import { useLyrics } from '@/composables/useLyrics'
 import SongCommentsDialog from '@/components/Comments/SongCommentsDialog.vue'
-import { songDetail, search } from '@/api'
+import LoginDialog from '@/components/Auth/LoginDialog.vue'
+import { likedSongIds, likeSong, search, songDetail, unlikeSong } from '@/api'
 import { useAudio } from '@/composables/useAudio'
+import { useUserStore } from '@/stores/modules/user'
 import { formatDuration } from '@/utils/time'
 import LazyImage from '@/components/Ui/LazyImage.vue'
 import {
@@ -18,12 +20,15 @@ const router = useRouter()
 const songId = computed(() => route.params.id as string | number)
 const { mergedLines, fetchLyrics } = useLyrics()
 const { play, setPlaylist, currentSong, isPlaying } = useAudio()
+const userStore = useUserStore()
 const showComments = ref(false)
+const showLogin = ref(false)
 
 const state = reactive({
   info: null as any,
   similarSongs: [] as SongData[],
   similarPlaylists: [] as PlaylistData[],
+  liked: false,
 })
 
 onMounted(() => fetchLyrics(songId.value))
@@ -52,6 +57,7 @@ const playCurrent = () => {
     album: albumName.value,
     duration: duration.value,
     cover: albumCover.value,
+    liked: state.liked,
   }
   setPlaylist([song], 0)
   play(song, 0)
@@ -85,6 +91,35 @@ const loadInfo = async () => {
 
 onMounted(() => loadInfo())
 watch(songId, () => loadInfo())
+
+const refreshLikeState = async () => {
+  if (!userStore.isLoggedIn || !state.info?.id) {
+    state.liked = false
+    return
+  }
+  try {
+    const res = await likedSongIds()
+    state.liked = (res?.data || []).map(String).includes(String(state.info.id))
+  } catch {}
+}
+
+const toggleLike = async () => {
+  if (!state.info?.id) return
+  if (!userStore.isLoggedIn) {
+    showLogin.value = true
+    return
+  }
+  const nextLiked = !state.liked
+  state.liked = nextLiked
+  try {
+    const res = nextLiked ? await likeSong(state.info.id) : await unlikeSong(state.info.id)
+    if (res?.code !== 200) throw new Error(res?.message || '操作失败')
+  } catch {
+    state.liked = !nextLiked
+  }
+}
+
+watch(() => [state.info?.id, userStore.isLoggedIn], refreshLikeState)
 </script>
 
 <template>
@@ -146,6 +181,14 @@ watch(songId, () => loadInfo())
                 <span v-if="isCurrent && isPlaying" class="icon-[mdi--pause] h-5 w-5"></span>
                 <span v-else class="icon-[mdi--play] h-5 w-5"></span>
                 {{ isCurrent && isPlaying ? '暂停' : '播放' }}
+              </button>
+              <button
+                class="glass-button inline-flex items-center gap-2 px-5 py-3 transition-colors hover:bg-white/20"
+                :class="state.liked ? 'text-pink-300' : ''"
+                @click="toggleLike"
+              >
+                <span :class="state.liked ? 'icon-[mdi--heart]' : 'icon-[mdi--heart-outline]'" class="h-5 w-5"></span>
+                {{ state.liked ? '已喜欢' : '喜欢' }}
               </button>
               <button
                 class="glass-button inline-flex items-center gap-2 px-5 py-3 transition-colors hover:bg-white/20"
@@ -247,5 +290,6 @@ watch(songId, () => loadInfo())
       </div>
     </div>
     <SongCommentsDialog v-model:show="showComments" :song-id="songId" />
+    <LoginDialog v-if="showLogin" @close="showLogin = false" @success="refreshLikeState" />
   </div>
 </template>

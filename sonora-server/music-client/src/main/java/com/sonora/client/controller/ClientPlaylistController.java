@@ -9,22 +9,31 @@ import com.sonora.mapper.SongMapper;
 import com.sonora.model.entity.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Tag(name = "客户端-歌单", description = "歌单列表、详情、排行榜")
 @RestController
 @RequestMapping("/api/client")
-@RequiredArgsConstructor
 public class ClientPlaylistController {
 
     private final PlaylistMapper playlistMapper;
     private final PlaylistSongMapper playlistSongMapper;
     private final SongMapper songMapper;
+
+    public ClientPlaylistController(PlaylistMapper playlistMapper,
+                                    PlaylistSongMapper playlistSongMapper,
+                                    SongMapper songMapper) {
+        this.playlistMapper = playlistMapper;
+        this.playlistSongMapper = playlistSongMapper;
+        this.songMapper = songMapper;
+    }
 
     @Operation(summary = "推荐歌单 (按收藏数)")
     @GetMapping("/playlists/recommend")
@@ -54,10 +63,7 @@ public class ClientPlaylistController {
         List<Song> songs = List.of();
         if (!psList.isEmpty()) {
             List<Long> songIds = psList.stream().map(PlaylistSong::getSongId).toList();
-            songs = songMapper.selectList(
-                    new LambdaQueryWrapper<Song>()
-                            .in(Song::getId, songIds)
-                            .eq(Song::getStatus, 1));
+            songs = orderedSongs(songIds);
         }
 
         Map<String, Object> data = new LinkedHashMap<>();
@@ -83,5 +89,22 @@ public class ClientPlaylistController {
                         .orderByDesc(Playlist::getPlayCount)
                         .last("LIMIT " + limit));
         return R.ok(list);
+    }
+
+    private List<Song> orderedSongs(List<Long> songIds) {
+        Map<Long, Song> songMap = songMapper.selectList(
+                        new LambdaQueryWrapper<Song>()
+                                .in(Song::getId, songIds)
+                                .eq(Song::getStatus, 1))
+                .stream()
+                .collect(Collectors.toMap(Song::getId, Function.identity(), (a, b) -> a));
+        List<Song> songs = new ArrayList<>();
+        for (Long songId : songIds) {
+            Song song = songMap.get(songId);
+            if (song != null) {
+                songs.add(song);
+            }
+        }
+        return songs;
     }
 }

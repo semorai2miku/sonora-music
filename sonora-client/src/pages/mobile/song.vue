@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { songDetail, lyric } from '@/api'
+import LoginDialog from '@/components/Auth/LoginDialog.vue'
+import { likedSongIds, likeSong, lyric, songDetail, unlikeSong } from '@/api'
 import { useAudio } from '@/composables/useAudio'
+import { useUserStore } from '@/stores/modules/user'
 
 const route = useRoute()
+const userStore = useUserStore()
+const showLogin = ref(false)
 
 const state = reactive({
   id: String(route.params.id || ''),
@@ -53,6 +57,7 @@ const load = async (id: string) => {
     }
     const raw = (lrcRes as any)?.lrc?.lyric || (lrcRes as any)?.lyric || ''
     state.lrc = raw ? parseLrc(raw) : []
+    await refreshLikeState()
   } finally {
     state.loading = false
   }
@@ -78,9 +83,33 @@ const playCurrent = () => {
   play(s, 0)
 }
 
-const toggleLike = () => {
-  state.liked = !state.liked
+const refreshLikeState = async () => {
+  if (!userStore.isLoggedIn || !state.id) {
+    state.liked = false
+    return
+  }
+  try {
+    const res = await likedSongIds()
+    state.liked = (res?.data || []).map(String).includes(String(state.id))
+  } catch {}
 }
+
+const toggleLike = async () => {
+  if (!userStore.isLoggedIn) {
+    showLogin.value = true
+    return
+  }
+  const nextLiked = !state.liked
+  state.liked = nextLiked
+  try {
+    const res = nextLiked ? await likeSong(state.id) : await unlikeSong(state.id)
+    if (res?.code !== 200) throw new Error(res?.message || '操作失败')
+  } catch {
+    state.liked = !nextLiked
+  }
+}
+
+watch(() => userStore.isLoggedIn, refreshLikeState)
 </script>
 
 <template>
@@ -140,5 +169,6 @@ const toggleLike = () => {
         </div>
       </section>
     </template>
+    <LoginDialog v-if="showLogin" @close="showLogin = false" @success="refreshLikeState" />
   </div>
 </template>

@@ -29,6 +29,14 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                // 需要客户端登录的个人接口
+                .requestMatchers(
+                    "/api/client/auth/me",
+                    "/api/client/auth/password",
+                    "/api/client/me/**"
+                ).authenticated()
+                // 管理端接口仅允许超级管理员访问
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 // 公开接口
                 .requestMatchers(
                     "/login",
@@ -58,8 +66,6 @@ public class SecurityConfig {
                     "/record/recent/song",
                     "/user/playlist"
                 ).permitAll()
-                // 管理端接口（暂时放宽，调试阶段）
-                .requestMatchers("/api/admin/**").authenticated()
                 // 其他接口需认证
                 .anyRequest().authenticated()
             )

@@ -7,6 +7,9 @@ import { RouterLink, useRouter } from 'vue-router'
 import LazyImage from '@/components/Ui/LazyImage.vue'
 import Button from '@/components/Ui/Button.vue'
 import { useI18n } from 'vue-i18n'
+import { likedSongIds, likeSong, unlikeSong } from '@/api'
+import { useUserStore } from '@/stores/modules/user'
+import LoginDialog from '@/components/Auth/LoginDialog.vue'
 
 interface Props {
   songs: Song[]
@@ -40,6 +43,8 @@ const router = useRouter()
 const { setPlaylist, play, currentSong, isPlaying } = useAudio()
 const { t } = useI18n()
 const { flyTo, createRipple } = useSharedElement()
+const userStore = useUserStore()
+const showLogin = ref(false)
 
 // 歌曲封面飞行动画
 const playSongWithAnimation = async (song: Song, index: number, event?: MouseEvent) => {
@@ -107,6 +112,45 @@ const openMV = (song: Song, index: number) => {
 const downloadSong = (song: Song, index: number) => {
   emit('download', song, index)
 }
+
+const refreshLikedStates = async () => {
+  if (!userStore.isLoggedIn || !props.songs?.length) return
+  try {
+    const res = await likedSongIds()
+    const ids = new Set((res?.data || []).map(id => String(id)))
+    props.songs.forEach(song => {
+      song.liked = ids.has(String(song.id))
+    })
+  } catch {}
+}
+
+const toggleLike = async (song: Song, index: number) => {
+  if (!userStore.isLoggedIn) {
+    showLogin.value = true
+    return
+  }
+  if (!song.id) return
+  const nextLiked = !song.liked
+  song.liked = nextLiked
+  try {
+    let res
+    if (nextLiked) {
+      res = await likeSong(song.id)
+    } else {
+      res = await unlikeSong(song.id)
+    }
+    if (res?.code !== 200) throw new Error(res?.message || '操作失败')
+    emit('like', song, index)
+  } catch {
+    song.liked = !nextLiked
+  }
+}
+
+watch(
+  () => [props.songs?.map(song => song.id).join(','), userStore.isLoggedIn],
+  refreshLikedStates,
+  { immediate: true }
+)
 </script>
 
 <style scoped>
@@ -304,6 +348,18 @@ const downloadSong = (song: Song, index: number) => {
               class="col-span-2 flex items-center justify-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
             >
               <Button
+                v-if="song.id"
+                variant="ghost"
+                size="icon-md"
+                rounded="full"
+                class="h-9 w-9"
+                :class="song.liked ? 'text-pink-400' : ''"
+                :icon="song.liked ? 'icon-[mdi--heart]' : 'icon-[mdi--heart-outline]'"
+                iconClass="h-5 w-5"
+                :title="song.liked ? '取消喜欢' : '喜欢'"
+                @click.stop="toggleLike(song, index)"
+              />
+              <Button
                 v-if="song.mvId"
                 variant="ghost"
                 size="icon-md"
@@ -354,4 +410,5 @@ const downloadSong = (song: Song, index: number) => {
       </div>
     </div>
   </div>
+  <LoginDialog v-if="showLogin" @close="showLogin = false" @success="refreshLikedStates" />
 </template>

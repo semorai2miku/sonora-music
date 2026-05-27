@@ -6,11 +6,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -20,14 +20,18 @@ import java.io.OutputStream;
  * <p>
  * 支持 HTTP Range 请求，允许 HTML5 Audio 拖拽进度条。
  */
-@Slf4j
 @Tag(name = "客户端-歌曲播放", description = "音频流媒体接口")
 @RestController
 @RequestMapping("/api/client/songs")
-@RequiredArgsConstructor
 public class SongStreamController {
 
+    private static final Logger log = LoggerFactory.getLogger(SongStreamController.class);
+
     private final SongService songService;
+
+    public SongStreamController(SongService songService) {
+        this.songService = songService;
+    }
 
     @Operation(summary = "流式播放歌曲 (支持 Range)")
     @GetMapping("/{id}/stream")

@@ -222,17 +222,6 @@ export default {
   },
   auth: {
     login: '登录',
-    tip: '请选择登录方式以继续',
-    passwordLogin: '密码登录',
-    qrLogin: '二维码登录',
-    phone: '手机号',
-    email: '邮箱',
-    password: '密码',
-    inputPhone: '请输入手机号',
-    inputEmail: '请输入邮箱',
-    inputPassword: '请输入密码',
-    qr: '二维码',
-    refreshQr: '刷新二维码',
   },
   comments: {
     title: '歌曲评论',

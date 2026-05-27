@@ -8,7 +8,6 @@ import com.sonora.mapper.SongMapper;
 import com.sonora.model.entity.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.LinkedHashMap;
@@ -18,12 +17,19 @@ import java.util.Map;
 @Tag(name = "客户端-歌手", description = "歌手详情、歌曲")
 @RestController
 @RequestMapping("/api/client")
-@RequiredArgsConstructor
 public class ClientArtistController {
 
     private final ArtistMapper artistMapper;
     private final SongMapper songMapper;
     private final AlbumMapper albumMapper;
+
+    public ClientArtistController(ArtistMapper artistMapper,
+                                  SongMapper songMapper,
+                                  AlbumMapper albumMapper) {
+        this.artistMapper = artistMapper;
+        this.songMapper = songMapper;
+        this.albumMapper = albumMapper;
+    }
 
     @Operation(summary = "歌手详情 + 热门歌曲")
     @GetMapping("/artists/{id}")

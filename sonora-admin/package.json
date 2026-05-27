@@ -1,6 +1,7 @@
 {
-  "name": "pure-admin-thin",
-  "version": "6.2.0",
+  "name": "sonora-admin",
+  "version": "1.0.0",
+  "description": "Sonora Music admin console",
   "private": true,
   "type": "module",
   "scripts": {

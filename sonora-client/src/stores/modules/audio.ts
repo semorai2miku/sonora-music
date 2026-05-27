@@ -17,6 +17,16 @@ let lastRetrySongId: string | number | null = null
 /** 上次重试时间戳 */
 let lastRetryTime = 0
 
+/** 将音频地址规范化，避免相对路径和绝对路径比较时误判为不同地址 */
+const normalizeAudioUrl = (url?: string): string => {
+  if (!url) return ''
+  try {
+    return new URL(url, window.location.href).href
+  } catch {
+    return url
+  }
+}
+
 /** 获取 Audio 单例（懒初始化） */
 const getAudioSingleton = (): HTMLAudioElement => {
   if (!globalAudio) {
@@ -131,8 +141,7 @@ export const useAudioStore = defineStore('audio', {
               : 0
           this.audio.currentIndex = index
           this.audio.currentSong = this.audio.playlist[index]
-          this.audio.audio.src = (this.audio.currentSong && this.audio.currentSong.url) || ''
-          this.audio.audio.load()
+          this._loadAudioSrc((this.audio.currentSong && this.audio.currentSong.url) || '')
         }
         //
       }
@@ -308,8 +317,9 @@ export const useAudioStore = defineStore('audio', {
      */
     _loadAudioSrc(url: string) {
       if (!this.audio.audio) return
-      if (this.audio.audio.src !== url) {
-        this.audio.audio.src = url
+      const nextSrc = normalizeAudioUrl(url)
+      if (this.audio.audio.src !== nextSrc) {
+        this.audio.audio.src = nextSrc
         this.audio.audio.load()
       }
     },
@@ -336,6 +346,15 @@ export const useAudioStore = defineStore('audio', {
       if (this.audio.isPlaying) {
         this.pause()
       } else {
+        const currentUrl = this.audio.currentSong?.url
+        const canResumeCurrentSource =
+          this.audio.isPaused &&
+          currentUrl &&
+          this.audio.audio.src === normalizeAudioUrl(currentUrl)
+        if (canResumeCurrentSource) {
+          this.resume()
+          return
+        }
         if (!this.audio.currentSong && this.audio.playlist.length > 0) {
           this.audio.currentSong = this.audio.playlist[0]
           this.audio.currentIndex = 0

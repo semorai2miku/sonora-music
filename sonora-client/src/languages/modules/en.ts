@@ -232,17 +232,6 @@ export default {
   },
   auth: {
     login: 'Login',
-    tip: 'Select a login method to continue',
-    passwordLogin: 'Password Login',
-    qrLogin: 'QR Login',
-    phone: 'Phone',
-    email: 'Email',
-    password: 'Password',
-    inputPhone: 'Enter phone number',
-    inputEmail: 'Enter email address',
-    inputPassword: 'Enter password',
-    qr: 'QR Code',
-    refreshQr: 'Refresh QR',
   },
   comments: {
     title: 'Song Comments',

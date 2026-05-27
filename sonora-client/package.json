@@ -1,9 +1,9 @@
 {
-  "name": "km-music-player",
+  "name": "sonora-client",
   "private": true,
-  "version": "2.0.0",
+  "version": "1.0.0",
   "type": "module",
-  "description": "KMMusicPlayer",
+  "description": "Sonora Music web client",
   "license": "PolyForm-Noncommercial-1.0.0",
   "author": {
     "name": "Yxcr",

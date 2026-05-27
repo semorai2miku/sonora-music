@@ -7,7 +7,6 @@ import com.sonora.mapper.AlbumMapper;
 import com.sonora.model.entity.Album;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,10 +16,13 @@ import java.util.Map;
 @Tag(name = "管理端-专辑管理", description = "专辑的增删改查")
 @RestController
 @RequestMapping("/api/admin/albums")
-@RequiredArgsConstructor
 public class AlbumController {
 
     private final AlbumMapper albumMapper;
+
+    public AlbumController(AlbumMapper albumMapper) {
+        this.albumMapper = albumMapper;
+    }
 
     @Operation(summary = "分页查询专辑列表")
     @GetMapping

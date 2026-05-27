@@ -1,14 +1,12 @@
 package com.sonora.common.exception;
 
 import com.sonora.common.enums.ResultCode;
-import lombok.Getter;
 
 /**
  * 业务异常
  * <p>
  * 在 Service 层抛出，由 GlobalExceptionHandler 统一捕获并转换为 R 响应。
  */
-@Getter
 public class BusinessException extends RuntimeException {
 
     private final int code;
@@ -26,5 +24,9 @@ public class BusinessException extends RuntimeException {
     public BusinessException(String message) {
         super(message);
         this.code = ResultCode.SYSTEM_ERROR.getCode();
+    }
+
+    public int getCode() {
+        return code;
     }
 }

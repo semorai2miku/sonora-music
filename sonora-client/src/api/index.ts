@@ -1,60 +1,76 @@
 /**
  * API 接口集合
- * 封装网易云音乐 API 的所有请求方法
- * 按功能模块分组：轮播图、登录、搜索、歌曲、歌单、歌手、专辑、MV、评论、推荐
+ * 封装 Sonora 后端兼容 API 的所有请求方法
+ * 按功能模块分组：轮播图、Sonora 账号、搜索、歌曲、歌单、歌手、专辑、MV、评论、推荐
  */
+import { httpDelete, httpGet, httpPost, httpPut } from '@/utils/http'
 
 // ═══════ 轮播图 ═══════
 
 /** 获取首页 Banner 轮播图 */
 export const banner = (params?: { type?: 0 | 1 | 2 | 3 }) => httpGet('/banner', params)
 
-// ═══════ 登录相关 ═══════
+// ═══════ 客户端账号 ═══════
 
-/** 手机号登录 */
-export const loginCellphone = (params: {
-  phone: string
-  password?: string
-  md5_password?: string
-  captcha?: string
-  countrycode?: string
-}) => httpGet('/login/cellphone', params)
+export interface SonoraUserProfile {
+  userId: number
+  profileId: string
+  username: string
+  nickname: string
+  avatarUrl: string
+  bio?: string
+  status?: number
+}
 
-/** 邮箱登录 */
-export const loginEmail = (params: { email: string; password?: string; md5_password?: string }) =>
-  httpGet('/login', params)
+export interface SonoraAuthResult {
+  code: number
+  message: string
+  data: {
+    profile: SonoraUserProfile
+    accessToken: string
+    refreshToken: string
+    expires: string
+  }
+}
 
-/** 刷新登录状态 */
-export const loginRefresh = () => httpGet('/login/refresh')
+export interface SonoraResult<T> {
+  code: number
+  message?: string
+  data: T
+}
 
-/** 获取登录状态 */
-export const loginStatus = () => httpGet('/login/status')
+export const clientLogin = (data: { username: string; password: string }) =>
+  httpPost<SonoraAuthResult>('/api/client/auth/login', data)
 
-/** 匿名登录 */
-export const loginAnonymous = () => httpGet('/register/anonimous')
+export const clientRegister = (data: { username: string; password: string }) =>
+  httpPost<SonoraAuthResult>('/api/client/auth/register', data)
 
-// ═══════ 验证码 ═══════
+export const clientMe = () => httpGet<SonoraResult<SonoraUserProfile>>('/api/client/auth/me')
 
-/** 发送验证码 */
-export const captchaSent = (params: { phone: string; ctcode?: number }) =>
-  httpGet('/captcha/sent', params)
+export const updateClientMe = (data: {
+  username?: string
+  profileId?: string
+  avatar?: string
+  bio?: string
+}) => httpPut<SonoraResult<SonoraUserProfile>>('/api/client/auth/me', data)
 
-/** 验证验证码 */
-export const captchaVerify = (params: { phone: string; captcha: string; ctcode?: number }) =>
-  httpGet('/captcha/verify', params)
+export const changeClientPassword = (data: { oldPassword: string; newPassword: string }) =>
+  httpPut<SonoraResult<null>>('/api/client/auth/password', data)
 
-// ═══════ 二维码登录 ═══════
+export const myPlaylists = () =>
+  httpGet<SonoraResult<Array<any>>>('/api/client/me/playlists')
 
-/** 获取二维码登录 key */
-export const qrLoginKey = () => httpGet('/login/qr/key')
+export const likedSongIds = () =>
+  httpGet<SonoraResult<number[]>>('/api/client/me/likes/song-ids')
 
-/** 生成二维码 */
-export const qrLoginCreate = (params: { key: string; qrimg?: boolean }) =>
-  httpGet('/login/qr/create', params)
+export const likedSongs = () =>
+  httpGet<SonoraResult<Array<Record<string, unknown>>>>('/api/client/me/likes/songs')
 
-/** 检查二维码登录状态 */
-export const qrLoginCheck = (params: { key: string; noCookie?: boolean }) =>
-  httpGet('/login/qr/check', params)
+export const likeSong = (songId: number | string) =>
+  httpPost<SonoraResult<Record<string, unknown>>>(`/api/client/me/likes/songs/${songId}`)
+
+export const unlikeSong = (songId: number | string) =>
+  httpDelete<SonoraResult<null>>(`/api/client/me/likes/songs/${songId}`)
 
 // ═══════ 搜索 ═══════
 

@@ -12,6 +12,9 @@ public class User {
     @TableId(type = IdType.AUTO)
     private Long id;
 
+    /** 客户端展示用唯一角色 ID */
+    private String profileId;
+
     /** 用户名 (唯一) */
     private String username;
 

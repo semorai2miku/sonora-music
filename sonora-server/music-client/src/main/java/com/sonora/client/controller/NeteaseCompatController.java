@@ -3,11 +3,11 @@ package com.sonora.client.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.sonora.mapper.*;
 import com.sonora.model.entity.*;
-import lombok.RequiredArgsConstructor;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -17,7 +17,6 @@ import java.util.stream.Collectors;
  * 此 Controller 将请求转换为我们的后端数据格式并返回兼容的响应。
  */
 @RestController
-@RequiredArgsConstructor
 public class NeteaseCompatController {
 
     private final BannerMapper bannerMapper;
@@ -26,6 +25,20 @@ public class NeteaseCompatController {
     private final PlaylistSongMapper playlistSongMapper;
     private final ArtistMapper artistMapper;
     private final AlbumMapper albumMapper;
+
+    public NeteaseCompatController(BannerMapper bannerMapper,
+                                   SongMapper songMapper,
+                                   PlaylistMapper playlistMapper,
+                                   PlaylistSongMapper playlistSongMapper,
+                                   ArtistMapper artistMapper,
+                                   AlbumMapper albumMapper) {
+        this.bannerMapper = bannerMapper;
+        this.songMapper = songMapper;
+        this.playlistMapper = playlistMapper;
+        this.playlistSongMapper = playlistSongMapper;
+        this.artistMapper = artistMapper;
+        this.albumMapper = albumMapper;
+    }
 
     // ==================== Banner ====================
 
@@ -131,8 +144,7 @@ public class NeteaseCompatController {
                 new LambdaQueryWrapper<PlaylistSong>().eq(PlaylistSong::getPlaylistId, id)
                         .orderByAsc(PlaylistSong::getSort));
         List<Long> songIds = psList.stream().map(PlaylistSong::getSongId).toList();
-        List<Song> songs = songIds.isEmpty() ? List.of() :
-                songMapper.selectList(new LambdaQueryWrapper<Song>().in(Song::getId, songIds).eq(Song::getStatus, 1));
+        List<Song> songs = songIds.isEmpty() ? List.of() : orderedSongs(songIds);
 
         List<Map<String, Object>> tracks = songs.stream().map(s -> {
             Map<String, Object> t = new LinkedHashMap<>();
@@ -166,8 +178,7 @@ public class NeteaseCompatController {
                 new LambdaQueryWrapper<PlaylistSong>().eq(PlaylistSong::getPlaylistId, id)
                         .orderByAsc(PlaylistSong::getSort));
         List<Long> songIds = psList.stream().map(PlaylistSong::getSongId).toList();
-        List<Song> songs = songIds.isEmpty() ? List.of() :
-                songMapper.selectList(new LambdaQueryWrapper<Song>().in(Song::getId, songIds).eq(Song::getStatus, 1));
+        List<Song> songs = songIds.isEmpty() ? List.of() : orderedSongs(songIds);
 
         List<Map<String, Object>> tracks = songs.stream().map(s -> {
             Map<String, Object> t = new LinkedHashMap<>();
@@ -306,5 +317,22 @@ public class NeteaseCompatController {
             m.put("coverImgUrl", p.getCover());
             return m;
         }).toList());
+    }
+
+    private List<Song> orderedSongs(List<Long> songIds) {
+        Map<Long, Song> songMap = songMapper.selectList(
+                        new LambdaQueryWrapper<Song>()
+                                .in(Song::getId, songIds)
+                                .eq(Song::getStatus, 1))
+                .stream()
+                .collect(Collectors.toMap(Song::getId, Function.identity(), (a, b) -> a));
+        List<Song> songs = new ArrayList<>();
+        for (Long songId : songIds) {
+            Song song = songMap.get(songId);
+            if (song != null) {
+                songs.add(song);
+            }
+        }
+        return songs;
     }
 }

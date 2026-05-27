@@ -43,3 +43,55 @@ export const getLogin = (data?: object) => {
 export const refreshTokenApi = (data?: object) => {
   return http.request<RefreshTokenResult>("post", "/refresh-token", { data });
 };
+
+export type ClientUserItem = {
+  id: number;
+  profileId: string;
+  username: string;
+  nickname?: string;
+  avatar?: string;
+  bio?: string;
+  status: number;
+  lastLoginAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type ClientUserPayload = {
+  username?: string;
+  password?: string;
+  profileId?: string;
+  avatar?: string;
+  bio?: string;
+  status?: number;
+};
+
+type ClientUserPageResult = {
+  code: number;
+  data: {
+    list: ClientUserItem[];
+    total: number;
+    pageNum: number;
+    pageSize: number;
+  };
+};
+
+type ClientUserResult = {
+  code: number;
+  data: ClientUserItem;
+};
+
+export const getClientUserPage = (params: object) =>
+  http.request<ClientUserPageResult>("get", "/api/admin/users", { params });
+
+export const createClientUser = (data: ClientUserPayload) =>
+  http.request<ClientUserResult>("post", "/api/admin/users", { data });
+
+export const updateClientUser = (id: number, data: ClientUserPayload) =>
+  http.request<ClientUserResult>("put", `/api/admin/users/${id}`, { data });
+
+export const deleteClientUser = (id: number) =>
+  http.request("delete", `/api/admin/users/${id}`);
+
+export const toggleClientUserStatus = (id: number, status: number) =>
+  http.request<ClientUserResult>("put", `/api/admin/users/${id}/status?status=${status}`);

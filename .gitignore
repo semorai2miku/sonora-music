@@ -27,9 +27,6 @@ dist/
 Thumbs.db
 Desktop.ini
 
-# ======== Docs (local only) ========
-docs/
-
 # ======== Logs ========
 *.log
 logs/
@@ -40,3 +37,6 @@ minio_data/
 
 # ======== Resources Files ========
 test-music/
+
+# ======== Docs 别改 ========
+/docs/

@@ -6,7 +6,6 @@ import com.sonora.mapper.BannerMapper;
 import com.sonora.model.entity.Banner;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -14,10 +13,13 @@ import java.util.List;
 @Tag(name = "客户端-轮播图", description = "首页轮播图")
 @RestController
 @RequestMapping("/api/client")
-@RequiredArgsConstructor
 public class ClientBannerController {
 
     private final BannerMapper bannerMapper;
+
+    public ClientBannerController(BannerMapper bannerMapper) {
+        this.bannerMapper = bannerMapper;
+    }
 
     @Operation(summary = "轮播图列表")
     @GetMapping("/banners")

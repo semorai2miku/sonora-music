@@ -1,14 +1,11 @@
 package com.sonora.common.enums;
 
-import lombok.Getter;
-
 /**
  * 业务操作结果码枚举
  * <p>
  * 用于 BusinessException 精确定位错误类型。
  * 0 = 成功，1xxx = 通用错误，2xxx = 用户模块，3xxx = 内容模块，4xxx = 文件模块
  */
-@Getter
 public enum ResultCode {
 
     /* ========== 通用 ========== */
@@ -47,5 +44,13 @@ public enum ResultCode {
     ResultCode(int code, String message) {
         this.code = code;
         this.message = message;
+    }
+
+    public int getCode() {
+        return code;
+    }
+
+    public String getMessage() {
+        return message;
     }
 }

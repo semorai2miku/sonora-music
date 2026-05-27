@@ -4,7 +4,6 @@ import com.sonora.common.result.R;
 import com.sonora.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -17,10 +16,13 @@ import java.util.Map;
  */
 @Tag(name = "管理端-认证", description = "登录、Token 刷新、动态路由")
 @RestController
-@RequiredArgsConstructor
 public class AuthController {
 
     private final AuthService authService;
+
+    public AuthController(AuthService authService) {
+        this.authService = authService;
+    }
 
     @Operation(summary = "管理端登录")
     @PostMapping("/login")

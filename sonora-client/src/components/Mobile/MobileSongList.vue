@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import LazyImage from '@/components/Ui/LazyImage.vue'
+import LoginDialog from '@/components/Auth/LoginDialog.vue'
 import { useAudio } from '@/composables/useAudio'
 import type { Song } from '@/stores/interface'
+import { likedSongIds, likeSong, unlikeSong } from '@/api'
+import { useUserStore } from '@/stores/modules/user'
 
 type ListVariant = 'compact' | 'card'
 
@@ -24,6 +27,8 @@ const emit = defineEmits<{
 }>()
 
 const { currentSong, isPlaying } = useAudio()
+const userStore = useUserStore()
+const showLogin = ref(false)
 
 const isCurrent = (s: Song) => {
   const cur = currentSong.value
@@ -47,6 +52,38 @@ const handleClick = (s: Song, i: number) => {
     playByIndex(idx >= 0 ? idx : Math.max(0, playlist.value.length - 1))
   }
 }
+
+const refreshLikedStates = async () => {
+  if (!userStore.isLoggedIn || !props.songs?.length) return
+  try {
+    const res = await likedSongIds()
+    const ids = new Set((res?.data || []).map(id => String(id)))
+    props.songs.forEach(song => {
+      song.liked = ids.has(String(song.id))
+    })
+  } catch {}
+}
+
+const toggleLike = async (song: Song) => {
+  if (!userStore.isLoggedIn) {
+    showLogin.value = true
+    return
+  }
+  const nextLiked = !song.liked
+  song.liked = nextLiked
+  try {
+    const res = nextLiked ? await likeSong(song.id) : await unlikeSong(song.id)
+    if (res?.code !== 200) throw new Error(res?.message || '操作失败')
+  } catch {
+    song.liked = !nextLiked
+  }
+}
+
+watch(
+  () => [props.songs?.map(song => song.id).join(','), userStore.isLoggedIn],
+  refreshLikedStates,
+  { immediate: true }
+)
 </script>
 
 <template>
@@ -93,6 +130,12 @@ const handleClick = (s: Song, i: number) => {
         </p>
       </div>
       <div class="flex shrink-0 items-center gap-2">
+        <button class="rounded-full p-1.5" @click.stop="toggleLike(song)">
+          <span
+            class="h-5 w-5"
+            :class="song.liked ? 'icon-[mdi--heart] text-pink-400' : 'icon-[mdi--heart-outline]'"
+          ></span>
+        </button>
         <span class="song-duration text-xs">{{ formatDuration(song.duration) }}</span>
         <div v-if="isCurrent(song)" class="playing-icon">
           <span class="bar" :class="{ animate: isPlaying }"></span>
@@ -149,9 +192,16 @@ const handleClick = (s: Song, i: number) => {
           {{ song.artist }}<template v-if="song.album"> - 《{{ song.album }}》</template>
         </p>
       </div>
+      <button class="rounded-full p-1.5" @click.stop="toggleLike(song)">
+        <span
+          class="h-5 w-5"
+          :class="song.liked ? 'icon-[mdi--heart] text-pink-400' : 'icon-[mdi--heart-outline]'"
+        ></span>
+      </button>
       <span class="song-duration shrink-0 text-xs">{{ formatDuration(song.duration) }}</span>
     </div>
   </div>
+  <LoginDialog v-if="showLogin" @close="showLogin = false" @success="refreshLikedStates" />
 </template>
 
 <style scoped>

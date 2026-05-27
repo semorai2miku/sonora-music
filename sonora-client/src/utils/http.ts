@@ -1,6 +1,6 @@
 /**
  * HTTP 请求封装
- * 基于 axios 封装统一的请求/响应拦截、进度条、GET/POST 方法
+ * 基于 axios 封装统一的请求/响应拦截、进度条和常用 HTTP 方法
  */
 import axios, {
     AxiosInstance,
@@ -21,6 +21,16 @@ instance.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
         // 开启进度条
         NProgress.start()
+        const rawUser = localStorage.getItem('user')
+        if (rawUser) {
+            try {
+                const userState = JSON.parse(rawUser)
+                const token = userState?.accessToken
+                if (token) {
+                    config.headers.Authorization = `Bearer ${token}`
+                }
+            } catch {}
+        }
         if (config.params === undefined) {
             config.params = {}
         }
@@ -60,6 +70,14 @@ export const httpPost = <T>(
     data?: object,
     header?: object
 ): Promise<T> => instance.post(url, data, header)
+
+/** PUT 请求 */
+export const httpPut = <T>(url: string, data?: object): Promise<T> =>
+    instance.put(url, data)
+
+/** DELETE 请求 */
+export const httpDelete = <T>(url: string, params?: object): Promise<T> =>
+    instance.delete(url, { params })
 
 /** 文件上传（multipart/form-data） */
 export const httpUpload = <T>(

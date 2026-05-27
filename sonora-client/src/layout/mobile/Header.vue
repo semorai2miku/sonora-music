@@ -2,7 +2,9 @@
 // 移动端头部：左侧 Logo/标题，右侧搜索与登录入口
 const router = useRouter()
 import { useI18n } from 'vue-i18n'
+import { useUserStore } from '@/stores/modules/user'
 const { t } = useI18n()
+const userStore = useUserStore()
 
 // 搜索入口：跳转到搜索页
 const goSearch = () => router.push('/search')
@@ -28,11 +30,14 @@ const { showLogin } = toRefs(state)
       >
         <span class="icon-[mdi--magnify] h-5 w-5"></span>
       </button>
-      <button
-        class="hover:bg-hover-glass rounded-md p-2"
-        :title="t('auth.login')"
-        @click="showLogin = true"
+      <router-link
+        v-if="userStore.isLoggedIn"
+        to="/profile"
+        class="hover:bg-hover-glass rounded-md p-1.5"
       >
+        <img :src="userStore.avatarUrl" alt="avatar" class="h-7 w-7 rounded-full object-cover" />
+      </router-link>
+      <button v-else class="hover:bg-hover-glass rounded-md p-2" :title="t('auth.login')" @click="showLogin = true">
         <span class="icon-[mdi--account] h-5 w-5"></span>
       </button>
     </div>

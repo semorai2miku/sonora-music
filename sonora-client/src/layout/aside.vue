@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useUserStore } from '@/stores/modules/user'
+import { myPlaylists } from '@/api'
 import { gsap } from 'gsap'
 
 const route = useRoute()
@@ -35,15 +36,29 @@ const sections = [
 
 const state = reactive({
   // 用户创建的歌单列表
-  userPlaylists: [
-    { id: 1, name: '我喜欢的音乐' },
-    { id: 2, name: '华语流行' },
-    { id: 3, name: '二次元音乐' },
-    { id: 4, name: '轻音乐' },
-  ],
+  userPlaylists: [] as Array<{ id: number; name: string; cover?: string; type?: string; pinned?: number }>,
 })
 const { userPlaylists } = toRefs(state)
 const userStore = useUserStore()
+
+const loadUserPlaylists = async () => {
+  if (!userStore.isLoggedIn) {
+    state.userPlaylists = []
+    return
+  }
+  try {
+    const res = await myPlaylists()
+    state.userPlaylists = (res?.data || []).map(item => ({
+      id: Number(item.id),
+      name: String(item.name || '未命名歌单'),
+      cover: item.cover,
+      type: item.type,
+      pinned: item.pinned,
+    }))
+  } catch {
+    state.userPlaylists = []
+  }
+}
 
 // 活动指示器相关
 const indicatorRef = ref<HTMLElement | null>(null)
@@ -91,7 +106,10 @@ onMounted(() => {
   nextTick(() => {
     updateIndicator()
   })
+  loadUserPlaylists()
 })
+
+watch(() => userStore.isLoggedIn, loadUserPlaylists)
 
 // 检查是否是当前路由
 const isActive = (path: string) => {
@@ -112,7 +130,7 @@ const isActive = (path: string) => {
       ></div>
 
       <div ref="navContainerRef">
-        <div v-for="sec in sections" :key="sec.titleKey" class="mb-6">
+        <div v-for="sec in sections.slice(0, 2)" :key="sec.titleKey" class="mb-6">
           <h3 class="text-primary mb-3 text-xs font-semibold tracking-wide uppercase">
             {{ $t(sec.titleKey) }}
           </h3>
@@ -138,29 +156,61 @@ const isActive = (path: string) => {
             </div>
           </nav>
         </div>
-      </div>
-
-      <div class="mt-6" v-if="userStore.isLoggedIn">
+      <div class="mb-6" v-if="userStore.isLoggedIn">
         <h4 class="text-primary/60 mb-3 text-sm font-medium">
           {{ $t('layout.aside.playlists.created') }}
         </h4>
         <div class="space-y-2">
-          <div
+          <router-link
             v-for="playlist in userPlaylists"
             :key="playlist.id"
+            :to="`/playlist/${playlist.id}`"
             class="group flex cursor-pointer items-center space-x-3 rounded-lg p-2 transition-all duration-200 hover:bg-white/10"
+            :class="{ 'nav-link-active bg-white/10': isActive(`/playlist/${playlist.id}`) }"
           >
             <div
-              class="flex h-8 w-8 items-center justify-center rounded-lg bg-linear-to-br from-pink-400 to-purple-500 text-xs transition-transform duration-200 group-hover:scale-105"
+              class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-linear-to-br from-pink-400 to-purple-500 text-xs transition-transform duration-200 group-hover:scale-105"
             >
-              {{ playlist.name.charAt(0) }}
+              <img
+                v-if="playlist.cover"
+                :src="playlist.cover"
+                alt="cover"
+                class="h-full w-full object-cover"
+              />
+              <span v-else :class="playlist.type === 'liked' ? 'icon-[mdi--heart]' : ''">
+                {{ playlist.type === 'liked' ? '' : playlist.name.charAt(0) }}
+              </span>
             </div>
             <span
               class="text-primary/80 group-hover:text-primary truncate text-sm transition-colors"
               >{{ playlist.name }}</span
             >
-          </div>
+          </router-link>
         </div>
+      </div>
+      <div v-for="sec in sections.slice(2)" :key="sec.titleKey" class="mb-6">
+        <h3 class="text-primary mb-3 text-xs font-semibold tracking-wide uppercase">
+          {{ $t(sec.titleKey) }}
+        </h3>
+        <nav class="relative space-y-1">
+          <router-link
+            v-for="item in sec.items"
+            :key="item.to"
+            :to="item.to"
+            class="nav-link text-primary/70 hover:text-primary relative z-10 flex items-center space-x-3 rounded-lg p-2 transition-all duration-200"
+            :class="{
+              'nav-link-active text-primary font-medium': isActive(item.to),
+              'hover:bg-white/5': !isActive(item.to),
+            }"
+          >
+            <span
+              class="h-5 w-5 transition-transform duration-200"
+              :class="[`icon-[${item.icon}]`, { 'scale-110': isActive(item.to) }]"
+            ></span>
+            <span>{{ $t(item.labelKey) }}</span>
+          </router-link>
+        </nav>
+      </div>
       </div>
       <div class="hidden">
         <span class="icon-[mdi--home] h-5 w-5"></span>

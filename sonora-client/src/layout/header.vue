@@ -245,14 +245,14 @@ onUnmounted(() => document.removeEventListener('pointerdown', onDocClick))
       </Button>
 
       <!-- 用户头像 / 登录按钮 -->
-      <div v-if="userStore.isLoggedIn" class="flex items-center gap-2">
+      <router-link v-if="userStore.isLoggedIn" to="/profile" class="flex items-center gap-2">
         <img
           :src="userStore.avatarUrl"
           alt="avatar"
           class="h-7 w-7 rounded-full object-cover ring-1 ring-white/10"
         />
         <span class="text-primary/90 text-sm">{{ userStore.nickname }}</span>
-      </div>
+      </router-link>
       <Button
         v-else
         variant="glass"

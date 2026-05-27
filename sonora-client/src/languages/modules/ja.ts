@@ -230,17 +230,6 @@ export default {
   },
   auth: {
     login: 'ログイン',
-    tip: 'ログイン方法を選択してください',
-    passwordLogin: 'パスワードログイン',
-    qrLogin: 'QR ログイン',
-    phone: '電話番号',
-    email: 'メール',
-    password: 'パスワード',
-    inputPhone: '電話番号を入力してください',
-    inputEmail: 'メールアドレスを入力してください',
-    inputPassword: 'パスワードを入力してください',
-    qr: 'QR コード',
-    refreshQr: 'QR を更新',
   },
   comments: {
     title: '楽曲コメント',

@@ -10,7 +10,6 @@ import com.sonora.mapper.SongMapper;
 import com.sonora.model.entity.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,13 +20,22 @@ import java.util.Map;
 @Tag(name = "客户端-搜索", description = "全局搜索")
 @RestController
 @RequestMapping("/api/client")
-@RequiredArgsConstructor
 public class ClientSearchController {
 
     private final SongMapper songMapper;
     private final AlbumMapper albumMapper;
     private final ArtistMapper artistMapper;
     private final PlaylistMapper playlistMapper;
+
+    public ClientSearchController(SongMapper songMapper,
+                                  AlbumMapper albumMapper,
+                                  ArtistMapper artistMapper,
+                                  PlaylistMapper playlistMapper) {
+        this.songMapper = songMapper;
+        this.albumMapper = albumMapper;
+        this.artistMapper = artistMapper;
+        this.playlistMapper = playlistMapper;
+    }
 
     @Operation(summary = "全局搜索 (type: song/album/artist/playlist/all)")
     @GetMapping("/search")

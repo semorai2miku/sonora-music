@@ -103,6 +103,14 @@ const router = createRouter({
           ),
         },
         {
+          path: '/profile',
+          name: 'profile',
+          component: responsive(
+            () => import('@/pages/profile.vue'),
+            () => import('@/pages/profile.vue')
+          ),
+        },
+        {
           path: '/search',
           name: 'search',
           component: responsive(

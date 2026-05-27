@@ -24,6 +24,12 @@ public class Playlist {
     /** 歌单描述 */
     private String description;
 
+    /** 歌单类型: liked-喜欢的音乐 normal-自建歌单 */
+    private String type;
+
+    /** 是否置顶: 1-置顶 0-普通 */
+    private Integer pinned;
+
     /** 分类标签，逗号分隔 */
     private String tags;
 
