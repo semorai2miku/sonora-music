@@ -3,6 +3,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useLyrics } from '@/composables/useLyrics'
 import SongCommentsDialog from '@/components/Comments/SongCommentsDialog.vue'
 import LoginDialog from '@/components/Auth/LoginDialog.vue'
+import SaveToPlaylistDialog from '@/components/Playlist/SaveToPlaylistDialog.vue'
 import { likedSongIds, likeSong, search, songDetail, unlikeSong } from '@/api'
 import { useAudio } from '@/composables/useAudio'
 import { useUserStore } from '@/stores/modules/user'
@@ -23,6 +24,7 @@ const { play, setPlaylist, currentSong, isPlaying } = useAudio()
 const userStore = useUserStore()
 const showComments = ref(false)
 const showLogin = ref(false)
+const showSaveToPlaylist = ref(false)
 
 const state = reactive({
   info: null as any,
@@ -119,6 +121,15 @@ const toggleLike = async () => {
   }
 }
 
+const openSaveToPlaylist = () => {
+  if (!state.info?.id) return
+  if (!userStore.isLoggedIn) {
+    showLogin.value = true
+    return
+  }
+  showSaveToPlaylist.value = true
+}
+
 watch(() => [state.info?.id, userStore.isLoggedIn], refreshLikeState)
 </script>
 
@@ -189,6 +200,13 @@ watch(() => [state.info?.id, userStore.isLoggedIn], refreshLikeState)
               >
                 <span :class="state.liked ? 'icon-[mdi--heart]' : 'icon-[mdi--heart-outline]'" class="h-5 w-5"></span>
                 {{ state.liked ? '已喜欢' : '喜欢' }}
+              </button>
+              <button
+                class="glass-button inline-flex items-center gap-2 px-5 py-3 transition-colors hover:bg-white/20"
+                @click="openSaveToPlaylist"
+              >
+                <span class="icon-[mdi--playlist-plus] h-5 w-5"></span>
+                收藏到歌单
               </button>
               <button
                 class="glass-button inline-flex items-center gap-2 px-5 py-3 transition-colors hover:bg-white/20"
@@ -291,5 +309,11 @@ watch(() => [state.info?.id, userStore.isLoggedIn], refreshLikeState)
     </div>
     <SongCommentsDialog v-model:show="showComments" :song-id="songId" />
     <LoginDialog v-if="showLogin" @close="showLogin = false" @success="refreshLikeState" />
+    <SaveToPlaylistDialog
+      v-if="showSaveToPlaylist && state.info?.id"
+      :song-id="state.info.id"
+      :song-name="state.info.name"
+      @close="showSaveToPlaylist = false"
+    />
   </div>
 </template>

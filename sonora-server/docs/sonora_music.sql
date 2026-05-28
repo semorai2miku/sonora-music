@@ -24,7 +24,7 @@ CREATE TABLE sys_user (
     username    VARCHAR(64)  NOT NULL UNIQUE COMMENT '用户名',
     password    VARCHAR(256) NOT NULL COMMENT '加密密码',
     nickname    VARCHAR(64)  DEFAULT NULL COMMENT '昵称',
-    email       VARCHAR(128) DEFAULT NULL COMMENT '邮箱',
+    email       VARCHAR(128) NOT NULL COMMENT '邮箱',
     phone       VARCHAR(20)  DEFAULT NULL COMMENT '手机号',
     avatar      VARCHAR(512) DEFAULT NULL COMMENT '头像URL',
     gender      TINYINT      DEFAULT 0 COMMENT '0-未知 1-男 2-女',
@@ -36,7 +36,7 @@ CREATE TABLE sys_user (
     deleted     TINYINT      DEFAULT 0 COMMENT '逻辑删除 1-已删除',
     INDEX idx_username (username),
     INDEX idx_profile_id (profile_id),
-    INDEX idx_email (email)
+    UNIQUE KEY uk_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
 
 -- 角色表
@@ -241,8 +241,8 @@ CREATE TABLE t_banner (
 -- ============================
 
 -- 管理员账号: admin / admin123 (BCrypt)
-INSERT INTO sys_user (profile_id, username, password, nickname, avatar, status) VALUES
-('ADMIN000001', 'admin', '$2a$10$r53nFvBJ0t5CGwB8q5bHX.V/6phBCwsaCjmKFNDdLFQi0Jzs5pV0q', '超级管理员', '/default-avatar.svg', 1);
+INSERT INTO sys_user (profile_id, username, password, nickname, email, avatar, status) VALUES
+('ADMIN000001', 'admin', '$2a$10$r53nFvBJ0t5CGwB8q5bHX.V/6phBCwsaCjmKFNDdLFQi0Jzs5pV0q', '超级管理员', 'admin@sonora.local', '/default-avatar.svg', 1);
 
 -- 角色
 INSERT INTO sys_role (code, name, description, sort) VALUES
@@ -257,9 +257,9 @@ INSERT INTO sys_user_role (user_id, role_id) VALUES (1, 1);
 INSERT INTO sys_permission (code, name, type, parent_id, path, component, icon, sort) VALUES
 ('dashboard',      '仪表盘',   'menu', 0, '/dashboard',      'dashboard/index',  'dashboard', 1),
 ('content',        '内容管理', 'menu', 0, '/content',         'content/parent',   'document',  2),
-('content:song',   '歌曲管理', 'menu', 2, '/content/song',   'content/song',     'music',     1),
-('content:album',  '专辑管理', 'menu', 2, '/content/album',  'content/album',    'album',     2),
-('content:artist', '歌手管理', 'menu', 2, '/content/artist',  'content/artist',  'user',      3),
+('content:artist', '歌手管理', 'menu', 2, '/content/artist',  'content/artist',  'user',      1),
+('content:song',   '歌曲管理', 'menu', 2, '/content/song',   'content/song',     'music',     2),
+('content:album',  '专辑管理', 'menu', 2, '/content/album',  'content/album',    'album',     3),
 ('content:playlist', '歌单管理', 'menu', 2, '/content/playlist', 'content/playlist', 'list',   4),
 ('user',           '客户端用户', 'menu', 0, '/user',           'user/index',       'people',    4),
 ('system',         '系统管理', 'menu', 0, '/system',         NULL,               'setting',   5),

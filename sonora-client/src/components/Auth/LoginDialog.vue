@@ -13,14 +13,17 @@ const state = reactive({
   mode: 'login' as 'login' | 'register',
   loading: false,
   username: '',
+  email: '',
   password: '',
-  confirmPassword: '',
 })
-const { mode, loading, username, password, confirmPassword } = toRefs(state)
+const { mode, loading, username, email, password } = toRefs(state)
+const emailPattern = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/
 
 const canSubmit = computed(() => {
   if (!state.username.trim() || !state.password) return false
-  if (state.mode === 'register') return state.password === state.confirmPassword
+  if (state.mode === 'register') {
+    return emailPattern.test(state.email.trim())
+  }
   return true
 })
 
@@ -34,16 +37,15 @@ const submit = async () => {
     errorMessage.value = '密码至少 6 位'
     return
   }
-  if (state.mode === 'register' && state.password !== state.confirmPassword) {
-    errorMessage.value = '两次输入的密码不一致'
+  if (state.mode === 'register' && !emailPattern.test(state.email.trim())) {
+    errorMessage.value = '请输入正确的邮箱'
     return
   }
-
   try {
     state.loading = true
     const res =
       state.mode === 'register'
-        ? await clientRegister({ username: state.username.trim(), password: state.password })
+        ? await clientRegister({ username: state.username.trim(), email: state.email.trim(), password: state.password })
         : await clientLogin({ username: state.username.trim(), password: state.password })
     const data = res?.data
     if (!data?.profile || !data?.accessToken) {
@@ -74,7 +76,7 @@ const handleAfterLeave = () => {
 watch(mode, () => {
   errorMessage.value = ''
   state.password = ''
-  state.confirmPassword = ''
+  state.email = ''
 })
 </script>
 
@@ -162,6 +164,24 @@ watch(mode, () => {
                 </div>
               </div>
 
+              <div v-if="mode === 'register'" class="space-y-2">
+                <label class="text-primary/60 block text-xs font-medium">邮箱</label>
+                <div
+                  class="glass-card group flex items-center gap-3 rounded-xl px-4 py-3 transition-all focus-within:ring-2 focus-within:ring-sky-400/50"
+                >
+                  <span
+                    class="icon-[mdi--email-outline] text-primary/40 h-5 w-5 transition-colors group-focus-within:text-sky-400"
+                  />
+                  <input
+                    v-model="email"
+                    type="email"
+                    placeholder="请输入邮箱"
+                    class="text-primary w-full bg-transparent text-sm outline-none placeholder:text-white/30"
+                    @keyup.enter="submit"
+                  />
+                </div>
+              </div>
+
               <div class="space-y-2">
                 <label class="text-primary/60 block text-xs font-medium">密码</label>
                 <div
@@ -180,23 +200,6 @@ watch(mode, () => {
                 </div>
               </div>
 
-              <div v-if="mode === 'register'" class="space-y-2">
-                <label class="text-primary/60 block text-xs font-medium">确认密码</label>
-                <div
-                  class="glass-card group flex items-center gap-3 rounded-xl px-4 py-3 transition-all focus-within:ring-2 focus-within:ring-purple-400/50"
-                >
-                  <span
-                    class="icon-[mdi--lock-check-outline] text-primary/40 h-5 w-5 transition-colors group-focus-within:text-purple-400"
-                  />
-                  <input
-                    v-model="confirmPassword"
-                    type="password"
-                    placeholder="请再次输入密码"
-                    class="text-primary w-full bg-transparent text-sm outline-none placeholder:text-white/30"
-                    @keyup.enter="submit"
-                  />
-                </div>
-              </div>
             </div>
 
             <p v-if="errorMessage" class="mt-4 text-sm text-red-300">{{ errorMessage }}</p>

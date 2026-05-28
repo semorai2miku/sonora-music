@@ -36,7 +36,7 @@ mysql_data/
 minio_data/
 
 # ======== Resources Files ========
-test-music/
+/test/
 
 # ======== Docs 别改 ========
 /docs/

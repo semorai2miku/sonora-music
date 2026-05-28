@@ -32,6 +32,7 @@ public class SecurityConfig {
                 // 需要客户端登录的个人接口
                 .requestMatchers(
                     "/api/client/auth/me",
+                    "/api/client/auth/avatar",
                     "/api/client/auth/password",
                     "/api/client/me/**"
                 ).authenticated()

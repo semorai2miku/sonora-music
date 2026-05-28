@@ -49,6 +49,8 @@ export type ClientUserItem = {
   profileId: string;
   username: string;
   nickname?: string;
+  email: string;
+  phone?: string;
   avatar?: string;
   bio?: string;
   status: number;
@@ -61,6 +63,8 @@ export type ClientUserPayload = {
   username?: string;
   password?: string;
   profileId?: string;
+  email?: string;
+  phone?: string;
   avatar?: string;
   bio?: string;
   status?: number;
@@ -81,6 +85,24 @@ type ClientUserResult = {
   data: ClientUserItem;
 };
 
+type BatchDeleteResult = {
+  code: number;
+  data: {
+    count: number;
+    deleted: Array<{ id: number; username: string }>;
+  };
+};
+
+type UploadResult = {
+  code: number;
+  data: {
+    objectKey: string;
+    url: string;
+    fileName: string;
+    fileSize: number;
+  };
+};
+
 export const getClientUserPage = (params: object) =>
   http.request<ClientUserPageResult>("get", "/api/admin/users", { params });
 
@@ -93,5 +115,20 @@ export const updateClientUser = (id: number, data: ClientUserPayload) =>
 export const deleteClientUser = (id: number) =>
   http.request("delete", `/api/admin/users/${id}`);
 
+export const batchDeleteClientUsers = (ids: number[]) =>
+  http.request<BatchDeleteResult>("post", "/api/admin/users/batch-delete", {
+    data: { ids }
+  });
+
 export const toggleClientUserStatus = (id: number, status: number) =>
   http.request<ClientUserResult>("put", `/api/admin/users/${id}/status?status=${status}`);
+
+export const uploadAdminAvatar = (file: File) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("dir", "avatar");
+  return http.request<UploadResult>("post", "/api/admin/upload", {
+    data: formData,
+    headers: { "Content-Type": "multipart/form-data" }
+  });
+};

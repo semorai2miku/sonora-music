@@ -37,7 +37,7 @@ public class SongServiceImpl extends ServiceImpl<SongMapper, Song> implements So
         if (artistId != null) {
             wrapper.apply("FIND_IN_SET({0}, artist_ids)", artistId);
         }
-        wrapper.orderByDesc(Song::getCreatedAt);
+        wrapper.orderByAsc(Song::getId);
         return page(new Page<>(pageNum, pageSize), wrapper);
     }
 

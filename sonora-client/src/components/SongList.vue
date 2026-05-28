@@ -10,6 +10,7 @@ import { useI18n } from 'vue-i18n'
 import { likedSongIds, likeSong, unlikeSong } from '@/api'
 import { useUserStore } from '@/stores/modules/user'
 import LoginDialog from '@/components/Auth/LoginDialog.vue'
+import SaveToPlaylistDialog from '@/components/Playlist/SaveToPlaylistDialog.vue'
 
 interface Props {
   songs: Song[]
@@ -18,6 +19,7 @@ interface Props {
   showControls?: boolean
   emptyMessage?: string
   loading?: boolean
+  allowRemove?: boolean
 }
 
 interface Emits {
@@ -28,6 +30,7 @@ interface Emits {
   (e: 'filter'): void
   (e: 'mv', song: Song, index: number): void
   (e: 'download', song: Song, index: number): void
+  (e: 'remove', song: Song, index: number): void
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -36,6 +39,7 @@ const props = withDefaults(defineProps<Props>(), {
   showControls: true,
   emptyMessage: '',
   loading: false,
+  allowRemove: false,
 })
 
 const emit = defineEmits<Emits>()
@@ -45,6 +49,8 @@ const { t } = useI18n()
 const { flyTo, createRipple } = useSharedElement()
 const userStore = useUserStore()
 const showLogin = ref(false)
+const showSaveToPlaylist = ref(false)
+const playlistTargetSong = ref<Song | null>(null)
 
 // 歌曲封面飞行动画
 const playSongWithAnimation = async (song: Song, index: number, event?: MouseEvent) => {
@@ -113,6 +119,10 @@ const downloadSong = (song: Song, index: number) => {
   emit('download', song, index)
 }
 
+const removeSong = (song: Song, index: number) => {
+  emit('remove', song, index)
+}
+
 const refreshLikedStates = async () => {
   if (!userStore.isLoggedIn || !props.songs?.length) return
   try {
@@ -144,6 +154,16 @@ const toggleLike = async (song: Song, index: number) => {
   } catch {
     song.liked = !nextLiked
   }
+}
+
+const openSaveToPlaylist = (song: Song) => {
+  if (!userStore.isLoggedIn) {
+    showLogin.value = true
+    return
+  }
+  if (!song.id) return
+  playlistTargetSong.value = song
+  showSaveToPlaylist.value = true
 }
 
 watch(
@@ -360,6 +380,28 @@ watch(
                 @click.stop="toggleLike(song, index)"
               />
               <Button
+                v-if="song.id"
+                variant="ghost"
+                size="icon-md"
+                rounded="full"
+                class="h-9 w-9"
+                icon="icon-[mdi--playlist-plus]"
+                iconClass="h-5 w-5"
+                title="收藏到歌单"
+                @click.stop="openSaveToPlaylist(song)"
+              />
+              <Button
+                v-if="allowRemove && song.id"
+                variant="ghost"
+                size="icon-md"
+                rounded="full"
+                class="h-9 w-9 text-red-300"
+                icon="icon-[mdi--playlist-remove]"
+                iconClass="h-5 w-5"
+                title="从歌单移除"
+                @click.stop="removeSong(song, index)"
+              />
+              <Button
                 v-if="song.mvId"
                 variant="ghost"
                 size="icon-md"
@@ -411,4 +453,10 @@ watch(
     </div>
   </div>
   <LoginDialog v-if="showLogin" @close="showLogin = false" @success="refreshLikedStates" />
+  <SaveToPlaylistDialog
+    v-if="showSaveToPlaylist && playlistTargetSong?.id"
+    :song-id="playlistTargetSong.id"
+    :song-name="playlistTargetSong.name"
+    @close="showSaveToPlaylist = false"
+  />
 </template>

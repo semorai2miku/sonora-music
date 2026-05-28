@@ -6,6 +6,8 @@ export interface UserProfile {
   userId: number
   profileId?: string
   username?: string
+  email?: string
+  phone?: string
   nickname: string
   avatarUrl: string
   bio?: string
@@ -26,6 +28,8 @@ export const useUserStore = defineStore('user', {
     userId: state => state.profile?.userId || 0,
     profileId: state => state.profile?.profileId || '',
     username: state => state.profile?.username || '',
+    email: state => state.profile?.email || '',
+    phone: state => state.profile?.phone || '',
     nickname: state => state.profile?.nickname || '',
     avatarUrl: state => state.profile?.avatarUrl || '',
   },

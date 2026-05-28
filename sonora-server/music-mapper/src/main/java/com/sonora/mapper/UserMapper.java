@@ -18,20 +18,24 @@ public interface UserMapper extends BaseMapper<User> {
             INNER JOIN sys_role r ON ur.role_id = r.id
             WHERE u.deleted = 0
               AND r.code = 'USER'
-            <if test="keyword != null and keyword != ''">
-              AND (
-                u.username LIKE CONCAT('%', #{keyword}, '%')
-                OR u.nickname LIKE CONCAT('%', #{keyword}, '%')
-                OR u.profile_id LIKE CONCAT('%', #{keyword}, '%')
-              )
+            <if test="username != null and username != ''">
+              AND u.username LIKE CONCAT('%', #{username}, '%')
+            </if>
+            <if test="email != null and email != ''">
+              AND u.email LIKE CONCAT('%', #{email}, '%')
+            </if>
+            <if test="phone != null and phone != ''">
+              AND u.phone LIKE CONCAT('%', #{phone}, '%')
             </if>
             <if test="status != null">
               AND u.status = #{status}
             </if>
-            ORDER BY u.created_at DESC
+            ORDER BY u.id ASC
             </script>
             """)
     Page<User> selectClientUserPage(Page<User> page,
-                                    @Param("keyword") String keyword,
+                                    @Param("username") String username,
+                                    @Param("email") String email,
+                                    @Param("phone") String phone,
                                     @Param("status") Integer status);
 }

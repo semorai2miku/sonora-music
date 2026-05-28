@@ -1,5 +1,16 @@
 <script setup lang="ts">
-import { playlistDetail, playlistTrackAll, commentNew, search } from '@/api'
+import {
+  deleteMyPlaylist,
+  myPlaylists,
+  pinMyPlaylist,
+  playlistDetail,
+  playlistTrackAll,
+  removeSongFromMyPlaylist,
+  updateMyPlaylist,
+  commentNew,
+  search,
+  type ClientPlaylist,
+} from '@/api'
 import { usePlayActions } from '@/composables/usePlayActions'
 import { PlaylistInfo, PlaylistSong, CommentItem } from '@/typings'
 import LazyImage from '@/components/Ui/LazyImage.vue'
@@ -7,6 +18,7 @@ import Button from '@/components/Ui/Button.vue'
 import TabGroup from '@/components/Ui/TabGroup.vue'
 import { formatCount } from '@/utils/time'
 import { useI18n } from 'vue-i18n'
+import { useUserStore } from '@/stores/modules/user'
 import {
   transformPlaylistDetail,
   transformSongs,
@@ -16,7 +28,9 @@ import {
 } from '@/utils/transformers'
 
 const route = useRoute()
-const playlistId = route.params.id
+const router = useRouter()
+const userStore = useUserStore()
+const currentPlaylistId = computed(() => Number(route.params.id))
 
 interface SimilarPlaylist {
   id: number | string
@@ -36,6 +50,15 @@ interface PlaylistState {
   comments: CommentItem[]
   isPageLoading: boolean
   similarPlaylists: SimilarPlaylist[]
+  myPlaylist: ClientPlaylist | null
+  showEditPlaylist: boolean
+  playlistActionLoading: boolean
+  playlistError: string
+  editForm: {
+    name: string
+    cover: string
+    description: string
+  }
 }
 
 const state = reactive<PlaylistState>({
@@ -47,9 +70,30 @@ const state = reactive<PlaylistState>({
   comments: [],
   isPageLoading: true,
   similarPlaylists: [],
+  myPlaylist: null,
+  showEditPlaylist: false,
+  playlistActionLoading: false,
+  playlistError: '',
+  editForm: {
+    name: '',
+    cover: '',
+    description: '',
+  },
 })
-const { activeTab, playlistInfo, songs, newComment, comments, isPageLoading, similarPlaylists } =
-  toRefs(state)
+const {
+  activeTab,
+  playlistInfo,
+  songs,
+  newComment,
+  comments,
+  isPageLoading,
+  similarPlaylists,
+  myPlaylist,
+  showEditPlaylist,
+  playlistActionLoading,
+  playlistError,
+  editForm,
+} = toRefs(state)
 const { playAll: playAllAction, shufflePlay: shufflePlayAction } = usePlayActions()
 const { t } = useI18n()
 
@@ -57,6 +101,38 @@ const gradients: string[] = ['from-purple-500 to-pink-500']
 const emojis: string[] = ['🎵', '🎶', '♪', '♫', '🎼']
 
 const pickGradient = (): string => gradients[Math.floor(Math.random() * gradients.length)]
+
+const isOwnedNormalPlaylist = computed(() => state.myPlaylist?.type === 'normal')
+const isPinnedPlaylist = computed(() => Number(state.myPlaylist?.pinned || 0) === 1)
+
+const dispatchPlaylistsUpdated = () => {
+  window.dispatchEvent(new CustomEvent('sonora:playlists-updated'))
+}
+
+const syncPlaylistInfoFromMine = (playlist: ClientPlaylist) => {
+  state.playlistInfo = {
+    ...state.playlistInfo,
+    name: playlist.name || state.playlistInfo.name,
+    description: playlist.description || '',
+    coverImgUrl: playlist.cover || state.playlistInfo.coverImgUrl,
+    songCount: playlist.songCount ?? state.playlistInfo.songCount,
+  }
+}
+
+const loadMyPlaylistMeta = async (id: number) => {
+  if (!userStore.isLoggedIn || Number.isNaN(id) || id <= 0) {
+    state.myPlaylist = null
+    return
+  }
+  try {
+    const res = await myPlaylists()
+    const found = (res?.data || []).find(playlist => Number(playlist.id) === id) || null
+    state.myPlaylist = found
+    if (found) syncPlaylistInfoFromMine(found)
+  } catch {
+    state.myPlaylist = null
+  }
+}
 
 const loadPlaylist = async (id: number) => {
   try {
@@ -130,11 +206,12 @@ const loadSimilarPlaylists = async (name: string) => {
 
 // 初始化加载播放列表
 onMounted(() => {
-  const idNum = Number(playlistId)
+  const idNum = currentPlaylistId.value
   if (!Number.isNaN(idNum) && idNum > 0) {
     state.isPageLoading = true
     loadPlaylist(idNum)
     loadComments(idNum)
+    loadMyPlaylistMeta(idNum)
   }
 })
 
@@ -146,8 +223,14 @@ watch(
       state.isPageLoading = true
       loadPlaylist(idNum)
       loadComments(idNum)
+      loadMyPlaylistMeta(idNum)
     }
   }
+)
+
+watch(
+  () => userStore.isLoggedIn,
+  () => loadMyPlaylistMeta(currentPlaylistId.value)
 )
 
 watch(
@@ -182,7 +265,7 @@ const toggleCollect = () => {
 }
 
 const sharePlaylist = async () => {
-  const url = location.origin + location.pathname + `#/playlist/${playlistId}`
+  const url = location.origin + location.pathname + `#/playlist/${currentPlaylistId.value}`
   const title = String((state.playlistInfo as any)?.name || t('home.playlistFallback'))
   const text = String((state.playlistInfo as any)?.description || '')
   try {
@@ -191,6 +274,84 @@ const sharePlaylist = async () => {
     } else {
       await navigator.clipboard.writeText(url)
     }
+  } catch {}
+}
+
+const openEditPlaylist = () => {
+  if (!isOwnedNormalPlaylist.value) return
+  state.playlistError = ''
+  state.editForm = {
+    name: state.myPlaylist?.name || state.playlistInfo.name || '',
+    cover: state.myPlaylist?.cover || state.playlistInfo.coverImgUrl || '',
+    description: state.myPlaylist?.description || state.playlistInfo.description || '',
+  }
+  state.showEditPlaylist = true
+}
+
+const submitEditPlaylist = async () => {
+  if (!isOwnedNormalPlaylist.value) return
+  const name = state.editForm.name.trim()
+  if (!name) {
+    state.playlistError = '请输入歌单名称'
+    return
+  }
+  state.playlistActionLoading = true
+  state.playlistError = ''
+  try {
+    const res = await updateMyPlaylist(currentPlaylistId.value, {
+      name,
+      cover: state.editForm.cover.trim(),
+      description: state.editForm.description.trim(),
+    })
+    if (res?.code !== 200 || !res.data) throw new Error(res?.message || '保存失败')
+    state.myPlaylist = res.data
+    syncPlaylistInfoFromMine(res.data)
+    dispatchPlaylistsUpdated()
+    state.showEditPlaylist = false
+  } catch (error: any) {
+    state.playlistError = error?.response?.data?.message || error?.message || '保存失败'
+  } finally {
+    state.playlistActionLoading = false
+  }
+}
+
+const togglePinPlaylist = async () => {
+  if (!isOwnedNormalPlaylist.value) return
+  state.playlistActionLoading = true
+  try {
+    const res = await pinMyPlaylist(currentPlaylistId.value, !isPinnedPlaylist.value)
+    if (res?.code !== 200 || !res.data) throw new Error(res?.message || '操作失败')
+    state.myPlaylist = res.data
+    dispatchPlaylistsUpdated()
+  } catch {
+  } finally {
+    state.playlistActionLoading = false
+  }
+}
+
+const removeCurrentPlaylist = async () => {
+  if (!isOwnedNormalPlaylist.value) return
+  if (!window.confirm('删除后歌单内歌曲关系会被清空，确定删除这个歌单吗？')) return
+  state.playlistActionLoading = true
+  try {
+    const res = await deleteMyPlaylist(currentPlaylistId.value)
+    if (res?.code !== 200) throw new Error(res?.message || '删除失败')
+    dispatchPlaylistsUpdated()
+    router.push('/')
+  } catch {
+  } finally {
+    state.playlistActionLoading = false
+  }
+}
+
+const removeSongFromCurrentPlaylist = async (song: SongData, index: number) => {
+  if (!isOwnedNormalPlaylist.value || !song.id) return
+  try {
+    const res = await removeSongFromMyPlaylist(currentPlaylistId.value, song.id)
+    if (res?.code !== 200) throw new Error(res?.message || '移除失败')
+    state.songs.splice(index, 1)
+    state.playlistInfo.songCount = state.songs.length
+    dispatchPlaylistsUpdated()
   } catch {}
 }
 
@@ -376,6 +537,43 @@ const tabsWithCount = computed(() =>
                         <span class="icon-[mdi--share-variant] h-5 w-5"></span>
                       </Button>
                     </div>
+                    <div v-if="isOwnedNormalPlaylist" class="flex items-center gap-3">
+                      <Button
+                        variant="soft"
+                        size="md"
+                        rounded="full"
+                        class="px-5 py-3"
+                        icon="icon-[mdi--playlist-edit]"
+                        icon-class="mr-2 h-5 w-5"
+                        :disabled="playlistActionLoading"
+                        @click="openEditPlaylist"
+                      >
+                        编辑歌单
+                      </Button>
+                      <Button
+                        variant="soft"
+                        size="icon-md"
+                        rounded="full"
+                        class="h-11 w-11"
+                        :class="isPinnedPlaylist ? 'text-pink-300' : ''"
+                        :icon="isPinnedPlaylist ? 'icon-[mdi--pin-off]' : 'icon-[mdi--pin]'"
+                        icon-class="h-5 w-5"
+                        :title="isPinnedPlaylist ? '取消置顶' : '置顶歌单'"
+                        :disabled="playlistActionLoading"
+                        @click="togglePinPlaylist"
+                      />
+                      <Button
+                        variant="soft"
+                        size="icon-md"
+                        rounded="full"
+                        class="h-11 w-11 text-red-300"
+                        icon="icon-[mdi--delete-outline]"
+                        icon-class="h-5 w-5"
+                        title="删除歌单"
+                        :disabled="playlistActionLoading"
+                        @click="removeCurrentPlaylist"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -391,7 +589,12 @@ const tabsWithCount = computed(() =>
 
         <!-- 歌曲列表 -->
         <section v-show="activeTab === 'songs'" class="h-full overflow-hidden">
-          <SongList :songs="songs" :show-header="true" />
+          <SongList
+            :songs="songs"
+            :show-header="true"
+            :allow-remove="isOwnedNormalPlaylist"
+            @remove="removeSongFromCurrentPlaylist"
+          />
         </section>
 
         <!-- 评论区 -->
@@ -591,6 +794,82 @@ const tabsWithCount = computed(() =>
         </section>
       </div>
     </template>
+    <div
+      v-if="showEditPlaylist"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      @click.self="showEditPlaylist = false"
+    >
+      <div class="glass-container-strong w-full max-w-md p-6">
+        <div class="mb-5 flex items-center justify-between">
+          <h3 class="text-primary text-xl font-semibold">编辑歌单</h3>
+          <Button
+            variant="soft"
+            size="icon-sm"
+            rounded="full"
+            icon="icon-[mdi--close]"
+            icon-class="h-4 w-4"
+            :disabled="playlistActionLoading"
+            @click="showEditPlaylist = false"
+          />
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <label class="text-primary/60 mb-2 block text-xs font-medium">歌单名称</label>
+            <input
+              v-model="editForm.name"
+              type="text"
+              maxlength="80"
+              class="text-primary glass-card w-full rounded-xl border border-glass px-4 py-3 text-sm outline-none placeholder:text-white/30 focus:border-pink-400/50"
+              placeholder="请输入歌单名称"
+            />
+          </div>
+          <div>
+            <label class="text-primary/60 mb-2 block text-xs font-medium">封面地址</label>
+            <input
+              v-model="editForm.cover"
+              type="text"
+              class="text-primary glass-card w-full rounded-xl border border-glass px-4 py-3 text-sm outline-none placeholder:text-white/30 focus:border-pink-400/50"
+              placeholder="留空则使用默认封面"
+            />
+          </div>
+          <div>
+            <label class="text-primary/60 mb-2 block text-xs font-medium">简介</label>
+            <textarea
+              v-model="editForm.description"
+              rows="3"
+              class="text-primary glass-card w-full resize-none rounded-xl border border-glass px-4 py-3 text-sm outline-none placeholder:text-white/30 focus:border-pink-400/50"
+              placeholder="写点歌单简介"
+            />
+          </div>
+        </div>
+
+        <p v-if="playlistError" class="mt-4 text-sm text-red-300">{{ playlistError }}</p>
+
+        <div class="mt-6 flex justify-end gap-3">
+          <Button
+            variant="ghost"
+            size="md"
+            rounded="full"
+            :disabled="playlistActionLoading"
+            @click="showEditPlaylist = false"
+          >
+            取消
+          </Button>
+          <Button
+            variant="solid"
+            size="md"
+            rounded="full"
+            :loading="playlistActionLoading"
+            :disabled="playlistActionLoading"
+            icon="icon-[mdi--content-save-outline]"
+            @click="submitEditPlaylist"
+          >
+            保存
+          </Button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 

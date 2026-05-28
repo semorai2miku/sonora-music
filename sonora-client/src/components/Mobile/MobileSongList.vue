@@ -5,6 +5,7 @@ import { useAudio } from '@/composables/useAudio'
 import type { Song } from '@/stores/interface'
 import { likedSongIds, likeSong, unlikeSong } from '@/api'
 import { useUserStore } from '@/stores/modules/user'
+import SaveToPlaylistDialog from '@/components/Playlist/SaveToPlaylistDialog.vue'
 
 type ListVariant = 'compact' | 'card'
 
@@ -29,6 +30,8 @@ const emit = defineEmits<{
 const { currentSong, isPlaying } = useAudio()
 const userStore = useUserStore()
 const showLogin = ref(false)
+const showSaveToPlaylist = ref(false)
+const playlistTargetSong = ref<Song | null>(null)
 
 const isCurrent = (s: Song) => {
   const cur = currentSong.value
@@ -77,6 +80,16 @@ const toggleLike = async (song: Song) => {
   } catch {
     song.liked = !nextLiked
   }
+}
+
+const openSaveToPlaylist = (song: Song) => {
+  if (!userStore.isLoggedIn) {
+    showLogin.value = true
+    return
+  }
+  if (!song.id) return
+  playlistTargetSong.value = song
+  showSaveToPlaylist.value = true
 }
 
 watch(
@@ -135,6 +148,9 @@ watch(
             class="h-5 w-5"
             :class="song.liked ? 'icon-[mdi--heart] text-pink-400' : 'icon-[mdi--heart-outline]'"
           ></span>
+        </button>
+        <button class="rounded-full p-1.5" @click.stop="openSaveToPlaylist(song)">
+          <span class="icon-[mdi--playlist-plus] h-5 w-5"></span>
         </button>
         <span class="song-duration text-xs">{{ formatDuration(song.duration) }}</span>
         <div v-if="isCurrent(song)" class="playing-icon">
@@ -198,10 +214,19 @@ watch(
           :class="song.liked ? 'icon-[mdi--heart] text-pink-400' : 'icon-[mdi--heart-outline]'"
         ></span>
       </button>
+      <button class="rounded-full p-1.5" @click.stop="openSaveToPlaylist(song)">
+        <span class="icon-[mdi--playlist-plus] h-5 w-5"></span>
+      </button>
       <span class="song-duration shrink-0 text-xs">{{ formatDuration(song.duration) }}</span>
     </div>
   </div>
   <LoginDialog v-if="showLogin" @close="showLogin = false" @success="refreshLikedStates" />
+  <SaveToPlaylistDialog
+    v-if="showSaveToPlaylist && playlistTargetSong?.id"
+    :song-id="playlistTargetSong.id"
+    :song-name="playlistTargetSong.name"
+    @close="showSaveToPlaylist = false"
+  />
 </template>
 
 <style scoped>

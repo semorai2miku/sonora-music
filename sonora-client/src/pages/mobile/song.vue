@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import LoginDialog from '@/components/Auth/LoginDialog.vue'
+import SaveToPlaylistDialog from '@/components/Playlist/SaveToPlaylistDialog.vue'
 import { likedSongIds, likeSong, lyric, songDetail, unlikeSong } from '@/api'
 import { useAudio } from '@/composables/useAudio'
 import { useUserStore } from '@/stores/modules/user'
@@ -7,6 +8,7 @@ import { useUserStore } from '@/stores/modules/user'
 const route = useRoute()
 const userStore = useUserStore()
 const showLogin = ref(false)
+const showSaveToPlaylist = ref(false)
 
 const state = reactive({
   id: String(route.params.id || ''),
@@ -109,6 +111,15 @@ const toggleLike = async () => {
   }
 }
 
+const openSaveToPlaylist = () => {
+  if (!state.id) return
+  if (!userStore.isLoggedIn) {
+    showLogin.value = true
+    return
+  }
+  showSaveToPlaylist.value = true
+}
+
 watch(() => userStore.isLoggedIn, refreshLikeState)
 </script>
 
@@ -155,6 +166,12 @@ watch(() => userStore.isLoggedIn, refreshLikeState)
                 class="h-4 w-4"
               ></span>
             </button>
+            <button
+              class="glass-button text-primary rounded-full px-3 py-2 text-sm"
+              @click="openSaveToPlaylist"
+            >
+              <span class="icon-[mdi--playlist-plus] h-4 w-4"></span>
+            </button>
           </div>
         </div>
       </section>
@@ -170,5 +187,11 @@ watch(() => userStore.isLoggedIn, refreshLikeState)
       </section>
     </template>
     <LoginDialog v-if="showLogin" @close="showLogin = false" @success="refreshLikeState" />
+    <SaveToPlaylistDialog
+      v-if="showSaveToPlaylist && state.id"
+      :song-id="state.id"
+      :song-name="state.name"
+      @close="showSaveToPlaylist = false"
+    />
   </div>
 </template>

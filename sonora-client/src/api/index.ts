@@ -3,7 +3,7 @@
  * 封装 Sonora 后端兼容 API 的所有请求方法
  * 按功能模块分组：轮播图、Sonora 账号、搜索、歌曲、歌单、歌手、专辑、MV、评论、推荐
  */
-import { httpDelete, httpGet, httpPost, httpPut } from '@/utils/http'
+import { httpDelete, httpGet, httpPost, httpPut, httpUpload } from '@/utils/http'
 
 // ═══════ 轮播图 ═══════
 
@@ -17,6 +17,8 @@ export interface SonoraUserProfile {
   profileId: string
   username: string
   nickname: string
+  email: string
+  phone?: string
   avatarUrl: string
   bio?: string
   status?: number
@@ -39,10 +41,28 @@ export interface SonoraResult<T> {
   data: T
 }
 
+export interface ClientPlaylist {
+  id: number
+  name: string
+  cover?: string
+  type?: 'liked' | 'normal' | string
+  pinned?: number
+  description?: string
+  songCount?: number
+  createdAt?: string
+}
+
+export interface ClientPlaylistPayload {
+  name?: string
+  cover?: string
+  description?: string
+  pinned?: number
+}
+
 export const clientLogin = (data: { username: string; password: string }) =>
   httpPost<SonoraAuthResult>('/api/client/auth/login', data)
 
-export const clientRegister = (data: { username: string; password: string }) =>
+export const clientRegister = (data: { username: string; email: string; password: string }) =>
   httpPost<SonoraAuthResult>('/api/client/auth/register', data)
 
 export const clientMe = () => httpGet<SonoraResult<SonoraUserProfile>>('/api/client/auth/me')
@@ -50,6 +70,8 @@ export const clientMe = () => httpGet<SonoraResult<SonoraUserProfile>>('/api/cli
 export const updateClientMe = (data: {
   username?: string
   profileId?: string
+  email?: string
+  phone?: string
   avatar?: string
   bio?: string
 }) => httpPut<SonoraResult<SonoraUserProfile>>('/api/client/auth/me', data)
@@ -57,8 +79,34 @@ export const updateClientMe = (data: {
 export const changeClientPassword = (data: { oldPassword: string; newPassword: string }) =>
   httpPut<SonoraResult<null>>('/api/client/auth/password', data)
 
+export const uploadClientAvatar = (formData: FormData) =>
+  httpUpload<SonoraResult<{ objectKey: string; url: string; fileName: string; fileSize: number }>>(
+    '/api/client/auth/avatar',
+    formData
+  )
+
+export const deleteClientMe = () => httpDelete<SonoraResult<null>>('/api/client/auth/me')
+
 export const myPlaylists = () =>
-  httpGet<SonoraResult<Array<any>>>('/api/client/me/playlists')
+  httpGet<SonoraResult<ClientPlaylist[]>>('/api/client/me/playlists')
+
+export const createMyPlaylist = (data: ClientPlaylistPayload) =>
+  httpPost<SonoraResult<ClientPlaylist>>('/api/client/me/playlists', data)
+
+export const updateMyPlaylist = (playlistId: number | string, data: ClientPlaylistPayload) =>
+  httpPut<SonoraResult<ClientPlaylist>>(`/api/client/me/playlists/${playlistId}`, data)
+
+export const pinMyPlaylist = (playlistId: number | string, pinned: boolean) =>
+  updateMyPlaylist(playlistId, { pinned: pinned ? 1 : 0 })
+
+export const deleteMyPlaylist = (playlistId: number | string) =>
+  httpDelete<SonoraResult<null>>(`/api/client/me/playlists/${playlistId}`)
+
+export const addSongToMyPlaylist = (playlistId: number | string, songId: number | string) =>
+  httpPost<SonoraResult<ClientPlaylist>>(`/api/client/me/playlists/${playlistId}/songs/${songId}`)
+
+export const removeSongFromMyPlaylist = (playlistId: number | string, songId: number | string) =>
+  httpDelete<SonoraResult<null>>(`/api/client/me/playlists/${playlistId}/songs/${songId}`)
 
 export const likedSongIds = () =>
   httpGet<SonoraResult<number[]>>('/api/client/me/likes/song-ids')

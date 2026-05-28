@@ -1,11 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-label="default avatar">
-  <defs>
-    <linearGradient id="g" x1="20" y1="18" x2="140" y2="144" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#ec4899"/>
-      <stop offset="1" stop-color="#7c3aed"/>
-    </linearGradient>
-  </defs>
-  <rect width="160" height="160" rx="48" fill="url(#g)"/>
-  <circle cx="80" cy="58" r="30" fill="white" fill-opacity=".9"/>
-  <path d="M34 132c8-27 25-42 46-42s38 15 46 42" fill="white" fill-opacity=".9"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" role="img" aria-label="default avatar">
+  <!-- Person-circle glyph derived from Bootstrap Icons (MIT). -->
+  <rect width="16" height="16" rx="4" fill="#f7f7fb"/>
+  <path fill="#7c3aed" d="M11 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0"/>
+  <path fill="#7c3aed" fill-rule="evenodd" d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8m8-7a7 7 0 0 0-5.468 11.37C3.242 11.226 4.805 10 8 10s4.757 1.225 5.468 2.37A7 7 0 0 0 8 1"/>
 </svg>

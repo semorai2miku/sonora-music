@@ -34,7 +34,7 @@ public class ArtistController {
         if (StringUtils.hasText(keyword)) {
             wrapper.like(Artist::getName, keyword);
         }
-        wrapper.orderByAsc(Artist::getName);
+        wrapper.orderByAsc(Artist::getId);
         Page<Artist> page = artistMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("list", page.getRecords());
@@ -48,7 +48,7 @@ public class ArtistController {
     @GetMapping("/all")
     public R<java.util.List<Artist>> all() {
         return R.ok(artistMapper.selectList(
-                new LambdaQueryWrapper<Artist>().eq(Artist::getStatus, 1).orderByAsc(Artist::getName)));
+                new LambdaQueryWrapper<Artist>().eq(Artist::getStatus, 1).orderByAsc(Artist::getId)));
     }
 
     @Operation(summary = "歌手详情")

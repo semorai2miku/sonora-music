@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { useUserStore } from '@/stores/modules/user'
-import { myPlaylists } from '@/api'
+import { createMyPlaylist, myPlaylists } from '@/api'
+import Button from '@/components/Ui/Button.vue'
 import { gsap } from 'gsap'
 
 const route = useRoute()
+const router = useRouter()
 
 const sections = [
   {
@@ -40,6 +42,10 @@ const state = reactive({
 })
 const { userPlaylists } = toRefs(state)
 const userStore = useUserStore()
+const showCreatePlaylist = ref(false)
+const createPlaylistName = ref('')
+const createPlaylistError = ref('')
+const creatingPlaylist = ref(false)
 
 const loadUserPlaylists = async () => {
   if (!userStore.isLoggedIn) {
@@ -57,6 +63,41 @@ const loadUserPlaylists = async () => {
     }))
   } catch {
     state.userPlaylists = []
+  }
+}
+
+const openCreatePlaylist = () => {
+  createPlaylistName.value = ''
+  createPlaylistError.value = ''
+  showCreatePlaylist.value = true
+}
+
+const closeCreatePlaylist = () => {
+  if (creatingPlaylist.value) return
+  showCreatePlaylist.value = false
+}
+
+const submitCreatePlaylist = async () => {
+  const name = createPlaylistName.value.trim()
+  if (!name) {
+    createPlaylistError.value = '请输入歌单名称'
+    return
+  }
+  creatingPlaylist.value = true
+  createPlaylistError.value = ''
+  try {
+    const res = await createMyPlaylist({ name })
+    if (res?.code !== 200 || !res.data?.id) {
+      throw new Error(res?.message || '创建歌单失败')
+    }
+    await loadUserPlaylists()
+    window.dispatchEvent(new CustomEvent('sonora:playlists-updated'))
+    showCreatePlaylist.value = false
+    router.push(`/playlist/${res.data.id}`)
+  } catch (error: any) {
+    createPlaylistError.value = error?.response?.data?.message || error?.message || '创建歌单失败'
+  } finally {
+    creatingPlaylist.value = false
   }
 }
 
@@ -107,6 +148,11 @@ onMounted(() => {
     updateIndicator()
   })
   loadUserPlaylists()
+  window.addEventListener('sonora:playlists-updated', loadUserPlaylists)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('sonora:playlists-updated', loadUserPlaylists)
 })
 
 watch(() => userStore.isLoggedIn, loadUserPlaylists)
@@ -155,11 +201,22 @@ const isActive = (path: string) => {
               <span class="icon-[mdi--chevron-right]"></span>
             </div>
           </nav>
-        </div>
+      </div>
       <div class="mb-6" v-if="userStore.isLoggedIn">
-        <h4 class="text-primary/60 mb-3 text-sm font-medium">
-          {{ $t('layout.aside.playlists.created') }}
-        </h4>
+        <div class="mb-3 flex items-center justify-between">
+          <h4 class="text-primary/60 text-sm font-medium">
+            {{ $t('layout.aside.playlists.created') }}
+          </h4>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            rounded="full"
+            icon="icon-[mdi--plus]"
+            icon-class="h-4 w-4"
+            title="新建歌单"
+            @click="openCreatePlaylist"
+          />
+        </div>
         <div class="space-y-2">
           <router-link
             v-for="playlist in userPlaylists"
@@ -224,6 +281,47 @@ const isActive = (path: string) => {
         <span class="icon-[mdi--account-music] h-5 w-5"></span>
         <span class="icon-[mdi--album] h-5 w-5"></span>
         <span class="icon-[mdi--folder-music-outline] h-5 w-5"></span>
+        <span class="icon-[mdi--plus] h-5 w-5"></span>
+        <span class="icon-[mdi--playlist-music] h-5 w-5"></span>
+      </div>
+    </div>
+    <div
+      v-if="showCreatePlaylist"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      @click.self="closeCreatePlaylist"
+    >
+      <div class="glass-container-strong w-full max-w-sm p-5">
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="text-primary text-lg font-semibold">新建歌单</h3>
+          <Button
+            variant="soft"
+            size="icon-sm"
+            rounded="full"
+            icon="icon-[mdi--close]"
+            icon-class="h-4 w-4"
+            @click="closeCreatePlaylist"
+          />
+        </div>
+        <input
+          v-model="createPlaylistName"
+          type="text"
+          maxlength="80"
+          placeholder="请输入歌单名称"
+          class="text-primary glass-card mb-3 w-full rounded-xl border border-glass px-4 py-3 text-sm outline-none placeholder:text-white/30 focus:border-pink-400/50"
+          @keyup.enter="submitCreatePlaylist"
+        />
+        <p v-if="createPlaylistError" class="mb-3 text-sm text-red-300">{{ createPlaylistError }}</p>
+        <Button
+          variant="solid"
+          size="md"
+          block
+          :loading="creatingPlaylist"
+          :disabled="creatingPlaylist"
+          icon="icon-[mdi--plus]"
+          @click="submitCreatePlaylist"
+        >
+          创建歌单
+        </Button>
       </div>
     </div>
   </aside>

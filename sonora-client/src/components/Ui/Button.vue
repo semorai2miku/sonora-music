@@ -210,17 +210,17 @@ const classes = computed(() => {
 })
 const iconName = computed(() => {
   if (!props.icon) return ''
-  // 如果已经包含了 icon-[...] 格式，则直接返回
+  // 如果已经包含完整图标类名，则直接返回
   if (props.icon.startsWith('icon-[')) return props.icon
 
   // 注意：Tailwind JIT 编译器需要在编译时扫描到完整的类名才能生成 CSS。
-  // 如果传入 "mdi--shuffle-variant"，JIT 编译器看不到 "icon-[mdi--shuffle-variant]" 这个字符串，
+  // 如果传入 "mdi--shuffle-variant"，JIT 编译器看不到对应的完整图标类名，
   // 因此不会生成对应的 CSS 类，导致图标无法显示。
   // 解决方案：
-  // 1. 在使用组件时直接传入完整的类名：icon="icon-[mdi--shuffle-variant]]"
+  // 1. 在使用组件时直接传入完整的图标类名
   // 2. 或者确保该图标类名在项目的其他地方（如注释或 safelist）中出现过。
 
-  // 否则包装成 icon-[...] 格式
+  // 否则包装成完整图标类名
   return `icon-[${props.icon}]`
 })
 
