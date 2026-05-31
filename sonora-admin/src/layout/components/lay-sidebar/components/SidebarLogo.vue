@@ -16,11 +16,12 @@ const { title, getLogo } = useNav();
         v-if="collapse"
         key="collapse"
         :title="title"
-        class="sidebar-logo-link"
+        class="sidebar-logo-link sidebar-logo-link--collapse"
         :to="getTopMenu()?.path ?? '/'"
       >
-        <img :src="getLogo()" alt="logo" />
-        <span class="sidebar-title">{{ title }}</span>
+        <span class="sidebar-badge">
+          <img :src="getLogo()" alt="logo" />
+        </span>
       </router-link>
       <router-link
         v-else
@@ -29,8 +30,10 @@ const { title, getLogo } = useNav();
         class="sidebar-logo-link"
         :to="getTopMenu()?.path ?? '/'"
       >
-        <img :src="getLogo()" alt="logo" />
-        <span class="sidebar-title">{{ title }}</span>
+        <span class="sidebar-badge">
+          <img :src="getLogo()" alt="logo" />
+        </span>
+        <span class="sidebar-title brand-font">{{ title }}</span>
       </router-link>
     </transition>
   </div>
@@ -40,30 +43,49 @@ const { title, getLogo } = useNav();
 .sidebar-logo-container {
   position: relative;
   width: 100%;
-  height: 48px;
+  height: 56px;
   overflow: hidden;
 
   .sidebar-logo-link {
     display: flex;
     flex-wrap: nowrap;
     align-items: center;
+    gap: 12px;
     height: 100%;
-    padding-left: 10px;
+    padding: 0 14px;
 
-    img {
-      display: inline-block;
-      height: 32px;
+    &--collapse {
+      justify-content: center;
+    }
+
+    .sidebar-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
+      background: linear-gradient(
+        135deg,
+        rgba(31, 124, 255, 0.18),
+        rgba(77, 163, 255, 0.08)
+      );
+      box-shadow: 0 8px 18px rgba(31, 124, 255, 0.14);
+
+      img {
+        display: inline-block;
+        width: 22px;
+        height: 22px;
+      }
     }
 
     .sidebar-title {
       display: inline-block;
-      height: 32px;
-      margin: 2px 0 0 12px;
       overflow: hidden;
       text-overflow: ellipsis;
-      font-size: 18px;
-      font-weight: 600;
-      line-height: 32px;
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1;
       color: var(--pure-theme-sub-menu-active-text);
       white-space: nowrap;
     }

@@ -280,8 +280,8 @@ const formatTime = (t: number | string) => {
 }
 
 .header-icon {
-  background: linear-gradient(135deg, #ec4899, #8b5cf6);
-  box-shadow: 0 4px 14px rgba(236, 72, 153, 0.35);
+  background: linear-gradient(135deg, #1f7cff, #4da3ff);
+  box-shadow: 0 4px 14px rgba(31, 124, 255, 0.35);
 }
 
 .drawer-title {
@@ -315,7 +315,7 @@ const formatTime = (t: number | string) => {
 }
 
 .avatar-fallback {
-  background: linear-gradient(135deg, rgba(236, 72, 153, 0.6), rgba(139, 92, 246, 0.6));
+  background: linear-gradient(135deg, rgba(31, 124, 255, 0.6), rgba(77, 163, 255, 0.6));
 }
 
 .comment-name {
@@ -335,13 +335,13 @@ const formatTime = (t: number | string) => {
 }
 
 .like-btn:hover {
-  color: #ec4899;
+  color: #1f7cff;
 }
 
 /* ═══ Reply ═══ */
 .reply-card {
   background: var(--glass-interactive-hover-muted);
-  border-left: 2px solid rgba(236, 72, 153, 0.3);
+  border-left: 2px solid rgba(31, 124, 255, 0.3);
 }
 
 .reply-name {

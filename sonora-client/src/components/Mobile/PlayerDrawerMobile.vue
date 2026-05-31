@@ -788,8 +788,8 @@ const playModeIcon = computed(() => {
 }
 
 .toolbar-btn.active {
-  background: rgba(236, 72, 153, 0.3);
-  color: rgb(236, 72, 153);
+  background: rgba(31, 124, 255, 0.3);
+  color: rgb(31, 124, 255);
 }
 
 .time-indicator {

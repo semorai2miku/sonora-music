@@ -117,42 +117,42 @@ export const useSettingsStore = defineStore('settings', {
     audioQuality: AudioQuality
   } => ({
     aurora: {
-      colorStops: ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe'],
-      amplitude: 1.0,
-      blend: 0.5,
-      speed: 1.0,
-      intensity: 1.0,
+      colorStops: ['#08111c', '#0f2040', '#1f7cff', '#4da3ff', '#dbeafe'],
+      amplitude: 0.88,
+      blend: 0.42,
+      speed: 0.7,
+      intensity: 0.9,
       colorPositions: [0.0, 0.5, 1.0],
     },
     colorBends: {
-      colors: [],
-      rotation: 45,
-      speed: 0.2,
+      colors: ['#08111c', '#1f7cff', '#4da3ff'],
+      rotation: 26,
+      speed: 0.12,
       transparent: true,
       autoRotate: 0,
       scale: 1,
-      frequency: 1,
-      warpStrength: 1,
-      mouseInfluence: 1,
-      parallax: 0.5,
-      noise: 0.1,
+      frequency: 0.8,
+      warpStrength: 0.8,
+      mouseInfluence: 0.45,
+      parallax: 0.35,
+      noise: 0.04,
     },
     ultimate: {
-      bg1: '#6C00A2',
-      bg2: '#001152',
-      color1: '#1271FF',
-      color2: '#DD4AFF',
-      color3: '#64DCFF',
-      color4: '#C83232',
-      color5: '#B4B432',
-      interactiveColor: '#8C64FF',
-      circleSize: '80%',
-      blending: 'hard-light',
+      bg1: '#050A14',
+      bg2: '#08111C',
+      color1: '#1F7CFF',
+      color2: '#4DA3FF',
+      color3: '#DCEBFF',
+      color4: '#132B4E',
+      color5: '#10213B',
+      interactiveColor: '#4DA3FF',
+      circleSize: '72%',
+      blending: 'soft-light',
     },
     shadowBling: {
-      bgColors: ['#000000', '#ffffff', '#808080'],
-      speed: 1.0,
-      intensity: 1.0,
+      bgColors: ['#050A14', '#1F7CFF', '#F6FBFF'],
+      speed: 0.72,
+      intensity: 0.82,
     },
     footerLyrics: {
       enabled: true,
@@ -163,7 +163,7 @@ export const useSettingsStore = defineStore('settings', {
       enabledInDrawer: true,
       visualizerType: 'bars',
     },
-    backgroundType: 'ultimate',
+    backgroundType: 'aurora',
     audioQuality: 'jymaster',
   }),
 
@@ -184,11 +184,11 @@ export const useSettingsStore = defineStore('settings', {
     /** 重置极光背景为默认值 */
     resetAurora() {
       this.aurora = {
-        colorStops: ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe'],
-        amplitude: 1.0,
-        blend: 0.5,
-        speed: 1.0,
-        intensity: 1.0,
+        colorStops: ['#08111c', '#0f2040', '#1f7cff', '#4da3ff', '#dbeafe'],
+        amplitude: 0.88,
+        blend: 0.42,
+        speed: 0.7,
+        intensity: 0.9,
         colorPositions: [0.0, 0.5, 1.0],
       }
     },
@@ -205,16 +205,17 @@ export const useSettingsStore = defineStore('settings', {
     /** 重置色彩弯曲为默认值 */
     resetColorBends() {
       this.colorBends = {
-        colors: ['#ff5c7a', '#8a5cff', '#00ffd1'],
-        rotation: 30,
-        speed: 0.3,
-        scale: 1.2,
-        frequency: 1.4,
-        warpStrength: 1.2,
-        mouseInfluence: 0.8,
-        parallax: 0.6,
-        noise: 0.08,
+        colors: ['#08111c', '#1f7cff', '#4da3ff'],
+        rotation: 26,
+        speed: 0.12,
+        scale: 1,
+        frequency: 0.8,
+        warpStrength: 0.8,
+        mouseInfluence: 0.45,
+        parallax: 0.35,
+        noise: 0.04,
         transparent: true,
+        autoRotate: 0,
       }
     },
 
@@ -226,16 +227,16 @@ export const useSettingsStore = defineStore('settings', {
     /** 重置终极流体为默认值 */
     resetUltimate() {
       this.ultimate = {
-        bg1: '#6C00A2',
-        bg2: '#001152',
-        color1: '#1271FF',
-        color2: '#DD4AFF',
-        color3: '#64DCFF',
-        color4: '#C83232',
-        color5: '#B4B432',
-        interactiveColor: '#8C64FF',
-        circleSize: '80%',
-        blending: 'hard-light',
+        bg1: '#050A14',
+        bg2: '#08111C',
+        color1: '#1F7CFF',
+        color2: '#4DA3FF',
+        color3: '#DCEBFF',
+        color4: '#132B4E',
+        color5: '#10213B',
+        interactiveColor: '#4DA3FF',
+        circleSize: '72%',
+        blending: 'soft-light',
       }
     },
 
@@ -247,9 +248,9 @@ export const useSettingsStore = defineStore('settings', {
     /** 重置暗影闪耀为默认值 */
     resetShadowBling() {
       this.shadowBling = {
-        bgColors: ['#000000', '#ffffff', '#808080'],
-        speed: 1.0,
-        intensity: 1.0,
+        bgColors: ['#050A14', '#1F7CFF', '#F6FBFF'],
+        speed: 0.72,
+        intensity: 0.82,
       }
     },
 

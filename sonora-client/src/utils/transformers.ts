@@ -3,6 +3,8 @@
  * 统一处理各种 API 响应格式的数据转换
  */
 
+const DEFAULT_COVER = '/default-cover.svg'
+
 // ============ 类型定义 ============
 
 export interface BannerData {
@@ -186,7 +188,7 @@ function extractArtistName(item: Record<string, unknown>): string {
   if (Array.isArray(artistList)) {
     return artistList.map(a => a?.name || '').join(' / ')
   }
-  return (item?.artistName as string) || ''
+  return (item?.artistName as string) || (item?.artist as string) || ''
 }
 
 /**
@@ -224,7 +226,11 @@ export function transformSong(item: Record<string, unknown>): SongData {
     artists,
     album: (albumData?.name as string) || '',
     albumId: (albumData?.id as number | string) || 0,
-    cover: (albumData?.picUrl as string) || (item?.picUrl as string) || '',
+    cover:
+      (albumData?.picUrl as string) ||
+      (item?.cover as string) ||
+      (item?.picUrl as string) ||
+      DEFAULT_COVER,
     duration: (item?.dt as number) ?? (item?.duration as number) ?? (song?.duration as number) ?? 0,
     liked: false,
     mvId: (item?.mv as number | string) || (item?.mvid as number | string) || 0,
@@ -321,7 +327,7 @@ export function transformAlbum(item: Record<string, unknown>): AlbumData {
   return {
     id: (item?.id as number | string) || 0,
     name: (item?.name as string) || '',
-    picUrl: (item?.picUrl as string) || (item?.blurPicUrl as string) || '',
+    picUrl: (item?.picUrl as string) || (item?.blurPicUrl as string) || DEFAULT_COVER,
     artist: (artist?.name as string) || (item?.artistName as string) || '',
     artistId: (artist?.id as number | string) || 0,
     publishTime: item?.publishTime
@@ -379,7 +385,7 @@ export function transformPlaylistDetail(
       ? new Date(detail.createTime as number).toLocaleDateString()
       : '',
     songCount: (detail?.trackCount as number) || 0,
-    playCount: detail?.playCount || 0,
+    playCount: (detail?.playCount as string | number) || 0,
     likes: (detail?.subscribedCount as number) || (detail?.bookedCount as number) || 0,
     category: tags?.[0] || fallbackCategory,
     coverImgUrl: (detail?.coverImgUrl as string) || '',

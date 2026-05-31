@@ -180,8 +180,8 @@ const previewVolumeText = computed(() => {
 }
 
 .progress-fill {
-  background: linear-gradient(90deg, #ec4899, #8b5cf6);
-  box-shadow: 0 0 10px rgba(236, 72, 153, 0.25);
+  background: linear-gradient(90deg, #08111c, #1f7cff, #4da3ff);
+  box-shadow: 0 0 10px rgba(31, 124, 255, 0.25);
   transition: width 0.05s linear;
 }
 
@@ -189,7 +189,7 @@ const previewVolumeText = computed(() => {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #ec4899, #8b5cf6);
+  background: linear-gradient(135deg, #08111c, #1f7cff, #4da3ff);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
   transform: translate(-50%, -50%);
   opacity: 0;
@@ -208,7 +208,7 @@ const previewVolumeText = computed(() => {
   transform: translate(-50%, -50%) scale(1.15);
   box-shadow:
     0 2px 10px rgba(0, 0, 0, 0.25),
-    0 0 14px rgba(236, 72, 153, 0.35);
+    0 0 14px rgba(31, 124, 255, 0.34);
 }
 
 .volume-preview {

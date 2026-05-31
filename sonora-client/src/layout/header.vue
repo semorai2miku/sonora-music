@@ -3,6 +3,7 @@ import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
 
 const router = useRouter()
+const route = useRoute()
 const { t } = useI18n()
 const state = reactive({
   searchQuery: '',
@@ -14,6 +15,13 @@ const { searchQuery, showLogin, historyOpen, searchFocused } = toRefs(state)
 const userStore = useUserStore()
 const globalStore = useGlobalStore()
 const { searchHistory, theme } = storeToRefs(globalStore)
+const navLinks = [
+  { to: '/', label: '发现音乐' },
+  { to: '/artists', label: '歌手' },
+  { to: '/new-albums', label: '新专辑' },
+  { to: '/charts', label: '排行榜' },
+  { to: '/mv-list', label: 'MV' },
+]
 const themeIcon = computed(() => {
   if (theme.value === 'system') return 'icon-[mdi--theme-light-dark]'
   if (theme.value === 'dark') return 'icon-[mdi--weather-night]'
@@ -77,18 +85,23 @@ onMounted(() => {
 onUnmounted(() => document.removeEventListener('pointerdown', onDocClick))
 </script>
 <template>
-  <header class="glass-nav m-3 mx-4 flex items-center justify-between gap-4 px-4 py-4">
+  <header class="glass-nav sonora-header m-3 mx-4 flex items-center justify-between gap-4 px-4 py-4">
     <!-- 左侧：Logo + 导航 -->
     <div class="flex items-center gap-5">
       <!-- Logo -->
-      <div class="flex items-center gap-2.5">
-        <img src="/logo.svg" alt="logo" class="w-9" />
-        <h1 class="text-primary text-xl font-bold">Glass Music</h1>
-      </div>
+      <router-link to="/" class="flex items-center gap-3">
+        <span class="brand-badge">
+          <img src="/branding/sonora-logo-icon.svg" alt="logo" class="w-5.5" />
+        </span>
+        <div class="flex flex-col leading-none">
+          <h1 class="brand-font text-primary text-[1.05rem] font-bold">SONORA</h1>
+          <span class="text-primary/45 text-[11px] font-medium">Music Platform</span>
+        </div>
+      </router-link>
 
       <!-- 前进/后退按钮组 -->
       <div
-        class="border-glass-subtle hidden items-center overflow-hidden rounded-[10px] border md:flex"
+        class="border-glass-subtle hidden items-center overflow-hidden rounded-[12px] border md:flex"
       >
         <Button
           variant="ghost"
@@ -112,43 +125,21 @@ onUnmounted(() => document.removeEventListener('pointerdown', onDocClick))
         </Button>
       </div>
 
-      <!-- 外链菜单 -->
+      <!-- 站内导航 -->
       <nav class="hidden items-center gap-3 xl:flex">
-        <Button
-          v-for="link in [
-            {
-              href: 'https://github.com/XiangZi7/GlassMusicPlayer',
-              icon: 'icon-[mdi--github]',
-              label: t('layout.nav.repo'),
-            },
-            {
-              href: 'https://miraitv.pages.dev',
-              icon: 'icon-[mdi--movie-open-play]',
-              label: t('layout.nav.movies'),
-            },
-            {
-              href: 'https://gm-doc.pages.dev',
-              icon: 'icon-[mdi--text-box-outline]',
-              label: t('layout.nav.projectDocs'),
-            },
-            {
-              href: 'https://gmpd.netlify.app',
-              icon: 'icon-[mdi--text-box-outline]',
-              label: t('layout.nav.backupDocs'),
-            },
-          ]"
-          :key="link.href"
-          :href="link.href"
-          target="_blank"
-          rel="noopener noreferrer"
-          size="none"
-          rounded="lg"
-          class="nav-ext-link gap-1.5 px-4 py-1.5 text-sm font-medium transition-opacity hover:opacity-90"
-          :title="link.label"
+        <router-link
+          v-for="link in navLinks"
+          :key="link.to"
+          :to="link.to"
+          class="nav-ext-link rounded-full px-4 py-2 text-sm font-medium transition-all"
+          :class="
+            route.path === link.to
+              ? 'bg-hover-glass text-primary shadow-sm'
+              : 'text-primary/58 hover:bg-hover-glass hover:text-primary'
+          "
         >
-          <span :class="[link.icon, 'h-4 w-4']"></span>
           <span class="link-label">{{ link.label }}</span>
-        </Button>
+        </router-link>
       </nav>
     </div>
 
@@ -249,7 +240,7 @@ onUnmounted(() => document.removeEventListener('pointerdown', onDocClick))
         <img
           :src="userStore.avatarUrl"
           alt="avatar"
-          class="h-7 w-7 rounded-full object-cover ring-1 ring-white/10"
+          class="h-8 w-8 rounded-full object-cover ring-1 ring-black/6 dark:ring-white/10"
         />
         <span class="text-primary/90 text-sm">{{ userStore.nickname }}</span>
       </router-link>
@@ -285,6 +276,21 @@ onUnmounted(() => document.removeEventListener('pointerdown', onDocClick))
   .nav-ext-link {
     @apply px-1.5;
   }
+}
+
+.sonora-header {
+  border-radius: 18px;
+}
+
+.brand-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 0.95rem;
+  background: linear-gradient(135deg, rgba(31, 124, 255, 0.18), rgba(77, 163, 255, 0.08));
+  box-shadow: 0 12px 24px rgba(31, 124, 255, 0.16);
 }
 
 /* 搜索清除按钮动画 */

@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
+import ImageUploadCropper from "@/components/ImageUploadCropper.vue";
 import {
   Delete,
   Edit,
   Picture,
   Plus,
-  RefreshRight,
-  Search
+  RefreshRight
 } from "@element-plus/icons-vue";
 import {
+  batchDeleteBanners,
   createBanner,
   deleteBanner,
   getBannerPage,
@@ -24,18 +25,14 @@ const list = ref<BannerItem[]>([]);
 const total = ref(0);
 const pageNum = ref(1);
 const pageSize = ref(20);
-const keyword = ref("");
-const statusFilter = ref<number | undefined>();
+const selectedRows = ref<BannerItem[]>([]);
 
 const dialogVisible = ref(false);
 const isEdit = ref(false);
 const submitting = ref(false);
 const editingId = ref<number | null>(null);
 const form = ref<BannerPayload>({
-  title: "",
   imageUrl: "",
-  linkUrl: "",
-  sort: 0,
   status: 1
 });
 
@@ -43,9 +40,7 @@ function loadData() {
   loading.value = true;
   getBannerPage({
     pageNum: pageNum.value,
-    pageSize: pageSize.value,
-    keyword: keyword.value,
-    status: statusFilter.value
+    pageSize: pageSize.value
   })
     .then(res => {
       list.value = res.data.list || [];
@@ -56,11 +51,6 @@ function loadData() {
     });
 }
 
-function onSearch() {
-  pageNum.value = 1;
-  loadData();
-}
-
 function onPageChange(page: number) {
   pageNum.value = page;
   loadData();
@@ -69,7 +59,7 @@ function onPageChange(page: number) {
 function openCreate() {
   isEdit.value = false;
   editingId.value = null;
-  form.value = { title: "", imageUrl: "", linkUrl: "", sort: 0, status: 1 };
+  form.value = { imageUrl: "", status: 1 };
   dialogVisible.value = true;
 }
 
@@ -77,10 +67,7 @@ function openEdit(row: BannerItem) {
   isEdit.value = true;
   editingId.value = row.id;
   form.value = {
-    title: row.title || "",
     imageUrl: row.imageUrl,
-    linkUrl: row.linkUrl || "",
-    sort: row.sort ?? 0,
     status: row.status
   };
   dialogVisible.value = true;
@@ -95,7 +82,7 @@ function handleSubmit() {
   submitting.value = true;
   const payload = {
     ...form.value,
-    sort: Number(form.value.sort || 0)
+    imageUrl: form.value.imageUrl.trim()
   };
   const request = isEdit.value
     ? updateBanner(editingId.value!, payload)
@@ -113,7 +100,7 @@ function handleSubmit() {
 }
 
 function handleDelete(row: BannerItem) {
-  ElMessageBox.confirm(`确定删除「${row.title || row.imageUrl}」？`, "提示", {
+  ElMessageBox.confirm(`确定删除轮播图 ${row.id}？`, "提示", {
     type: "warning"
   })
     .then(() => deleteBanner(row.id))
@@ -121,6 +108,35 @@ function handleDelete(row: BannerItem) {
       ElMessage.success("已删除");
       loadData();
     });
+}
+
+function getErrorMessage(error: any, fallback = "操作失败") {
+  return error?.response?.data?.message || error?.message || fallback;
+}
+
+async function handleBatchDelete() {
+  if (!selectedRows.value.length) {
+    ElMessage.warning("请先选择要删除的轮播图");
+    return;
+  }
+  const names = selectedRows.value.map(item => `轮播图 ${item.id}`).join("、");
+  try {
+    await ElMessageBox.confirm(`确定批量删除 ${selectedRows.value.length} 张轮播图？`, "批量删除", {
+      type: "warning"
+    });
+    const res = await batchDeleteBanners(selectedRows.value.map(item => item.id));
+    if (res.code !== 200) {
+      ElMessage.error((res as any).message || "批量删除失败");
+      return;
+    }
+    const deletedNames = (res.data.deleted || []).map(item => item.name).join("、") || names;
+    ElMessage.success(`成功删除：${deletedNames}`);
+    selectedRows.value = [];
+    loadData();
+  } catch (error: any) {
+    if (error === "cancel" || error === "close") return;
+    ElMessage.error(getErrorMessage(error, "批量删除失败"));
+  }
 }
 
 function handleToggleStatus(row: BannerItem) {
@@ -131,6 +147,10 @@ function handleToggleStatus(row: BannerItem) {
   });
 }
 
+function onSelectionChange(rows: BannerItem[]) {
+  selectedRows.value = rows;
+}
+
 onMounted(loadData);
 </script>
 
@@ -139,49 +159,38 @@ onMounted(loadData);
     <h2 class="mb-4 text-xl font-bold">轮播图管理</h2>
 
     <div class="mb-4 flex flex-wrap gap-3">
-      <el-input
-        v-model="keyword"
-        clearable
-        placeholder="搜索标题"
-        style="width: 240px"
-        @keyup.enter="onSearch"
-      />
-      <el-select
-        v-model="statusFilter"
-        clearable
-        placeholder="状态"
-        style="width: 120px"
-      >
-        <el-option label="启用" :value="1" />
-        <el-option label="禁用" :value="0" />
-      </el-select>
-      <el-button type="primary" :icon="Search" @click="onSearch">搜索</el-button>
       <el-button :icon="RefreshRight" @click="loadData">刷新</el-button>
       <el-button type="success" :icon="Plus" @click="openCreate">新增轮播图</el-button>
+      <el-button type="danger" :icon="Delete" @click="handleBatchDelete">批量删除</el-button>
     </div>
 
-    <el-table v-loading="loading" :data="list" border stripe>
-      <el-table-column prop="id" label="ID" width="70" />
-      <el-table-column label="图片" width="140">
+    <el-table v-loading="loading" :data="list" border stripe @selection-change="onSelectionChange">
+      <el-table-column type="selection" width="48" fixed="left" />
+      <el-table-column prop="id" label="轮播图编号" width="120" />
+      <el-table-column label="轮播图（预览）" min-width="260">
         <template #default="{ row }">
           <el-image
             v-if="row.imageUrl"
             :src="row.imageUrl"
             fit="cover"
-            style="width: 96px; height: 48px; border-radius: 6px"
+            class="banner-preview"
+            :preview-src-list="[row.imageUrl]"
+            preview-teleported
           />
           <el-icon v-else size="24"><Picture /></el-icon>
         </template>
       </el-table-column>
-      <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
-      <el-table-column prop="linkUrl" label="跳转链接" min-width="220" show-overflow-tooltip />
-      <el-table-column prop="sort" label="排序" width="90" />
-      <el-table-column label="状态" width="90">
+      <el-table-column label="状态" width="120">
         <template #default="{ row }">
-          <el-switch :model-value="row.status === 1" @change="handleToggleStatus(row)" />
+          <el-switch
+            :model-value="row.status === 1"
+            inline-prompt
+            active-text="启用"
+            inactive-text="禁用"
+            @change="handleToggleStatus(row)"
+          />
         </template>
       </el-table-column>
-      <el-table-column prop="createdAt" label="创建时间" width="170" />
       <el-table-column label="操作" width="150" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" :icon="Edit" @click="openEdit(row)">编辑</el-button>
@@ -207,30 +216,30 @@ onMounted(loadData);
       destroy-on-close
     >
       <el-form :model="form" label-width="86px">
-        <el-form-item label="标题">
-          <el-input v-model="form.title" placeholder="首页推荐标题" />
-        </el-form-item>
-        <el-form-item label="图片 URL" required>
-          <el-input v-model="form.imageUrl" placeholder="https://..." />
-        </el-form-item>
-        <el-form-item label="跳转链接">
-          <el-input v-model="form.linkUrl" placeholder="/playlist/1 或 https://..." />
-        </el-form-item>
-        <el-form-item label="排序">
-          <el-input-number v-model="form.sort" :min="0" :step="1" />
+        <el-form-item label="轮播图" required>
+          <ImageUploadCropper
+            v-model="form.imageUrl"
+            fallback-src="/default-cover.svg"
+            dir="banner"
+            shape="rectangle"
+            :width="216"
+            :height="84"
+            :output-width="1080"
+            :output-height="420"
+            :stencil-width="360"
+            :stencil-height="140"
+            title="修改轮播图"
+            mask-text="修改轮播图"
+            crop-title="裁剪轮播图"
+            confirm-text="使用轮播图"
+            :clearable="false"
+          />
         </el-form-item>
         <el-form-item label="状态">
           <el-radio-group v-model="form.status">
             <el-radio-button :label="1">启用</el-radio-button>
             <el-radio-button :label="0">禁用</el-radio-button>
           </el-radio-group>
-        </el-form-item>
-        <el-form-item v-if="form.imageUrl" label="预览">
-          <el-image
-            :src="form.imageUrl"
-            fit="cover"
-            style="width: 240px; height: 120px; border-radius: 6px"
-          />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -240,3 +249,11 @@ onMounted(loadData);
     </el-dialog>
   </div>
 </template>
+
+<style scoped>
+.banner-preview {
+  width: 180px;
+  height: 70px;
+  border-radius: 8px;
+}
+</style>

@@ -115,9 +115,7 @@ const swiperModules = [Autoplay, Pagination, EffectCards]
         <section class="mb-6 px-4">
           <div class="mb-4 flex items-center justify-between">
             <h2 class="section-title">
-              <span
-                class="flex h-7 w-7 items-center justify-center rounded-lg bg-linear-to-br from-pink-500 to-purple-600"
-              >
+              <span class="mobile-section-icon">
                 <span class="icon-[mdi--playlist-star] text-primary h-4 w-4"></span>
               </span>
               {{ t('home.recommendPlaylists') }}
@@ -161,9 +159,7 @@ const swiperModules = [Autoplay, Pagination, EffectCards]
         <section v-if="artists.length" class="mb-6">
           <div class="mb-3 flex items-center justify-between px-4">
             <h2 class="section-title">
-              <span
-                class="flex h-7 w-7 items-center justify-center rounded-lg bg-linear-to-br from-amber-500 to-orange-600"
-              >
+              <span class="mobile-section-icon">
                 <span class="icon-[mdi--account-music] text-primary h-4 w-4"></span>
               </span>
               {{ t('components.discover.hotArtists') }}
@@ -193,9 +189,7 @@ const swiperModules = [Autoplay, Pagination, EffectCards]
         <section class="mb-6 px-4">
           <div class="mb-4 flex items-center justify-between">
             <h2 class="section-title">
-              <span
-                class="flex h-7 w-7 items-center justify-center rounded-lg bg-linear-to-br from-cyan-500 to-blue-600"
-              >
+              <span class="mobile-section-icon">
                 <span class="icon-[mdi--music-note-plus] text-primary h-4 w-4"></span>
               </span>
               {{ t('components.discover.newSongs') }}
@@ -207,9 +201,7 @@ const swiperModules = [Autoplay, Pagination, EffectCards]
         <section v-if="mvs.length" class="px-4 pb-6">
           <div class="mb-4 flex items-center justify-between">
             <h2 class="section-title">
-              <span
-                class="flex h-7 w-7 items-center justify-center rounded-lg bg-linear-to-br from-rose-500 to-red-600"
-              >
+              <span class="mobile-section-icon">
                 <span class="icon-[mdi--video] text-primary h-4 w-4"></span>
               </span>
               {{ t('components.discover.recommendMv') }}
@@ -284,6 +276,17 @@ const swiperModules = [Autoplay, Pagination, EffectCards]
   color: var(--glass-text-primary);
 }
 
+.mobile-section-icon {
+  display: inline-flex;
+  height: 1.75rem;
+  width: 1.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  background: linear-gradient(135deg, rgba(31, 124, 255, 0.92), rgba(77, 163, 255, 0.8));
+  box-shadow: 0 8px 18px rgba(31, 124, 255, 0.16);
+}
+
 .view-more-link {
   display: flex;
   align-items: center;
@@ -335,12 +338,12 @@ html.dark .artist-avatar {
 }
 
 .song-item-active {
-  background: linear-gradient(to right, rgba(236, 72, 153, 0.2), rgba(139, 92, 246, 0.2));
+  background: linear-gradient(to right, rgba(31, 124, 255, 0.2), rgba(77, 163, 255, 0.2));
 }
 
 :root.dark .song-item-active,
 html.dark .song-item-active {
-  background: linear-gradient(to right, rgba(236, 72, 153, 0.3), rgba(139, 92, 246, 0.3));
+  background: linear-gradient(to right, rgba(31, 124, 255, 0.3), rgba(77, 163, 255, 0.3));
 }
 
 .song-index {

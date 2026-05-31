@@ -6,13 +6,13 @@ import duration from "dayjs/plugin/duration";
 import boxen, { type Options as BoxenOptions } from "boxen";
 dayjs.extend(duration);
 
-const welcomeMessage = gradient(["cyan", "magenta"]).multiline(
-  `您好! 欢迎使用 pure-admin 开源项目\n我们为您精心准备了下面两个贴心的保姆级文档\nhttps://pure-admin.cn\nhttps://pure-admin-utils.netlify.app`
+const welcomeMessage = gradient(["cyan", "blue"]).multiline(
+  `您好! 欢迎使用 Sonora 音乐管理端\n本地开发服务正在启动\n管理端文档与项目说明请查看仓库 README 和 docs 目录`
 );
 
 const boxenOptions: BoxenOptions = {
   padding: 0.5,
-  borderColor: "cyan",
+  borderColor: "blue",
   borderStyle: "round"
 };
 
@@ -41,7 +41,7 @@ export function viteBuildInfo(): Plugin {
           callback: (size: string) => {
             console.log(
               boxen(
-                gradient(["cyan", "magenta"]).multiline(
+                gradient(["cyan", "blue"]).multiline(
                   `🎉 恭喜打包完成（总用时${dayjs
                     .duration(endTime.diff(startTime))
                     .format("mm分ss秒")}，打包后的大小为${size}）`

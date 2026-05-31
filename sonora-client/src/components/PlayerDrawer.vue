@@ -248,9 +248,9 @@ const flipCircularCover = (newCover: string) => {
   // 添加发光效果
   tl.fromTo(
     circularCoverRef.value,
-    { boxShadow: '0 0 0 rgba(236, 72, 153, 0)' },
+    { boxShadow: '0 0 0 rgba(31, 124, 255, 0)' },
     {
-      boxShadow: '0 0 40px rgba(236, 72, 153, 0.6)',
+      boxShadow: '0 0 40px rgba(31, 124, 255, 0.42)',
       duration: 0.2,
       yoyo: true,
       repeat: 1,
@@ -263,7 +263,7 @@ const flipCircularCover = (newCover: string) => {
 const visualizerGradient = computed(() => {
   const gradient = activeGradient.value
   if (gradient.length === 0) {
-    return ['#3b82f6', '#8b5cf6', '#ec4899']
+    return ['#08111c', '#1f7cff', '#4da3ff']
   }
   const colors = gradient.map(color => {
     const match = color.match(/rgba?\(([^)]+)\)/)
@@ -617,7 +617,7 @@ onUnmounted(() => {
               class="h-full w-full object-cover"
               style="backface-visibility: hidden"
             />
-            <div v-else class="h-full w-full bg-linear-to-br from-blue-500 to-purple-600"></div>
+            <div v-else class="h-full w-full bg-linear-to-br from-slate-900 to-sky-500"></div>
           </div>
         </div>
       </div>
@@ -665,7 +665,7 @@ onUnmounted(() => {
           rounded="full"
           size="none"
           class="ctrl-btn h-10 w-10 justify-center"
-          :class="{ 'bg-pink-500/15 text-pink-400!': playMode !== 'list' }"
+          :class="{ 'bg-sky-500/15 text-sky-400!': playMode !== 'list' }"
           @click="togglePlayMode"
         >
           <span :class="playModeIconClass" class="h-5 w-5" />
@@ -860,15 +860,15 @@ onUnmounted(() => {
 /* 主播放按钮光环 */
 .main-play-btn {
   box-shadow:
-    0 0 30px rgba(236, 72, 153, 0.25),
-    0 8px 32px rgba(139, 92, 246, 0.2);
+    0 0 30px rgba(31, 124, 255, 0.25),
+    0 8px 32px rgba(77, 163, 255, 0.2);
   transition: box-shadow 0.3s ease;
 }
 .main-play-btn:hover {
   box-shadow:
-    0 0 40px rgba(236, 72, 153, 0.35),
-    0 0 60px rgba(139, 92, 246, 0.15),
-    0 8px 32px rgba(139, 92, 246, 0.25);
+    0 0 40px rgba(31, 124, 255, 0.35),
+    0 0 60px rgba(77, 163, 255, 0.15),
+    0 8px 32px rgba(77, 163, 255, 0.25);
 }
 
 /* 圆形可视化器封面翻转动画 */
@@ -909,7 +909,7 @@ onUnmounted(() => {
 .lyric-line.current {
   @apply text-primary;
   text-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
-  background: linear-gradient(135deg, rgba(236, 72, 153, 0.08), rgba(139, 92, 246, 0.08));
+  background: linear-gradient(135deg, rgba(31, 124, 255, 0.08), rgba(77, 163, 255, 0.08));
   transform: scale(1.06);
 }
 .lyric-line.current .lyric-text {

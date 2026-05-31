@@ -566,7 +566,7 @@ onUnmounted(() => removeMatchMedia);
         &:nth-child(1) {
           width: 30%;
           height: 100%;
-          background: #1b2a47;
+          background: #08111c;
         }
 
         &:nth-child(2) {
@@ -586,7 +586,7 @@ onUnmounted(() => removeMatchMedia);
         &:nth-child(1) {
           width: 100%;
           height: 30%;
-          background: #1b2a47;
+          background: #08111c;
           box-shadow: 0 0 1px #888;
         }
       }
@@ -597,7 +597,7 @@ onUnmounted(() => removeMatchMedia);
         &:nth-child(1) {
           width: 100%;
           height: 30%;
-          background: #1b2a47;
+          background: #08111c;
           box-shadow: 0 0 1px #888;
         }
 

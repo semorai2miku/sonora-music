@@ -105,13 +105,11 @@ watch(mode, () => {
 
           <div class="relative p-6 pb-4">
             <div class="mb-6 flex items-center gap-4">
-              <div
-                class="flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-br from-pink-500 to-purple-600 shadow-lg shadow-pink-500/25"
-              >
-                <span class="icon-[mdi--account-circle] h-6 w-6 text-white" />
-              </div>
+              <span class="brand-badge">
+                <img src="/branding/sonora-logo-icon.svg" alt="Sonora" class="h-6 w-6" />
+              </span>
               <div>
-                <h2 class="text-primary text-xl font-bold">Sonora 账号</h2>
+                <h2 class="brand-font text-primary text-xl font-bold">SONORA 账号</h2>
                 <p class="text-primary/50 mt-0.5 text-sm">登录后可同步喜欢的音乐和个人资料</p>
               </div>
             </div>
@@ -149,10 +147,10 @@ watch(mode, () => {
               <div class="space-y-2">
                 <label class="text-primary/60 block text-xs font-medium">用户名</label>
                 <div
-                  class="glass-card group flex items-center gap-3 rounded-xl px-4 py-3 transition-all focus-within:ring-2 focus-within:ring-pink-400/50"
+                  class="glass-card group flex items-center gap-3 rounded-xl px-4 py-3 transition-all focus-within:ring-2 focus-within:ring-sky-400/40"
                 >
                   <span
-                    class="icon-[mdi--account-outline] text-primary/40 h-5 w-5 transition-colors group-focus-within:text-pink-400"
+                    class="icon-[mdi--account-outline] text-primary/40 h-5 w-5 transition-colors group-focus-within:text-sky-400"
                   />
                   <input
                     v-model="username"
@@ -185,10 +183,10 @@ watch(mode, () => {
               <div class="space-y-2">
                 <label class="text-primary/60 block text-xs font-medium">密码</label>
                 <div
-                  class="glass-card group flex items-center gap-3 rounded-xl px-4 py-3 transition-all focus-within:ring-2 focus-within:ring-purple-400/50"
+                  class="glass-card group flex items-center gap-3 rounded-xl px-4 py-3 transition-all focus-within:ring-2 focus-within:ring-sky-400/40"
                 >
                   <span
-                    class="icon-[mdi--lock-outline] text-primary/40 h-5 w-5 transition-colors group-focus-within:text-purple-400"
+                    class="icon-[mdi--lock-outline] text-primary/40 h-5 w-5 transition-colors group-focus-within:text-sky-400"
                   />
                   <input
                     v-model="password"
@@ -224,6 +222,17 @@ watch(mode, () => {
 </template>
 
 <style scoped>
+.brand-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, rgba(8, 17, 28, 0.92), rgba(31, 124, 255, 0.92));
+  box-shadow: 0 14px 26px rgba(31, 124, 255, 0.18);
+}
+
 .dialog-enter-active,
 .dialog-leave-active {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);

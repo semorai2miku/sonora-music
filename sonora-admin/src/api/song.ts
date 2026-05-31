@@ -15,6 +15,14 @@ type SongResult = {
   data: SongItem;
 };
 
+type BatchDeleteResult = {
+  code: number;
+  data: {
+    count: number;
+    deleted: Array<{ id: number; name: string }>;
+  };
+};
+
 export type SongItem = {
   id: number;
   name: string;
@@ -57,6 +65,13 @@ export const updateSong = (id: number, data: object) => {
 /** 删除歌曲 */
 export const deleteSong = (id: number) => {
   return http.request("delete", `/api/admin/songs/${id}`);
+};
+
+/** 批量删除歌曲 */
+export const batchDeleteSongs = (ids: number[]) => {
+  return http.request<BatchDeleteResult>("post", "/api/admin/songs/batch-delete", {
+    data: { ids }
+  });
 };
 
 /** 切换上架状态 */

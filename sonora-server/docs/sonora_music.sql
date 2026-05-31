@@ -158,7 +158,7 @@ CREATE TABLE t_playlist (
     tags          VARCHAR(256) DEFAULT NULL COMMENT '标签 逗号分隔',
     play_count    BIGINT       DEFAULT 0 COMMENT '播放次数',
     collect_count BIGINT       DEFAULT 0 COMMENT '收藏次数',
-    status        TINYINT      DEFAULT 1 COMMENT '1-公开 0-私密',
+    status        TINYINT      DEFAULT 1 COMMENT '1-公开 0-私有',
     created_at    DATETIME     DEFAULT CURRENT_TIMESTAMP,
     updated_at    DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted       TINYINT      DEFAULT 0,
@@ -240,9 +240,9 @@ CREATE TABLE t_banner (
 -- 5. 初始化数据
 -- ============================
 
--- 管理员账号: admin / admin123 (BCrypt)
+-- 管理员账号: sonora-music / admin123 (BCrypt)
 INSERT INTO sys_user (profile_id, username, password, nickname, email, avatar, status) VALUES
-('ADMIN000001', 'admin', '$2a$10$r53nFvBJ0t5CGwB8q5bHX.V/6phBCwsaCjmKFNDdLFQi0Jzs5pV0q', '超级管理员', 'admin@sonora.local', '/default-avatar.svg', 1);
+('ADMIN000001', 'sonora-music', '$2a$10$r53nFvBJ0t5CGwB8q5bHX.V/6phBCwsaCjmKFNDdLFQi0Jzs5pV0q', 'sonora-music', 'admin@sonora.local', '/default-avatar.svg', 1);
 
 -- 角色
 INSERT INTO sys_role (code, name, description, sort) VALUES
@@ -250,7 +250,7 @@ INSERT INTO sys_role (code, name, description, sort) VALUES
 ('EDITOR', '编辑员',     '内容管理权限', 2),
 ('USER',   '普通用户',   '客户端用户',   3);
 
--- 赋予 admin 用户 ADMIN 角色
+-- 赋予 sonora-music 用户 ADMIN 角色
 INSERT INTO sys_user_role (user_id, role_id) VALUES (1, 1);
 
 -- 权限 (管理端菜单)

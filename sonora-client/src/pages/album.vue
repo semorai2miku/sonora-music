@@ -28,7 +28,7 @@ const load = async () => {
   try {
     const res = await albumDetail({ id: albumId.value })
     const album = transformAlbumDetail(res as Record<string, unknown>)
-    const songs = extractArray(res as Record<string, unknown>, 'songs', 'data.songs')
+    const songs = extractArray(res as Record<string, unknown>, 'songs', 'data.songs', 'album.songs', 'data.album.songs')
 
     state.info = album
     state.songs = songs.map((s: any) => ({

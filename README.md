@@ -49,7 +49,7 @@ pnpm dev
 
 | 入口 | 地址 | 说明 |
 |------|------|------|
-| 管理端 | `http://localhost:8848` | 默认账号 `admin` / `admin123` |
+| 管理端 | `http://localhost:8848` | 默认账号 `sonora-music` / `admin123` |
 | Web 客户端 | `http://localhost:5089` | Sonora 注册登录 + 网易云兼容层播放体验 |
 | 后端 API | `http://localhost:8080` | Swagger: `/swagger-ui.html` |
 | MinIO 控制台 | `http://localhost:9001` | 默认账号 `admin` / `admin123456` |

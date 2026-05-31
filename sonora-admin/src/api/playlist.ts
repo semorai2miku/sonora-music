@@ -6,6 +6,8 @@ export type PlaylistItem = {
   name: string;
   cover?: string;
   userId?: number;
+  publisher?: string;
+  publisherName?: string;
   description?: string;
   tags?: string;
   playCount?: number;
@@ -27,6 +29,11 @@ export type PlaylistPayload = {
   songIds?: number[];
 };
 
+export type PlaylistPublisherOption = {
+  id: number;
+  name: string;
+};
+
 type PageResult = {
   code: number;
   data: {
@@ -42,8 +49,27 @@ type ItemResult = {
   data: PlaylistItem;
 };
 
+type BatchDeleteResult = {
+  code: number;
+  data: {
+    count: number;
+    deleted: Array<{ id: number; name: string }>;
+  };
+};
+
 export const getPlaylistPage = (params: object) =>
   http.request<PageResult>("get", "/api/admin/playlists", { params });
+
+export const getPlaylistPublisherOptions = (params: object) =>
+  http.request<{
+    code: number;
+    data: {
+      list: PlaylistPublisherOption[];
+      total: number;
+      pageNum: number;
+      pageSize: number;
+    };
+  }>("get", "/api/admin/playlists/publishers/options", { params });
 
 export const getPlaylistById = (id: number) =>
   http.request<ItemResult>("get", `/api/admin/playlists/${id}`);
@@ -56,6 +82,11 @@ export const updatePlaylist = (id: number, data: PlaylistPayload) =>
 
 export const deletePlaylist = (id: number) =>
   http.request("delete", `/api/admin/playlists/${id}`);
+
+export const batchDeletePlaylists = (ids: number[]) =>
+  http.request<BatchDeleteResult>("post", "/api/admin/playlists/batch-delete", {
+    data: { ids }
+  });
 
 export const togglePlaylistStatus = (id: number, status: number) =>
   http.request<ItemResult>(

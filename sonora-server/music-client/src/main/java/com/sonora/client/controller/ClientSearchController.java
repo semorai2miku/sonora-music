@@ -2,6 +2,7 @@ package com.sonora.client.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.sonora.common.constant.Constants;
 import com.sonora.common.result.R;
 import com.sonora.mapper.AlbumMapper;
 import com.sonora.mapper.ArtistMapper;
@@ -58,6 +59,7 @@ public class ClientSearchController {
                             .eq(Song::getStatus, 1)
                             .orderByDesc(Song::getPlayCount)
                             .last("LIMIT " + pageSize));
+            songs.forEach(song -> song.setCover(coverOf(song.getCover())));
             data.put("songs", songs);
         }
 
@@ -67,6 +69,7 @@ public class ClientSearchController {
                             .like(Album::getName, keyword)
                             .eq(Album::getStatus, 1)
                             .last("LIMIT " + pageSize));
+            albums.forEach(album -> album.setCover(coverOf(album.getCover())));
             data.put("albums", albums);
         }
 
@@ -100,5 +103,9 @@ public class ClientSearchController {
                         .orderByDesc(Song::getPlayCount)
                         .last("LIMIT 10"));
         return R.ok(songs.stream().map(Song::getName).toList());
+    }
+
+    private String coverOf(String cover) {
+        return StringUtils.hasText(cover) ? cover : Constants.DEFAULT_COVER;
     }
 }

@@ -117,13 +117,11 @@ onMounted(loadPlaylists)
 
           <div class="p-6">
             <div class="mb-5 flex items-center gap-4">
-              <div
-                class="flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-br from-pink-500 to-purple-600 shadow-lg shadow-pink-500/25"
-              >
-                <span class="icon-[mdi--playlist-plus] h-6 w-6 text-white" />
-              </div>
+              <span class="brand-badge">
+                <img src="/branding/sonora-logo-icon.svg" alt="Sonora" class="h-6 w-6" />
+              </span>
               <div class="min-w-0">
-                <h2 class="text-primary text-xl font-bold">收藏到歌单</h2>
+                <h2 class="brand-font text-primary text-xl font-bold">收藏到歌单</h2>
                 <p class="text-primary/50 mt-0.5 truncate text-sm">
                   {{ songName || '选择一个自建歌单' }}
                 </p>
@@ -136,7 +134,7 @@ onMounted(loadPlaylists)
                 type="text"
                 maxlength="80"
                 placeholder="新建歌单名称"
-                class="text-primary glass-card min-w-0 flex-1 rounded-xl border border-glass px-4 py-3 text-sm outline-none placeholder:text-white/30 focus:border-pink-400/50"
+                class="text-primary glass-card min-w-0 flex-1 rounded-xl border border-glass px-4 py-3 text-sm outline-none placeholder:text-primary/30 focus:border-sky-400/50"
                 @keyup.enter="createAndSave"
               />
               <Button
@@ -166,12 +164,12 @@ onMounted(loadPlaylists)
               <button
                 v-for="playlist in normalPlaylists"
                 :key="playlist.id"
-                class="group flex w-full items-center gap-3 rounded-xl p-3 text-left transition-colors hover:bg-white/10"
+                class="group flex w-full items-center gap-3 rounded-xl p-3 text-left transition-colors hover:bg-hover-glass"
                 :disabled="savingId !== null"
                 @click="saveToPlaylist(playlist)"
               >
                 <div
-                  class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-linear-to-br from-pink-500/70 to-purple-600/70 text-white"
+                  class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-linear-to-br from-slate-900/90 to-sky-500/90 text-white"
                 >
                   <img
                     v-if="playlist.cover"
@@ -208,6 +206,17 @@ onMounted(loadPlaylists)
 </template>
 
 <style scoped>
+.brand-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, rgba(8, 17, 28, 0.92), rgba(31, 124, 255, 0.92));
+  box-shadow: 0 14px 26px rgba(31, 124, 255, 0.18);
+}
+
 .dialog-enter-active,
 .dialog-leave-active {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);

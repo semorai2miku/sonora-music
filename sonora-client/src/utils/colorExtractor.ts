@@ -18,10 +18,10 @@ export interface ColorPalette {
 
 /** 默认调色板 —— 当颜色提取失败或图片无有效像素时使用 */
 const DEFAULT_PALETTE: ColorPalette = {
-  dominant: '#667eea',
-  vibrant: '#764ba2',
-  muted: '#f093fb',
-  gradient: ['#667eea', '#764ba2', '#f093fb'],
+  dominant: '#08111c',
+  vibrant: '#1f7cff',
+  muted: '#4da3ff',
+  gradient: ['#08111c', '#1f7cff', '#4da3ff'],
 }
 
 /**

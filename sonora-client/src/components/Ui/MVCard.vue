@@ -362,7 +362,7 @@ const handleClick = async () => {
       <div
         class="absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-300 group-hover:opacity-100"
         style="
-          background: linear-gradient(135deg, rgba(236, 72, 153, 0.3), rgba(139, 92, 246, 0.3));
+          background: linear-gradient(135deg, rgba(31, 124, 255, 0.3), rgba(77, 163, 255, 0.3));
           mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
           mask-composite: exclude;
           padding: 2px;

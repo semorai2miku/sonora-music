@@ -14,21 +14,13 @@ export function useDataThemeChange() {
   const { layoutTheme, layout } = useLayout();
   const themeColors = ref<Array<themeColorsType>>([
     /* 亮白色 */
-    { color: "#ffffff", themeColor: "light" },
-    /* 道奇蓝 */
-    { color: "#1b2a47", themeColor: "default" },
-    /* 深紫罗兰色 */
-    { color: "#722ed1", themeColor: "saucePurple" },
-    /* 深粉色 */
-    { color: "#eb2f96", themeColor: "pink" },
-    /* 猩红色 */
-    { color: "#f5222d", themeColor: "dusk" },
-    /* 橙红色 */
-    { color: "#fa541c", themeColor: "volcano" },
-    /* 绿宝石 */
-    { color: "#13c2c2", themeColor: "mingQing" },
-    /* 酸橙绿 */
-    { color: "#52c41a", themeColor: "auroraGreen" }
+    { color: "#f6fbff", themeColor: "light" },
+    /* 品牌蓝 */
+    { color: "#1f7cff", themeColor: "default" },
+    /* 石墨蓝 */
+    { color: "#0d1726", themeColor: "graphite" },
+    /* 深海蓝 */
+    { color: "#0f2040", themeColor: "cobalt" }
   ]);
 
   const { $storage } = useGlobal<GlobalPropertiesApi>();

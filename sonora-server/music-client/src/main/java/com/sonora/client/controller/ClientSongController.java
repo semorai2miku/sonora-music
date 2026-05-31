@@ -1,6 +1,7 @@
 package com.sonora.client.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.sonora.common.constant.Constants;
 import com.sonora.common.result.R;
 import com.sonora.mapper.SongMapper;
 import com.sonora.model.entity.Song;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.util.StringUtils;
 
 @Tag(name = "客户端-歌曲", description = "歌曲详情、歌词")
 @RestController
@@ -37,7 +39,7 @@ public class ClientSongController {
         data.put("artistIds", song.getArtistIds());
         data.put("albumId", song.getAlbumId());
         data.put("duration", song.getDuration());
-        data.put("cover", song.getCover());
+        data.put("cover", coverOf(song));
         data.put("format", song.getFormat());
         data.put("fileSize", song.getFileSize());
         data.put("playCount", song.getPlayCount());
@@ -66,6 +68,7 @@ public class ClientSongController {
                         .eq(Song::getStatus, 1)
                         .orderByDesc(Song::getPlayCount)
                         .last("LIMIT " + limit));
+        songs.forEach(song -> song.setCover(coverOf(song)));
         return R.ok(songs);
     }
 
@@ -77,6 +80,11 @@ public class ClientSongController {
                         .eq(Song::getStatus, 1)
                         .orderByDesc(Song::getCreatedAt)
                         .last("LIMIT " + limit));
+        songs.forEach(song -> song.setCover(coverOf(song)));
         return R.ok(songs);
+    }
+
+    private String coverOf(Song song) {
+        return StringUtils.hasText(song.getCover()) ? song.getCover() : Constants.DEFAULT_COVER;
     }
 }

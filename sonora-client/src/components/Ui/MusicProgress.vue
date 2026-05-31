@@ -13,7 +13,7 @@ const props = defineProps({
 const gradientStyle = computed(() => {
   if (props.color.length === 0) {
     // 使用默认渐变
-    return 'linear-gradient(90deg, #ec4899, #8b5cf6)'
+    return 'linear-gradient(90deg, #08111c, #1f7cff, #4da3ff)'
   }
   // 使用传入的颜色数组生成渐变
   return `linear-gradient(90deg, ${props.color.join(', ')})`
@@ -23,7 +23,7 @@ const gradientStyle = computed(() => {
 const thumbStyle = computed(() => {
   if (props.color.length === 0) {
     // 使用默认主色
-    return '#ec4899'
+    return '#1f7cff'
   }
   // 使用颜色数组的中间位置的颜色
   const midIndex = Math.floor(props.color.length / 2)
@@ -211,7 +211,7 @@ const previewPositionPercent = computed(() => {
 }
 
 .progress-fill {
-  box-shadow: 0 0 10px rgba(236, 72, 153, 0.25);
+  box-shadow: 0 0 10px rgba(31, 124, 255, 0.24);
   transition: width 0.05s linear;
 }
 
@@ -237,7 +237,7 @@ const previewPositionPercent = computed(() => {
   transform: translate(-50%, -50%) scale(1.15);
   box-shadow:
     0 2px 10px rgba(0, 0, 0, 0.25),
-    0 0 16px rgba(236, 72, 153, 0.4);
+    0 0 16px rgba(31, 124, 255, 0.38);
 }
 
 .time-preview {

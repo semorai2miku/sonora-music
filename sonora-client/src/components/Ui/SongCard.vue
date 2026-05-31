@@ -92,7 +92,7 @@ const handleClick = async (_event: MouseEvent) => {
       left: ${rect.left}px;
       top: ${rect.top}px;
       border-radius: 12px;
-      border: 2px solid rgba(236, 72, 153, 0.6);
+      border: 2px solid rgba(31, 124, 255, 0.6);
       pointer-events: none;
     `
     document.body.appendChild(ripple)
@@ -195,7 +195,7 @@ const handleMouseLeave = () => {
       class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-sm font-bold"
       :class="
         index < 3
-          ? 'bg-linear-to-t from-rose-500 to-pink-600 text-white'
+          ? 'bg-linear-to-t from-slate-900 to-sky-500 text-white'
           : 'bg-primary/5 text-primary/40'
       "
     >
@@ -218,7 +218,7 @@ const handleMouseLeave = () => {
 
     <!-- 信息 -->
     <div class="min-w-0 flex-1">
-      <p class="text-primary truncate text-sm font-medium transition-colors group-hover:text-pink-500">
+      <p class="text-primary truncate text-sm font-medium transition-colors group-hover:text-sky-500">
         {{ song.name }}
       </p>
       <p class="text-primary/50 mt-0.5 truncate text-xs">{{ song.artist }}</p>

@@ -63,7 +63,7 @@ const playSongWithAnimation = async (song: Song, index: number, event?: MouseEve
     if (event && sourceCover) {
       const container = sourceCover.closest('.song-item') as HTMLElement
       if (container) {
-        createRipple(event, container, 'rgba(236, 72, 153, 0.3)')
+        createRipple(event, container, 'rgba(31, 124, 255, 0.3)')
       }
     }
 

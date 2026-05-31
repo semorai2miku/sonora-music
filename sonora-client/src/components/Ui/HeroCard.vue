@@ -327,7 +327,7 @@ const handleMouseLeave = () => {
         <div
           class="flex h-12 w-12 scale-75 items-center justify-center rounded-full bg-white/90 shadow-xl transition-transform duration-300 group-hover:scale-100"
         >
-          <span class="icon-[mdi--play] h-6 w-6 text-pink-500" />
+          <span class="icon-[mdi--play] h-6 w-6 text-sky-500" />
         </div>
       </div>
     </div>

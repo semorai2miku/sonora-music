@@ -3,6 +3,7 @@ package com.sonora.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.sonora.common.constant.Constants;
 import com.sonora.common.enums.ResultCode;
 import com.sonora.common.exception.BusinessException;
 import com.sonora.file.service.MinioService;
@@ -69,6 +70,9 @@ public class SongServiceImpl extends ServiceImpl<SongMapper, Song> implements So
                 // 封面上传失败不影响主流程，继续
             }
         }
+        if (!StringUtils.hasText(song.getCover())) {
+            song.setCover(Constants.DEFAULT_COVER);
+        }
 
         // 3. 保存歌曲记录
         save(song);
@@ -85,6 +89,9 @@ public class SongServiceImpl extends ServiceImpl<SongMapper, Song> implements So
         song.setFileKey(existing.getFileKey());     // 不允许通过此接口更换文件
         song.setFileSize(existing.getFileSize());
         song.setFormat(existing.getFormat());
+        song.setCover(StringUtils.hasText(song.getCover())
+                ? song.getCover()
+                : (StringUtils.hasText(existing.getCover()) ? existing.getCover() : Constants.DEFAULT_COVER));
         updateById(song);
         return getById(id);
     }

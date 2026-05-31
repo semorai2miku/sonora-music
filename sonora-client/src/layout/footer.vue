@@ -75,7 +75,7 @@ const coverRef = ref<HTMLElement | null>(null)
 // 计算可视化器渐变颜色
 const visualizerGradient = computed(() => {
   if (state.footerGradient.length === 0) {
-    return ['#3b82f6', '#8b5cf6', '#ec4899']
+    return ['#08111c', '#1f7cff', '#4da3ff']
   }
   // 提取渐变中的颜色
   const colors = state.footerGradient.map((color: string) => {
@@ -266,7 +266,7 @@ const emit = defineEmits(['show'])
             :style="{
               backgroundImage: state.displayCover
                 ? `url(${state.displayCover + '?param=128x128'})`
-                : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                : 'linear-gradient(135deg, #08111c 0%, #1f7cff 100%)',
             }"
           >
             <!-- 播放状态指示器 -->
@@ -394,10 +394,10 @@ const emit = defineEmits(['show'])
 /* 播放时微微脉动 */
 @keyframes pulse-subtle {
   0%, 100% {
-    box-shadow: 0 4px 12px rgba(236, 72, 153, 0.2);
+    box-shadow: 0 4px 12px rgba(31, 124, 255, 0.18);
   }
   50% {
-    box-shadow: 0 4px 20px rgba(236, 72, 153, 0.35);
+    box-shadow: 0 4px 20px rgba(31, 124, 255, 0.32);
   }
 }
 

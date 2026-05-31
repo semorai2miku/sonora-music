@@ -262,14 +262,14 @@ const toggleCollect = () => {
 }
 
 .play-all-btn {
-  background: linear-gradient(135deg, #ec4899, #8b5cf6);
-  box-shadow: 0 4px 16px rgba(236, 72, 153, 0.35);
+  background: linear-gradient(135deg, #1f7cff, #4da3ff);
+  box-shadow: 0 4px 16px rgba(31, 124, 255, 0.35);
   transition: all 0.3s ease;
 }
 
 .play-all-btn:active {
   transform: scale(0.97);
-  box-shadow: 0 2px 8px rgba(236, 72, 153, 0.3);
+  box-shadow: 0 2px 8px rgba(31, 124, 255, 0.3);
 }
 
 .shuffle-btn {
@@ -296,9 +296,9 @@ const toggleCollect = () => {
 }
 
 .collect-btn.collected {
-  background: linear-gradient(135deg, rgba(236, 72, 153, 0.2), rgba(139, 92, 246, 0.2));
-  border-color: rgba(236, 72, 153, 0.3);
-  color: #ec4899;
+  background: linear-gradient(135deg, rgba(31, 124, 255, 0.2), rgba(77, 163, 255, 0.2));
+  border-color: rgba(31, 124, 255, 0.3);
+  color: #1f7cff;
 }
 
 .comment-btn {

@@ -7,11 +7,15 @@ import com.sonora.mapper.BannerMapper;
 import com.sonora.model.entity.Banner;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Tag(name = "管理端-轮播图管理", description = "首页轮播图的增删改查")
 @RestController
@@ -38,7 +42,7 @@ public class BannerController {
         if (status != null) {
             wrapper.eq(Banner::getStatus, status);
         }
-        wrapper.orderByAsc(Banner::getSort).orderByDesc(Banner::getCreatedAt);
+        wrapper.orderByAsc(Banner::getId);
 
         Page<Banner> page = bannerMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
         Map<String, Object> data = new LinkedHashMap<>();
@@ -98,6 +102,31 @@ public class BannerController {
         return R.ok();
     }
 
+    @Operation(summary = "批量删除轮播图")
+    @PostMapping("/batch-delete")
+    @Transactional
+    public R<Map<String, Object>> batchDelete(@RequestBody BatchDeleteRequest body) {
+        if (body == null || body.ids() == null || body.ids().isEmpty()) {
+            return R.badRequest("请选择要删除的轮播图");
+        }
+        List<Map<String, Object>> deletedBanners = new ArrayList<>();
+        for (Long id : body.ids().stream().filter(Objects::nonNull).distinct().toList()) {
+            Banner banner = bannerMapper.selectById(id);
+            if (banner == null) {
+                continue;
+            }
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("id", id);
+            item.put("name", "轮播图 " + id);
+            bannerMapper.deleteById(id);
+            deletedBanners.add(item);
+        }
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("count", deletedBanners.size());
+        data.put("deleted", deletedBanners);
+        return R.ok(data);
+    }
+
     @Operation(summary = "切换轮播图启用状态")
     @PutMapping("/{id}/status")
     public R<Banner> toggleStatus(@PathVariable Long id, @RequestParam int status) {
@@ -116,4 +145,6 @@ public class BannerController {
         }
         return null;
     }
+
+    public record BatchDeleteRequest(List<Long> ids) {}
 }

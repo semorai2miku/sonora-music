@@ -26,6 +26,7 @@ import {
 const DEFAULT_AVATAR = "/default-avatar.svg";
 const EMAIL_PATTERN = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 const PASSWORD_PATTERN = /^[\x21-\x7E]{6,72}$/;
+const PHONE_PATTERN = /^1[3-9]\d{9}$/;
 
 const loading = ref(false);
 const list = ref<ClientUserItem[]>([]);
@@ -151,6 +152,10 @@ function validateForm() {
   }
   if (form.value.password && !PASSWORD_PATTERN.test(form.value.password)) {
     ElMessage.warning("密码需为 6-72 位，且只能包含字母、数字和特殊符号");
+    return false;
+  }
+  if (form.value.phone?.trim() && !PHONE_PATTERN.test(form.value.phone.trim())) {
+    ElMessage.warning("手机号需为 11 位大陆手机号");
     return false;
   }
   return true;
@@ -303,6 +308,7 @@ onMounted(loadData);
         <p>管理客户端注册用户、头像、资料和账号状态</p>
       </div>
       <div class="user-page__actions">
+        <el-button :icon="RefreshRight" @click="loadData">刷新</el-button>
         <el-button type="primary" :icon="Plus" @click="openCreate">新增用户</el-button>
         <el-button type="danger" :icon="Delete" @click="handleBatchDelete">批量删除</el-button>
       </div>
@@ -433,7 +439,7 @@ onMounted(loadData);
           <el-input v-model="form.email" placeholder="user@example.com" />
         </el-form-item>
         <el-form-item label="手机号">
-          <el-input v-model="form.phone" placeholder="可选，支持数字、空格、+、-、括号" />
+          <el-input v-model="form.phone" maxlength="11" placeholder="可选，11 位手机号，如 13800138000" />
         </el-form-item>
         <el-form-item label="密码" :required="!isEdit">
           <el-input

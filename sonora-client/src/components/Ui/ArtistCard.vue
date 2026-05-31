@@ -104,7 +104,7 @@ const handleClick = async () => {
     left: ${targetX}px;
     top: ${targetY}px;
     border-radius: 50%;
-    border: 2px solid rgba(236, 72, 153, 0.6);
+    border: 2px solid rgba(31, 124, 255, 0.6);
     pointer-events: none;
     opacity: 0;
   `
@@ -165,7 +165,7 @@ const handleMouseLeave = () => {
   >
     <div
       ref="imageRef"
-      class="border-glass relative mb-2.5 aspect-square w-full overflow-hidden rounded-full border-2 shadow-lg transition-all duration-300 group-hover:border-pink-500 group-hover:shadow-pink-500/20"
+      class="border-glass relative mb-2.5 aspect-square w-full overflow-hidden rounded-full border-2 shadow-lg transition-all duration-300 group-hover:border-sky-500 group-hover:shadow-sky-500/20"
     >
       <LazyImage
         :src="picUrl + '?param=150y150'"

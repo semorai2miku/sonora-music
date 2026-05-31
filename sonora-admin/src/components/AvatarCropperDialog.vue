@@ -1,19 +1,26 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from "vue";
-import { CircleStencil, Cropper } from "vue-advanced-cropper";
+import { CircleStencil, Cropper, RectangleStencil } from "vue-advanced-cropper";
 import "vue-advanced-cropper/dist/style.css";
 
 const props = defineProps<{
   modelValue: boolean;
   file: File | null;
+  shape?: "circle" | "square" | "rectangle";
+  title?: string;
+  confirmText?: string;
+  hint?: string;
+  outputFileName?: string;
+  outputWidth?: number;
+  outputHeight?: number;
+  stencilWidth?: number;
+  stencilHeight?: number;
 }>();
 
 const emit = defineEmits<{
   (e: "update:modelValue", value: boolean): void;
   (e: "confirm", file: File): void;
 }>();
-
-const OUTPUT_SIZE = 600;
 
 const cropperRef = ref<any>(null);
 const imageSrc = ref("");
@@ -22,6 +29,30 @@ const objectUrl = ref("");
 const visible = computed({
   get: () => props.modelValue,
   set: value => emit("update:modelValue", value)
+});
+const stencilComponent = computed(() =>
+  props.shape === "circle" ? CircleStencil : RectangleStencil
+);
+const dialogTitle = computed(() => props.title || "裁剪头像");
+const confirmText = computed(() => props.confirmText || "使用头像");
+const hintText = computed(
+  () => props.hint || "拖动图片调整位置，滚轮或双指缩放头像区域。"
+);
+const outputFileName = computed(() => props.outputFileName || "avatar.png");
+const outputWidth = computed(() => props.outputWidth || 600);
+const outputHeight = computed(() => props.outputHeight || outputWidth.value);
+const stencilSize = computed(() => {
+  if (props.stencilWidth && props.stencilHeight) {
+    return { width: props.stencilWidth, height: props.stencilHeight };
+  }
+  if (props.shape === "rectangle") {
+    const width = 360;
+    return {
+      width,
+      height: Math.round((width * outputHeight.value) / outputWidth.value)
+    };
+  }
+  return { width: 280, height: 280 };
 });
 
 function releaseUrl() {
@@ -45,7 +76,7 @@ function confirmCrop() {
   if (!canvas) return;
   canvas.toBlob(blob => {
     if (!blob) return;
-    emit("confirm", new File([blob], "avatar.png", { type: "image/png" }));
+    emit("confirm", new File([blob], outputFileName.value, { type: "image/png" }));
     visible.value = false;
   }, "image/png");
 }
@@ -60,31 +91,31 @@ onBeforeUnmount(releaseUrl);
 </script>
 
 <template>
-  <el-dialog v-model="visible" title="裁剪头像" width="460px" destroy-on-close>
+  <el-dialog v-model="visible" :title="dialogTitle" width="460px" destroy-on-close>
     <div class="avatar-cropper">
       <Cropper
         v-if="imageSrc"
         ref="cropperRef"
         class="avatar-cropper__cropper"
         :src="imageSrc"
-        :stencil-component="CircleStencil"
-        :stencil-size="{ width: 280, height: 280 }"
+        :stencil-component="stencilComponent"
+        :stencil-size="stencilSize"
         :canvas="{
-          width: OUTPUT_SIZE,
-          height: OUTPUT_SIZE,
+          width: outputWidth,
+          height: outputHeight,
           imageSmoothingEnabled: true,
           imageSmoothingQuality: 'high'
         }"
         :resize-image="{ touch: true, wheel: { ratio: 0.08 }, adjustStencil: false }"
         :move-image="{ touch: true, mouse: true }"
-        image-restriction="stencil"
-        :auto-zoom="true"
+        image-restriction="none"
+        :auto-zoom="false"
       />
-      <p class="avatar-cropper__hint">拖动图片调整位置，滚轮或双指缩放头像区域。</p>
+      <p class="avatar-cropper__hint">{{ hintText }}</p>
     </div>
     <template #footer>
       <el-button @click="visible = false">取消</el-button>
-      <el-button type="primary" :disabled="!imageSrc" @click="confirmCrop">使用头像</el-button>
+      <el-button type="primary" :disabled="!imageSrc" @click="confirmCrop">{{ confirmText }}</el-button>
     </template>
   </el-dialog>
 </template>

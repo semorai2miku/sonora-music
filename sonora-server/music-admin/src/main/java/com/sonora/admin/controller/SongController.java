@@ -6,11 +6,15 @@ import com.sonora.model.entity.Song;
 import com.sonora.service.SongService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * 管理端 — 歌曲管理 CRUD
@@ -63,12 +67,16 @@ public class SongController {
             @RequestParam String name,
             @RequestParam(required = false) String artistIds,
             @RequestParam(required = false) Long albumId,
+            @RequestParam(required = false) Integer duration,
+            @RequestParam(required = false) String cover,
             @RequestParam(required = false) String lyrics) {
 
         Song song = new Song();
         song.setName(name);
         song.setArtistIds(artistIds);
         song.setAlbumId(albumId);
+        song.setDuration(duration);
+        song.setCover(cover);
         song.setLyrics(lyrics);
         song.setStatus(1);
         song.setPlayCount(0L);
@@ -91,6 +99,31 @@ public class SongController {
         return R.ok();
     }
 
+    @Operation(summary = "批量删除歌曲")
+    @PostMapping("/batch-delete")
+    @Transactional
+    public R<Map<String, Object>> batchDelete(@RequestBody BatchDeleteRequest body) {
+        if (body == null || body.ids() == null || body.ids().isEmpty()) {
+            return R.badRequest("请选择要删除的歌曲");
+        }
+        List<Map<String, Object>> deletedSongs = new ArrayList<>();
+        for (Long id : body.ids().stream().filter(Objects::nonNull).distinct().toList()) {
+            Song song = songService.getById(id);
+            if (song == null) {
+                continue;
+            }
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("id", id);
+            item.put("name", song.getName());
+            songService.deleteSong(id);
+            deletedSongs.add(item);
+        }
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("count", deletedSongs.size());
+        data.put("deleted", deletedSongs);
+        return R.ok(data);
+    }
+
     @Operation(summary = "切换歌曲上架/下架状态")
     @PutMapping("/{id}/status")
     public R<Song> toggleStatus(@PathVariable Long id, @RequestParam int status) {
@@ -102,4 +135,6 @@ public class SongController {
         songService.updateById(song);
         return R.ok(song);
     }
+
+    public record BatchDeleteRequest(List<Long> ids) {}
 }

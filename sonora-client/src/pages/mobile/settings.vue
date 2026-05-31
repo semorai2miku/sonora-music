@@ -254,7 +254,7 @@ const romaChecked = computed({
     </section>
 
     <div class="mt-8 text-center">
-      <p class="text-primary/30 text-xs">Glass Music Player</p>
+      <p class="text-primary/30 text-xs">SONORA</p>
     </div>
   </div>
 </template>
@@ -315,8 +315,8 @@ const romaChecked = computed({
 }
 
 .theme-option.active {
-  background: linear-gradient(135deg, rgba(236, 72, 153, 0.15), rgba(139, 92, 246, 0.15));
-  border-color: rgba(236, 72, 153, 0.4);
+  background: linear-gradient(135deg, rgba(31, 124, 255, 0.15), rgba(77, 163, 255, 0.15));
+  border-color: rgba(31, 124, 255, 0.4);
 }
 
 .option-icon {
@@ -327,7 +327,7 @@ const romaChecked = computed({
 }
 
 .theme-option.active .option-icon {
-  color: rgb(236, 72, 153);
+  color: rgb(31, 124, 255);
   opacity: 1;
 }
 
@@ -353,7 +353,7 @@ const romaChecked = computed({
 }
 
 .toggle-switch.active {
-  background: linear-gradient(135deg, rgb(236, 72, 153), rgb(139, 92, 246));
+  background: linear-gradient(135deg, rgb(31, 124, 255), rgb(77, 163, 255));
   border-color: transparent;
 }
 
@@ -393,9 +393,9 @@ const romaChecked = computed({
 }
 
 .mode-chip.active {
-  background: linear-gradient(135deg, rgba(236, 72, 153, 0.2), rgba(139, 92, 246, 0.2));
-  border-color: rgba(236, 72, 153, 0.5);
-  color: rgb(236, 72, 153);
+  background: linear-gradient(135deg, rgba(31, 124, 255, 0.2), rgba(77, 163, 255, 0.2));
+  border-color: rgba(31, 124, 255, 0.5);
+  color: rgb(31, 124, 255);
   opacity: 1;
 }
 </style>

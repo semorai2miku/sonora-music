@@ -29,14 +29,14 @@ interface UltimateProps {
 }
 
 const props = withDefaults(defineProps<UltimateProps>(), {
-  bg1: '#6C00A2',
+  bg1: '#050A14',
   bg2: '#001152',
   color1: '#1271FF',
-  color2: '#DD4AFF',
+  color2: '#4DA3FF',
   color3: '#64DCFF',
-  color4: '#C83232',
-  color5: '#B4B432',
-  interactiveColor: '#8C64FF',
+  color4: '#1F7CFF',
+  color5: '#DCEBFF',
+  interactiveColor: '#4DA3FF',
   circleSize: '80%',
   blending: 'hard-light',
 })

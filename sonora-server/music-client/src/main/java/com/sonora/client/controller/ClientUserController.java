@@ -36,7 +36,7 @@ public class ClientUserController {
     private static final long MAX_AVATAR_SIZE = 5 * 1024 * 1024L;
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
     private static final Pattern PASSWORD_PATTERN = Pattern.compile("^[\\x21-\\x7E]{6,72}$");
-    private static final Pattern PHONE_PATTERN = Pattern.compile("^[0-9+\\-\\s()]{0,32}$");
+    private static final Pattern PHONE_PATTERN = Pattern.compile("^1[3-9]\\d{9}$");
 
     private final UserMapper userMapper;
     private final RoleMapper roleMapper;
@@ -46,6 +46,8 @@ public class ClientUserController {
     private final UserFavoriteMapper userFavoriteMapper;
     private final CommentMapper commentMapper;
     private final SongMapper songMapper;
+    private final ArtistMapper artistMapper;
+    private final AlbumMapper albumMapper;
     private final MinioService minioService;
     private final PasswordEncoder passwordEncoder;
 
@@ -57,6 +59,8 @@ public class ClientUserController {
                                 UserFavoriteMapper userFavoriteMapper,
                                 CommentMapper commentMapper,
                                 SongMapper songMapper,
+                                ArtistMapper artistMapper,
+                                AlbumMapper albumMapper,
                                 MinioService minioService,
                                 PasswordEncoder passwordEncoder) {
         this.userMapper = userMapper;
@@ -67,6 +71,8 @@ public class ClientUserController {
         this.userFavoriteMapper = userFavoriteMapper;
         this.commentMapper = commentMapper;
         this.songMapper = songMapper;
+        this.artistMapper = artistMapper;
+        this.albumMapper = albumMapper;
         this.minioService = minioService;
         this.passwordEncoder = passwordEncoder;
     }
@@ -94,10 +100,13 @@ public class ClientUserController {
             return R.badRequest("邮箱已存在");
         }
 
+        String profileId = generateProfileId();
+        userMapper.purgeDeletedIdentity(username, email, profileId);
+
         User user = new User();
         user.setUsername(username);
         user.setNickname(username);
-        user.setProfileId(generateProfileId());
+        user.setProfileId(profileId);
         user.setPassword(passwordEncoder.encode(body.password()));
         user.setEmail(email);
         user.setAvatar(Constants.DEFAULT_AVATAR);
@@ -287,7 +296,6 @@ public class ClientUserController {
         List<Playlist> playlists = playlistMapper.selectList(
                 new LambdaQueryWrapper<Playlist>()
                         .eq(Playlist::getUserId, userId)
-                        .eq(Playlist::getStatus, 1)
                         .orderByDesc(Playlist::getPinned)
                         .orderByAsc(Playlist::getCreatedAt));
         return R.ok(playlists.stream()
@@ -318,7 +326,7 @@ public class ClientUserController {
         playlist.setDescription(body.description() == null ? null : body.description().trim());
         playlist.setPlayCount(0L);
         playlist.setCollectCount(0L);
-        playlist.setStatus(1);
+        playlist.setStatus(0);
         playlistMapper.insert(playlist);
         return R.ok(playlistOf(playlistMapper.selectById(playlist.getId())));
     }
@@ -422,8 +430,9 @@ public class ClientUserController {
             ps.setSort(nextPlaylistSongSort(playlistId));
             playlistSongMapper.insert(ps);
         }
-        if (!StringUtils.hasText(playlist.getCover()) && StringUtils.hasText(song.getCover())) {
-            playlist.setCover(song.getCover());
+        String songCover = songCoverOf(song);
+        if (!StringUtils.hasText(playlist.getCover()) && StringUtils.hasText(songCover)) {
+            playlist.setCover(songCover);
             playlistMapper.updateById(playlist);
         }
         return R.ok(playlistOf(playlistMapper.selectById(playlistId)));
@@ -494,10 +503,12 @@ public class ClientUserController {
                 .stream()
                 .collect(Collectors.toMap(Song::getId, s -> s, (a, b) -> a));
         List<Map<String, Object>> songs = new ArrayList<>();
+        Map<Long, Album> albumMap = albumMapFromSongs(songMap.values());
+        Map<Long, Artist> artistMap = artistMapFromSongs(songMap.values());
         for (Long id : ids) {
             Song song = songMap.get(id);
             if (song != null) {
-                songs.add(songOf(song, true));
+                songs.add(songOf(song, true, albumMap, artistMap));
             }
         }
         return R.ok(songs);
@@ -532,8 +543,9 @@ public class ClientUserController {
             ps.setSort(nextPlaylistSongSort(liked.getId()));
             playlistSongMapper.insert(ps);
         }
-        if (StringUtils.hasText(song.getCover())) {
-            liked.setCover(song.getCover());
+        String songCover = songCoverOf(song);
+        if (StringUtils.hasText(songCover)) {
+            liked.setCover(songCover);
             playlistMapper.updateById(liked);
         }
         return R.ok(songOf(song, true));
@@ -600,7 +612,7 @@ public class ClientUserController {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("id", playlist.getId());
         data.put("name", playlist.getName());
-        data.put("cover", playlist.getCover());
+        data.put("cover", StringUtils.hasText(playlist.getCover()) ? playlist.getCover() : Constants.DEFAULT_COVER);
         data.put("type", playlist.getType());
         data.put("pinned", playlist.getPinned());
         data.put("description", playlist.getDescription());
@@ -611,20 +623,31 @@ public class ClientUserController {
     }
 
     private Map<String, Object> songOf(Song song, boolean liked) {
+        Map<Long, Album> albumMap = albumMapFromSongs(List.of(song));
+        Map<Long, Artist> artistMap = artistMapFromSongs(List.of(song));
+        return songOf(song, liked, albumMap, artistMap);
+    }
+
+    private Map<String, Object> songOf(Song song, boolean liked, Map<Long, Album> albumMap, Map<Long, Artist> artistMap) {
+        String cover = songCoverOf(song, albumMap);
+        Album album = song.getAlbumId() == null ? null : albumMap.get(song.getAlbumId());
+        List<Map<String, Object>> artists = artistItems(song.getArtistIds(), artistMap);
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("id", song.getId());
         data.put("name", song.getName());
         data.put("dt", song.getDuration() == null ? 0 : song.getDuration() * 1000);
         data.put("duration", song.getDuration() == null ? 0 : song.getDuration() * 1000);
-        data.put("cover", song.getCover());
+        data.put("cover", cover);
         data.put("liked", liked);
-        data.put("al", Map.of(
-                "id", song.getAlbumId() == null ? 0 : song.getAlbumId(),
-                "name", "",
-                "picUrl", song.getCover() == null ? "" : song.getCover()));
-        data.put("ar", List.of(Map.of(
-                "id", 0,
-                "name", song.getArtistIds() == null ? "" : song.getArtistIds())));
+        Map<String, Object> albumData = new LinkedHashMap<>();
+        albumData.put("id", song.getAlbumId() == null ? 0 : song.getAlbumId());
+        albumData.put("name", album == null || album.getName() == null ? "" : album.getName());
+        albumData.put("picUrl", cover);
+        data.put("al", albumData);
+        data.put("album", albumData);
+        data.put("ar", artists);
+        data.put("artists", artists);
+        data.put("artistName", artistNameOf(song.getArtistIds(), artistMap));
         return data;
     }
 
@@ -645,7 +668,7 @@ public class ClientUserController {
         playlist.setDescription("自动收藏你点红心的歌曲");
         playlist.setPlayCount(0L);
         playlist.setCollectCount(0L);
-        playlist.setStatus(1);
+        playlist.setStatus(0);
         playlistMapper.insert(playlist);
         return playlist;
     }
@@ -734,8 +757,90 @@ public class ClientUserController {
             return;
         }
         Song lastSong = songMapper.selectById(songs.get(0).getSongId());
-        playlist.setCover(lastSong == null ? null : lastSong.getCover());
+        playlist.setCover(lastSong == null ? null : songCoverOf(lastSong));
         playlistMapper.updateById(playlist);
+    }
+
+    private Map<Long, Album> albumMapFromSongs(Collection<Song> songs) {
+        Set<Long> albumIds = songs.stream()
+                .map(Song::getAlbumId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (albumIds.isEmpty()) {
+            return new LinkedHashMap<>();
+        }
+        return albumMapper.selectBatchIds(albumIds).stream()
+                .collect(Collectors.toMap(Album::getId, album -> album, (a, b) -> a, LinkedHashMap::new));
+    }
+
+    private Map<Long, Artist> artistMapFromSongs(Collection<Song> songs) {
+        Set<Long> artistIds = songs.stream()
+                .flatMap(song -> parseArtistIds(song.getArtistIds()).stream())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (artistIds.isEmpty()) {
+            return new LinkedHashMap<>();
+        }
+        return artistMapper.selectBatchIds(artistIds).stream()
+                .collect(Collectors.toMap(Artist::getId, artist -> artist, (a, b) -> a, LinkedHashMap::new));
+    }
+
+    private List<Long> parseArtistIds(String artistIds) {
+        if (!StringUtils.hasText(artistIds)) {
+            return List.of();
+        }
+        List<Long> ids = new ArrayList<>();
+        for (String part : artistIds.split(",")) {
+            try {
+                ids.add(Long.parseLong(part.trim()));
+            } catch (NumberFormatException ignored) {
+                // 忽略旧数据中的非法歌手编号。
+            }
+        }
+        return ids;
+    }
+
+    private List<Map<String, Object>> artistItems(String artistIds, Map<Long, Artist> artistMap) {
+        List<Long> ids = parseArtistIds(artistIds);
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        List<Map<String, Object>> items = new ArrayList<>();
+        for (Long artistId : ids) {
+            Artist artist = artistMap.get(artistId);
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("id", artistId);
+            item.put("name", artist == null || !StringUtils.hasText(artist.getName())
+                    ? "歌手 " + artistId
+                    : artist.getName());
+            items.add(item);
+        }
+        return items;
+    }
+
+    private String artistNameOf(String artistIds, Map<Long, Artist> artistMap) {
+        List<Map<String, Object>> artists = artistItems(artistIds, artistMap);
+        if (artists.isEmpty()) {
+            return "";
+        }
+        return artists.stream()
+                .map(item -> String.valueOf(item.get("name")))
+                .collect(Collectors.joining(" / "));
+    }
+
+    private String songCoverOf(Song song) {
+        Map<Long, Album> albumMap = albumMapFromSongs(List.of(song));
+        return songCoverOf(song, albumMap);
+    }
+
+    private String songCoverOf(Song song, Map<Long, Album> albumMap) {
+        if (song != null && StringUtils.hasText(song.getCover())) {
+            return song.getCover();
+        }
+        Album album = song == null || song.getAlbumId() == null ? null : albumMap.get(song.getAlbumId());
+        if (album != null && StringUtils.hasText(album.getCover())) {
+            return album.getCover();
+        }
+        return Constants.DEFAULT_COVER;
     }
 
     private String generateProfileId() {
@@ -852,7 +957,7 @@ public class ClientUserController {
         userFavoriteMapper.delete(new LambdaQueryWrapper<UserFavorite>().eq(UserFavorite::getUserId, userId));
         commentMapper.delete(new LambdaQueryWrapper<Comment>().eq(Comment::getUserId, userId));
         userRoleMapper.delete(new LambdaQueryWrapper<UserRole>().eq(UserRole::getUserId, userId));
-        userMapper.deleteById(userId);
+        userMapper.hardDeleteById(userId);
     }
 
     private Long currentUserId() {

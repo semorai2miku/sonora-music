@@ -204,10 +204,10 @@ const tabs = computed(() => [
 }
 
 .tab-button-active {
-  background: linear-gradient(to right, #ec4899, #8b5cf6);
+  background: linear-gradient(to right, #1f7cff, #4da3ff);
   color: white;
   opacity: 1;
-  box-shadow: 0 4px 15px rgba(236, 72, 153, 0.3);
+  box-shadow: 0 4px 15px rgba(31, 124, 255, 0.3);
 }
 
 .tab-count {
@@ -239,21 +239,21 @@ const tabs = computed(() => [
 }
 
 .play-all-button {
-  background: linear-gradient(to right, #ec4899, #8b5cf6);
-  box-shadow: 0 4px 15px rgba(236, 72, 153, 0.3);
+  background: linear-gradient(to right, #1f7cff, #4da3ff);
+  box-shadow: 0 4px 15px rgba(31, 124, 255, 0.3);
 }
 
 .play-all-button:active {
-  box-shadow: 0 2px 8px rgba(236, 72, 153, 0.3);
+  box-shadow: 0 2px 8px rgba(31, 124, 255, 0.3);
 }
 
 .empty-icon {
-  background: linear-gradient(to bottom right, rgba(236, 72, 153, 0.15), rgba(139, 92, 246, 0.15));
+  background: linear-gradient(to bottom right, rgba(31, 124, 255, 0.15), rgba(77, 163, 255, 0.15));
 }
 
 :root.dark .empty-icon,
 html.dark .empty-icon {
-  background: linear-gradient(to bottom right, rgba(236, 72, 153, 0.2), rgba(139, 92, 246, 0.2));
+  background: linear-gradient(to bottom right, rgba(31, 124, 255, 0.2), rgba(77, 163, 255, 0.2));
 }
 
 .empty-icon-inner {

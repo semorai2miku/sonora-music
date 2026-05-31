@@ -16,7 +16,7 @@ export interface LocalMusic {
 }
 
 /** 数据库名称 */
-const DB_NAME = 'GlassMusicPlayerDB'
+const DB_NAME = 'SonoraMusicDB'
 /** 对象存储名称 */
 const STORE_NAME = 'local_music'
 /** 数据库版本 */

@@ -29,7 +29,7 @@ export function useDrawerTransition(options: DrawerTransitionOptions) {
   const coverBgImage = () =>
     currentSong.value?.cover
       ? `url(${currentSong.value.cover}?param=320x320)`
-      : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+      : 'linear-gradient(135deg, #08111c 0%, #1f7cff 100%)'
 
   /** 创建封面克隆 DOM 元素（固定定位，用于飞行动画） */
   const createClone = (rect: DOMRect, borderRadius: string) => {

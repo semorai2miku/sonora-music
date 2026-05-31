@@ -73,10 +73,11 @@ const currentBackgroundProps = computed(() => backgroundPropsMap.value[currentBa
         class="h-full w-full"
       />
     </div>
+    <div class="shell-filter absolute inset-0"></div>
     <!-- 主容器 -->
-    <div class="z-50 flex w-full flex-col px-36 py-6">
+    <div class="z-50 flex w-full flex-col px-6 py-5 xl:px-16">
       <div
-        class="glass-container flex flex-1 flex-col overflow-hidden backdrop-blur-md backdrop-filter"
+        class="shell-frame glass-container flex flex-1 flex-col overflow-hidden backdrop-blur-md backdrop-filter"
       >
         <!-- 头部区域 -->
         <Header />
@@ -101,6 +102,23 @@ const currentBackgroundProps = computed(() => backgroundPropsMap.value[currentBa
   </div>
 </template>
 <style>
+.shell-filter {
+  background:
+    radial-gradient(circle at top left, rgba(77, 163, 255, 0.18), transparent 26%),
+    linear-gradient(180deg, rgba(246, 251, 255, 0.28) 0%, rgba(246, 251, 255, 0.1) 100%);
+  pointer-events: none;
+}
+
+html.dark .shell-filter {
+  background:
+    radial-gradient(circle at top left, rgba(77, 163, 255, 0.16), transparent 26%),
+    linear-gradient(180deg, rgba(5, 10, 20, 0.24) 0%, rgba(5, 10, 20, 0.12) 100%);
+}
+
+.shell-frame {
+  min-height: calc(100vh - 2.5rem);
+}
+
 .fade-transform-enter-active,
 .fade-transform-leave-active {
   transition: all 0.3s ease;

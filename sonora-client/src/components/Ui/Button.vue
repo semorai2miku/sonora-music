@@ -155,11 +155,11 @@ const variantClasses = computed(() => {
     case 'glass':
       return 'glass-button text-primary active:scale-95'
     case 'solid':
-      return 'bg-pink-500 text-white shadow-lg shadow-pink-500/25 hover:bg-pink-600 hover:shadow-xl hover:shadow-pink-500/30'
+      return 'bg-sky-500 text-white shadow-lg shadow-sky-500/25 hover:bg-sky-600 hover:shadow-xl hover:shadow-sky-500/30'
     case 'soft':
-      return 'bg-white/10 text-primary backdrop-blur-sm hover:bg-white/20 hover:scale-110'
+      return 'bg-[rgba(31,124,255,0.12)] text-primary backdrop-blur-sm hover:bg-[rgba(31,124,255,0.18)]'
     case 'ghost':
-      return 'text-primary/70 hover:text-primary bg-transparent hover:bg-white/5'
+      return 'text-primary/70 hover:text-primary bg-transparent hover:bg-hover-glass'
     case 'text':
       return 'text-primary/70 hover:text-primary bg-transparent p-0'
     case 'gradient':
@@ -283,13 +283,13 @@ const gradientStyle = computed(() => {
 @reference "../../style/tailwind.css";
 .play-btn {
   @apply flex items-center justify-center rounded-full text-white shadow-2xl transition-all duration-300;
-  background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
-  box-shadow: 0 6px 24px rgba(236, 72, 153, 0.3);
+  background: linear-gradient(135deg, #08111c 0%, #1f7cff 58%, #4da3ff 100%);
+  box-shadow: 0 6px 24px rgba(31, 124, 255, 0.28);
 }
 
 .play-btn:hover {
   @apply scale-110;
-  box-shadow: 0 8px 32px rgba(236, 72, 153, 0.4);
+  box-shadow: 0 8px 32px rgba(31, 124, 255, 0.38);
 }
 .play-btn.loading {
   @apply cursor-wait opacity-70;
@@ -330,7 +330,7 @@ const gradientStyle = computed(() => {
   position: absolute;
   inset: -2px;
   border-radius: inherit;
-  background: linear-gradient(135deg, #ec4899, #8b5cf6, #ec4899);
+  background: linear-gradient(135deg, #08111c, #1f7cff, #4da3ff);
   background-size: 200% 200%;
   opacity: 0;
   z-index: -1;

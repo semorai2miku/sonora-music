@@ -387,13 +387,13 @@ const totalDuration = computed(() => {
    Header
    ═══════════════════════════════════ */
 .bubble-header {
-  background: linear-gradient(135deg, rgba(236, 72, 153, 0.1), rgba(139, 92, 246, 0.1));
+  background: linear-gradient(135deg, rgba(31, 124, 255, 0.1), rgba(77, 163, 255, 0.1));
   border-bottom: 1px solid var(--glass-border-subtle);
 }
 
 .header-icon {
-  background: linear-gradient(135deg, #ec4899, #8b5cf6);
-  box-shadow: 0 4px 14px rgba(236, 72, 153, 0.35);
+  background: linear-gradient(135deg, #1f7cff, #4da3ff);
+  box-shadow: 0 4px 14px rgba(31, 124, 255, 0.35);
 }
 
 .bubble-title {
@@ -480,7 +480,7 @@ const totalDuration = computed(() => {
   font-weight: 700;
   line-height: 1;
   color: white;
-  background: linear-gradient(135deg, #ec4899, #8b5cf6);
+  background: linear-gradient(135deg, #1f7cff, #4da3ff);
   border-radius: 10px;
 }
 
@@ -507,12 +507,12 @@ const totalDuration = computed(() => {
   bottom: 18%;
   width: 3px;
   border-radius: 0 3px 3px 0;
-  background: linear-gradient(180deg, #ec4899, #8b5cf6);
+  background: linear-gradient(180deg, #1f7cff, #4da3ff);
 }
 
 .playlist-item.item-dragover {
-  background: rgba(236, 72, 153, 0.08);
-  box-shadow: inset 0 -2px 0 #ec4899;
+  background: rgba(31, 124, 255, 0.08);
+  box-shadow: inset 0 -2px 0 #1f7cff;
 }
 
 .playlist-item.item-dragging {
@@ -542,12 +542,12 @@ const totalDuration = computed(() => {
 }
 
 .playlist-checkbox:hover {
-  border-color: #ec4899;
+  border-color: #1f7cff;
 }
 
 .playlist-checkbox:checked {
   border-color: transparent;
-  background: linear-gradient(135deg, #ec4899, #8b5cf6);
+  background: linear-gradient(135deg, #1f7cff, #4da3ff);
 }
 
 .playlist-checkbox:checked::after {
@@ -565,7 +565,7 @@ const totalDuration = computed(() => {
    Cover
    ═══════════════════════════════════ */
 .cover-fallback {
-  background: linear-gradient(135deg, rgba(236, 72, 153, 0.6), rgba(139, 92, 246, 0.6));
+  background: linear-gradient(135deg, rgba(31, 124, 255, 0.6), rgba(77, 163, 255, 0.6));
 }
 
 /* ═══════════════════════════════════
@@ -576,7 +576,7 @@ const totalDuration = computed(() => {
 }
 
 .song-name-active {
-  background: linear-gradient(135deg, #ec4899, #a855f6);
+  background: linear-gradient(135deg, #1f7cff, #4da3ff);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -637,7 +637,7 @@ const totalDuration = computed(() => {
 .playing-bars .bar {
   width: 3px;
   border-radius: 2px;
-  background: linear-gradient(180deg, #ec4899, #a855f6);
+  background: linear-gradient(180deg, #1f7cff, #4da3ff);
   animation: playing 0.8s ease-in-out infinite;
 }
 

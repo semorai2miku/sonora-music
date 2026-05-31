@@ -1,0 +1,274 @@
+@font-face {
+  font-family: "Orbitron";
+  src: url("/branding/Orbitron-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Orbitron";
+  src: url("/branding/Orbitron-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+}
+
+:root {
+  --sonora-ink: #050a14;
+  --sonora-navy: #08111c;
+  --sonora-blue: #1f7cff;
+  --sonora-blue-soft: #4da3ff;
+  --sonora-white: #f6fbff;
+  --sonora-surface: rgba(255, 255, 255, 0.9);
+  --sonora-surface-strong: rgba(255, 255, 255, 0.96);
+  --sonora-surface-muted: rgba(31, 124, 255, 0.04);
+  --sonora-border: rgba(8, 17, 28, 0.08);
+  --sonora-border-strong: rgba(8, 17, 28, 0.14);
+  --sonora-shadow-sm: 0 14px 30px rgba(8, 17, 28, 0.06);
+  --sonora-shadow-lg: 0 22px 58px rgba(8, 17, 28, 0.12);
+  --el-color-primary: var(--sonora-blue);
+  --el-border-radius-base: 12px;
+  --el-border-radius-small: 10px;
+  --el-border-radius-round: 999px;
+  --el-text-color-primary: rgba(5, 10, 20, 0.92);
+  --el-text-color-regular: rgba(5, 10, 20, 0.66);
+  --el-text-color-secondary: rgba(5, 10, 20, 0.5);
+  --el-border-color: var(--sonora-border);
+  --el-border-color-light: rgba(8, 17, 28, 0.06);
+  --el-fill-color-blank: #fff;
+  --el-fill-color-light: rgba(31, 124, 255, 0.06);
+  --el-fill-color-lighter: rgba(31, 124, 255, 0.04);
+  --el-fill-color-extra-light: rgba(31, 124, 255, 0.03);
+  --el-bg-color: rgba(255, 255, 255, 0.86);
+  --el-bg-color-overlay: rgba(255, 255, 255, 0.96);
+  --el-mask-color: rgba(5, 10, 20, 0.36);
+  --el-disabled-bg-color: rgba(8, 17, 28, 0.03);
+}
+
+html.dark {
+  --sonora-surface: rgba(10, 19, 33, 0.9);
+  --sonora-surface-strong: rgba(10, 19, 33, 0.96);
+  --sonora-surface-muted: rgba(77, 163, 255, 0.08);
+  --sonora-border: rgba(246, 251, 255, 0.08);
+  --sonora-border-strong: rgba(246, 251, 255, 0.14);
+  --sonora-shadow-sm: 0 18px 36px rgba(0, 0, 0, 0.28);
+  --sonora-shadow-lg: 0 28px 64px rgba(0, 0, 0, 0.4);
+  --el-text-color-primary: rgba(246, 251, 255, 0.94);
+  --el-text-color-regular: rgba(246, 251, 255, 0.68);
+  --el-text-color-secondary: rgba(246, 251, 255, 0.48);
+  --el-border-color: var(--sonora-border);
+  --el-border-color-light: rgba(246, 251, 255, 0.06);
+  --el-fill-color-blank: #091223;
+  --el-fill-color-light: rgba(77, 163, 255, 0.12);
+  --el-fill-color-lighter: rgba(77, 163, 255, 0.08);
+  --el-fill-color-extra-light: rgba(77, 163, 255, 0.05);
+  --el-bg-color: rgba(9, 18, 35, 0.84);
+  --el-bg-color-overlay: rgba(7, 13, 24, 0.96);
+  --el-mask-color: rgba(0, 0, 0, 0.45);
+  --el-disabled-bg-color: rgba(255, 255, 255, 0.02);
+}
+
+html,
+body,
+#app {
+  background: transparent;
+  color: var(--el-text-color-primary);
+}
+
+body {
+  font-family:
+    "Inter",
+    "PingFang SC",
+    "Microsoft YaHei",
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(77, 163, 255, 0.18), transparent 28%),
+    radial-gradient(circle at right top, rgba(31, 124, 255, 0.1), transparent 24%),
+    linear-gradient(180deg, #eef4fb 0%, #f7faff 44%, #edf3fa 100%);
+}
+
+html.dark body {
+  background:
+    radial-gradient(circle at top left, rgba(77, 163, 255, 0.16), transparent 28%),
+    radial-gradient(circle at right top, rgba(31, 124, 255, 0.12), transparent 20%),
+    linear-gradient(180deg, #040912 0%, #07111d 44%, #050a14 100%);
+}
+
+.brand-font {
+  font-family:
+    "Orbitron",
+    "Inter",
+    "PingFang SC",
+    "Microsoft YaHei",
+    sans-serif;
+  letter-spacing: 0.08em;
+}
+
+.main-container,
+.app-main,
+.app-main-nofixed-header {
+  background: transparent !important;
+}
+
+.app-main,
+.app-main-nofixed-header {
+  padding: 24px;
+}
+
+.fixed-header {
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.navbar,
+.horizontal-header {
+  background: rgba(255, 255, 255, 0.84) !important;
+  border-bottom: 1px solid var(--sonora-border);
+  box-shadow: 0 12px 30px rgba(8, 17, 28, 0.05);
+}
+
+html.dark .navbar,
+html.dark .horizontal-header {
+  background: rgba(5, 10, 20, 0.82) !important;
+  border-bottom-color: var(--sonora-border);
+  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.24);
+}
+
+.sidebar-container {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.sidebar-logo-container {
+  border-bottom: 1px solid var(--sonora-border);
+}
+
+.el-card,
+.pure-dialog .el-dialog,
+.el-drawer,
+.el-message-box,
+.pure-search-dialog .el-dialog,
+.el-dropdown-menu,
+.el-popover.el-popper,
+.el-popper.is-light {
+  background: var(--sonora-surface-strong) !important;
+  border: 1px solid var(--sonora-border) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--sonora-shadow-lg) !important;
+}
+
+.el-card,
+.pure-dialog .el-dialog,
+.el-drawer {
+  overflow: hidden;
+}
+
+.el-card__header,
+.el-dialog__header,
+.el-drawer__header {
+  border-bottom: 1px solid var(--sonora-border);
+}
+
+.el-card__body {
+  color: var(--el-text-color-primary);
+}
+
+.el-table {
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: rgba(31, 124, 255, 0.06);
+  --el-table-border-color: var(--sonora-border);
+  --el-table-header-text-color: var(--el-text-color-primary);
+  --el-table-row-hover-bg-color: rgba(31, 124, 255, 0.06);
+  --el-table-current-row-bg-color: rgba(31, 124, 255, 0.08);
+  color: var(--el-text-color-primary);
+}
+
+html.dark .el-table {
+  --el-table-header-bg-color: rgba(77, 163, 255, 0.1);
+  --el-table-row-hover-bg-color: rgba(77, 163, 255, 0.08);
+  --el-table-current-row-bg-color: rgba(77, 163, 255, 0.12);
+}
+
+.el-table th.el-table__cell {
+  font-weight: 600;
+}
+
+.el-table td.el-table__cell,
+.el-table th.el-table__cell {
+  border-bottom-color: var(--sonora-border);
+}
+
+.el-input__wrapper,
+.el-textarea__inner,
+.el-select__wrapper,
+.el-date-editor.el-input__wrapper,
+.el-input-number {
+  border-radius: 12px !important;
+  box-shadow: 0 0 0 1px var(--sonora-border) inset !important;
+  background: rgba(255, 255, 255, 0.78) !important;
+}
+
+html.dark .el-input__wrapper,
+html.dark .el-textarea__inner,
+html.dark .el-select__wrapper,
+html.dark .el-date-editor.el-input__wrapper,
+html.dark .el-input-number {
+  background: rgba(9, 18, 35, 0.9) !important;
+}
+
+.el-input__wrapper.is-focus,
+.el-select__wrapper.is-focused,
+.el-textarea__inner:focus,
+.el-input-number:focus-within {
+  box-shadow:
+    0 0 0 1px var(--el-color-primary) inset,
+    0 0 0 4px rgba(31, 124, 255, 0.12) !important;
+}
+
+.el-button {
+  border-radius: 12px !important;
+  font-weight: 600;
+}
+
+.el-button--primary {
+  box-shadow: 0 10px 24px rgba(31, 124, 255, 0.22);
+}
+
+.el-button--primary:hover {
+  box-shadow: 0 16px 28px rgba(31, 124, 255, 0.3);
+}
+
+.el-tag {
+  border-radius: 999px;
+}
+
+.el-pagination button,
+.el-pagination .el-pager li {
+  border-radius: 10px;
+}
+
+.el-empty__description p {
+  color: var(--el-text-color-secondary);
+}
+
+.layout-footer {
+  color: var(--el-text-color-secondary);
+}
+
+.layout-footer a {
+  color: var(--el-color-primary);
+}
+
+.navbar-bg-hover:hover,
+.set-icon:hover,
+.fullscreen-icon:hover {
+  background: rgba(31, 124, 255, 0.08) !important;
+}
+
+html.dark .navbar-bg-hover:hover,
+html.dark .set-icon:hover,
+html.dark .fullscreen-icon:hover {
+  background: rgba(77, 163, 255, 0.12) !important;
+}

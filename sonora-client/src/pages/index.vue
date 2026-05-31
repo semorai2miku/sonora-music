@@ -133,7 +133,7 @@ onMounted(() => {
         <section v-if="recommendPlaylists.length" v-scroll-in="{ direction: 'up', delay: 0.1 }">
           <div class="mb-6 flex items-baseline justify-between">
             <h2 class="text-primary flex items-center gap-2.5 text-xl font-bold tracking-tight">
-              <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-linear-to-br from-pink-500 to-purple-600">
+              <span class="section-icon-badge">
                 <span class="icon-[mdi--playlist-star] h-5 w-5 text-white"></span>
               </span>
               {{ t('home.recommendPlaylists') }}
@@ -161,7 +161,7 @@ onMounted(() => {
         <section v-if="artists.length" v-scroll-in="{ direction: 'up', delay: 0.1 }">
           <div class="mb-6 flex items-baseline justify-between">
             <h2 class="text-primary flex items-center gap-2.5 text-xl font-bold tracking-tight">
-              <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-linear-to-br from-amber-500 to-orange-600">
+              <span class="section-icon-badge">
                 <span class="icon-[mdi--account-music] h-5 w-5 text-white"></span>
               </span>
               {{ t('components.discover.hotArtists') }}
@@ -195,7 +195,7 @@ onMounted(() => {
         <section v-if="hotSongs.length" v-scroll-in="{ direction: 'up', delay: 0.1 }">
           <div class="mb-6 flex items-baseline justify-between">
             <h2 class="text-primary flex items-center gap-2.5 text-xl font-bold tracking-tight">
-              <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-linear-to-br from-cyan-500 to-blue-600">
+              <span class="section-icon-badge">
                 <span class="icon-[mdi--music-note-plus] h-5 w-5 text-white"></span>
               </span>
               {{ t('home.hotSongs') }}
@@ -230,7 +230,7 @@ onMounted(() => {
         <section v-if="mvs.length" v-scroll-in="{ direction: 'up', delay: 0.1 }">
           <div class="mb-6 flex items-baseline justify-between">
             <h2 class="text-primary flex items-center gap-2.5 text-xl font-bold tracking-tight">
-              <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-linear-to-br from-rose-500 to-red-600">
+              <span class="section-icon-badge">
                 <span class="icon-[mdi--video] h-5 w-5 text-white"></span>
               </span>
               {{ t('components.discover.recommendMv') }}
@@ -289,6 +289,17 @@ onMounted(() => {
 .songs-container {
   background: var(--glass-bg-card);
   border: 1px solid var(--glass-border-subtle);
+}
+
+.section-icon-badge {
+  display: inline-flex;
+  height: 2rem;
+  width: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.85rem;
+  background: linear-gradient(135deg, rgba(31, 124, 255, 0.96), rgba(77, 163, 255, 0.86));
+  box-shadow: 0 10px 24px rgba(31, 124, 255, 0.18);
 }
 
 /* ── 歌曲分隔线 ── */

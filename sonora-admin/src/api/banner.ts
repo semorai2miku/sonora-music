@@ -34,6 +34,14 @@ type ItemResult = {
   data: BannerItem;
 };
 
+type BatchDeleteResult = {
+  code: number;
+  data: {
+    count: number;
+    deleted: Array<{ id: number; name: string }>;
+  };
+};
+
 export const getBannerPage = (params: object) =>
   http.request<PageResult>("get", "/api/admin/banners", { params });
 
@@ -45,6 +53,11 @@ export const updateBanner = (id: number, data: BannerPayload) =>
 
 export const deleteBanner = (id: number) =>
   http.request("delete", `/api/admin/banners/${id}`);
+
+export const batchDeleteBanners = (ids: number[]) =>
+  http.request<BatchDeleteResult>("post", "/api/admin/banners/batch-delete", {
+    data: { ids }
+  });
 
 export const toggleBannerStatus = (id: number, status: number) =>
   http.request<ItemResult>("put", `/api/admin/banners/${id}/status?status=${status}`);

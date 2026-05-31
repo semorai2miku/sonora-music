@@ -18,7 +18,7 @@ const props = withDefaults(defineProps<AudioVisualizerProps>(), {
   barWidth: 4,
   barGap: 2,
   color: '#3b82f6',
-  gradientColors: () => ['#3b82f6', '#8b5cf6', '#ec4899'],
+  gradientColors: () => ['#08111c', '#1f7cff', '#4da3ff'],
   showMirror: false,
   height: 200
 })

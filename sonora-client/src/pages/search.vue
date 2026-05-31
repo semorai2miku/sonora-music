@@ -284,7 +284,7 @@ const maxScore = computed(() => {
               class="flex items-center gap-3 rounded-2xl border px-5 py-3.5 backdrop-blur-xl transition-all duration-300"
               :class="[
                 inputFocused
-                  ? 'border-pink-500/30 bg-white/[0.07] shadow-[0_0_30px_rgba(236,72,153,0.08),0_8px_32px_rgba(0,0,0,0.12)]'
+                  ? 'border-pink-500/30 bg-white/[0.07] shadow-[0_0_30px_rgba(31,124,255,0.08),0_8px_32px_rgba(0,0,0,0.12)]'
                   : 'border-white/[0.06] bg-white/[0.035] shadow-[0_2px_12px_rgba(0,0,0,0.08)]'
               ]"
             >
@@ -438,11 +438,11 @@ const maxScore = computed(() => {
 <style scoped>
 /* ═══ 背景氛围光 ═══ */
 .ambient-a {
-  background: radial-gradient(circle, rgba(236, 72, 153, 0.07) 0%, transparent 65%);
+  background: radial-gradient(circle, rgba(31, 124, 255, 0.07) 0%, transparent 65%);
   animation: ambient-float 12s ease-in-out infinite;
 }
 .ambient-b {
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.05) 0%, transparent 65%);
+  background: radial-gradient(circle, rgba(77, 163, 255, 0.05) 0%, transparent 65%);
   animation: ambient-float 15s ease-in-out infinite reverse;
 }
 @keyframes ambient-float {
@@ -453,11 +453,11 @@ const maxScore = computed(() => {
 
 /* ═══ 搜索按钮渐变 ═══ */
 .search-btn {
-  background: linear-gradient(135deg, #ec4899, #8b5cf6);
-  box-shadow: 0 4px 16px rgba(236, 72, 153, 0.25);
+  background: linear-gradient(135deg, #1f7cff, #4da3ff);
+  box-shadow: 0 4px 16px rgba(31, 124, 255, 0.25);
 }
 .search-btn:hover {
-  box-shadow: 0 6px 24px rgba(236, 72, 153, 0.35);
+  box-shadow: 0 6px 24px rgba(31, 124, 255, 0.35);
   filter: brightness(1.1);
 }
 

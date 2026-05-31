@@ -1,0 +1,43 @@
+<svg width="800" height="190" viewBox="0 0 800 190" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      @font-face {
+        font-family: 'Orbitron';
+        src: url('./Orbitron-Bold.ttf') format('truetype');
+        font-weight: 700;
+      }
+
+      @font-face {
+        font-family: 'Orbitron';
+        src: url('./Orbitron-Regular.ttf') format('truetype');
+        font-weight: 400;
+      }
+
+      .brand {
+        font-family: 'Orbitron', sans-serif;
+        font-size: 110px;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+      }
+
+      .subline {
+        font-family: 'Orbitron', sans-serif;
+        font-size: 24px;
+        font-weight: 400;
+        letter-spacing: 0.48em;
+      }
+    </style>
+
+    <linearGradient id="ruleGradient" x1="30" y1="154" x2="514" y2="154" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#08111C" />
+      <stop offset="0.5" stop-color="#1F7CFF" />
+      <stop offset="1" stop-color="#4DA3FF" />
+    </linearGradient>
+  </defs>
+
+  <text x="30" y="96" class="brand">
+    <tspan fill="#08111C">SON</tspan><tspan fill="#1F7CFF">ORA</tspan>
+  </text>
+  <text x="35" y="140" class="subline" fill="#50657F">MUSIC PLATFORM</text>
+  <rect x="30" y="152" width="484" height="8" rx="4" fill="url(#ruleGradient)" />
+</svg>

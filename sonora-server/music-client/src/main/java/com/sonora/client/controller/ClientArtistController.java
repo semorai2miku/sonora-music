@@ -1,6 +1,7 @@
 package com.sonora.client.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.sonora.common.constant.Constants;
 import com.sonora.common.result.R;
 import com.sonora.mapper.AlbumMapper;
 import com.sonora.mapper.ArtistMapper;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.util.StringUtils;
 
 @Tag(name = "客户端-歌手", description = "歌手详情、歌曲")
 @RestController
@@ -46,6 +48,7 @@ public class ClientArtistController {
                         .eq(Song::getStatus, 1)
                         .orderByDesc(Song::getPlayCount)
                         .last("LIMIT 50"));
+        songs.forEach(song -> song.setCover(coverOf(song.getCover())));
 
         // 歌手的专辑
         List<Album> albums = albumMapper.selectList(
@@ -53,6 +56,7 @@ public class ClientArtistController {
                         .eq(Album::getArtistId, id)
                         .eq(Album::getStatus, 1)
                         .orderByDesc(Album::getCreatedAt));
+        albums.forEach(album -> album.setCover(coverOf(album.getCover())));
 
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("id", artist.getId());
@@ -75,5 +79,9 @@ public class ClientArtistController {
             wrapper.eq(Artist::getRegion, region);
         }
         return R.ok(artistMapper.selectList(wrapper));
+    }
+
+    private String coverOf(String cover) {
+        return StringUtils.hasText(cover) ? cover : Constants.DEFAULT_COVER;
     }
 }

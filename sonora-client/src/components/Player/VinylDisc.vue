@@ -144,7 +144,7 @@ const flipCover = (newCover: string) => {
     vinylLabelRef.value,
     { boxShadow: 'inset 0 2px 20px rgba(0, 0, 0, 0.3)' },
     {
-      boxShadow: 'inset 0 2px 20px rgba(0, 0, 0, 0.3), 0 0 30px rgba(236, 72, 153, 0.5)',
+      boxShadow: 'inset 0 2px 20px rgba(0, 0, 0, 0.3), 0 0 30px rgba(31, 124, 255, 0.5)',
       duration: 0.2,
       yoyo: true,
       repeat: 1,
@@ -320,7 +320,7 @@ defineExpose({
 .vinyl-label.flipping {
   box-shadow:
     inset 0 2px 20px rgba(0, 0, 0, 0.3),
-    0 0 40px rgba(236, 72, 153, 0.6);
+    0 0 40px rgba(31, 124, 255, 0.6);
 }
 
 .spindle {

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // 移动端头部：左侧 Logo/标题，右侧搜索与登录入口
-const router = useRouter()
 import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/stores/modules/user'
+const router = useRouter()
 const { t } = useI18n()
 const userStore = useUserStore()
 
@@ -18,8 +18,13 @@ const { showLogin } = toRefs(state)
   <header class="glass-nav flex items-center justify-between px-3 py-2">
     <div class="flex items-center gap-2">
       <router-link to="/" class="flex items-center gap-2">
-        <img src="/logo.svg" alt="logo" class="w-9 rounded" />
-        <h1 class="text-primary text-base font-semibold">Glass Music Player</h1>
+        <span class="brand-badge">
+          <img src="/branding/sonora-logo-icon.svg" alt="logo" class="w-4.5" />
+        </span>
+        <div class="flex flex-col leading-none">
+          <h1 class="brand-font text-primary text-sm font-semibold">SONORA</h1>
+          <span class="text-primary/45 text-[10px]">Music</span>
+        </div>
       </router-link>
     </div>
     <div class="flex items-center gap-2">
@@ -44,3 +49,16 @@ const { showLogin } = toRefs(state)
   </header>
   <LoginDialog v-if="showLogin" @close="showLogin = false" />
 </template>
+
+<style scoped>
+.brand-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.15rem;
+  height: 2.15rem;
+  border-radius: 0.8rem;
+  background: linear-gradient(135deg, rgba(31, 124, 255, 0.18), rgba(77, 163, 255, 0.08));
+  box-shadow: 0 8px 18px rgba(31, 124, 255, 0.15);
+}
+</style>

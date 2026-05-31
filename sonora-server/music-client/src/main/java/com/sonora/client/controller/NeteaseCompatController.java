@@ -1,6 +1,7 @@
 package com.sonora.client.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.sonora.common.constant.Constants;
 import com.sonora.mapper.*;
 import com.sonora.model.entity.*;
 import org.springframework.util.StringUtils;
@@ -68,15 +69,9 @@ public class NeteaseCompatController {
             List<Song> songs = songMapper.selectList(
                     new LambdaQueryWrapper<Song>().like(Song::getName, keywords)
                             .eq(Song::getStatus, 1).last("LIMIT " + limit));
-            result.put("songs", songs.stream().map(s -> {
-                Map<String, Object> m = new LinkedHashMap<>();
-                m.put("id", s.getId());
-                m.put("name", s.getName());
-                m.put("dt", s.getDuration() * 1000);
-                m.put("al", Map.of("id", s.getAlbumId() != null ? s.getAlbumId() : 0, "name", ""));
-                m.put("ar", List.of(Map.of("id", 1, "name", s.getArtistIds())));
-                return m;
-            }).toList());
+            Map<Long, Album> albumMap = albumMapFromSongs(songs);
+            Map<Long, Artist> artistMap = artistMapFromSongs(songs);
+            result.put("songs", songs.stream().map(song -> trackOf(song, albumMap, artistMap)).toList());
         }
 
         return Map.of("code", 200, "result", result);
@@ -110,15 +105,11 @@ public class NeteaseCompatController {
         List<Long> idList = Arrays.stream(ids.split(","))
                 .map(String::trim).map(Long::parseLong).toList();
         List<Song> songs = songMapper.selectBatchIds(idList);
-        List<Map<String, Object>> list = songs.stream().map(s -> {
-            Map<String, Object> m = new LinkedHashMap<>();
-            m.put("id", s.getId());
-            m.put("name", s.getName());
-            m.put("dt", s.getDuration() * 1000);
-            m.put("al", Map.of("id", s.getAlbumId() != null ? s.getAlbumId() : 0, "picUrl", s.getCover()));
-            m.put("ar", List.of(Map.of("id", 1, "name", s.getArtistIds())));
-            return m;
-        }).toList();
+        Map<Long, Album> albumMap = albumMapFromSongs(songs);
+        Map<Long, Artist> artistMap = artistMapFromSongs(songs);
+        List<Map<String, Object>> list = songs.stream()
+                .map(song -> trackOf(song, albumMap, artistMap))
+                .toList();
         return Map.of("code", 200, "songs", list);
     }
 
@@ -145,16 +136,12 @@ public class NeteaseCompatController {
                         .orderByAsc(PlaylistSong::getSort));
         List<Long> songIds = psList.stream().map(PlaylistSong::getSongId).toList();
         List<Song> songs = songIds.isEmpty() ? List.of() : orderedSongs(songIds);
+        Map<Long, Album> albumMap = albumMapFromSongs(songs);
+        Map<Long, Artist> artistMap = artistMapFromSongs(songs);
 
-        List<Map<String, Object>> tracks = songs.stream().map(s -> {
-            Map<String, Object> t = new LinkedHashMap<>();
-            t.put("id", s.getId());
-            t.put("name", s.getName());
-            t.put("dt", s.getDuration() * 1000);
-            t.put("al", Map.of("id", s.getAlbumId() != null ? s.getAlbumId() : 0, "picUrl", s.getCover()));
-            t.put("ar", List.of(Map.of("id", 1, "name", s.getArtistIds())));
-            return t;
-        }).toList();
+        List<Map<String, Object>> tracks = songs.stream()
+                .map(song -> trackOf(song, albumMap, artistMap))
+                .toList();
 
         Map<String, Object> pl = new LinkedHashMap<>();
         pl.put("id", playlist.getId());
@@ -179,16 +166,12 @@ public class NeteaseCompatController {
                         .orderByAsc(PlaylistSong::getSort));
         List<Long> songIds = psList.stream().map(PlaylistSong::getSongId).toList();
         List<Song> songs = songIds.isEmpty() ? List.of() : orderedSongs(songIds);
+        Map<Long, Album> albumMap = albumMapFromSongs(songs);
+        Map<Long, Artist> artistMap = artistMapFromSongs(songs);
 
-        List<Map<String, Object>> tracks = songs.stream().map(s -> {
-            Map<String, Object> t = new LinkedHashMap<>();
-            t.put("id", s.getId());
-            t.put("name", s.getName());
-            t.put("dt", s.getDuration() * 1000);
-            t.put("al", Map.of("id", s.getAlbumId() != null ? s.getAlbumId() : 0, "picUrl", s.getCover()));
-            t.put("ar", List.of(Map.of("id", 1, "name", s.getArtistIds())));
-            return t;
-        }).toList();
+        List<Map<String, Object>> tracks = songs.stream()
+                .map(song -> trackOf(song, albumMap, artistMap))
+                .toList();
 
         return Map.of("code", 200, "songs", tracks);
     }
@@ -224,16 +207,12 @@ public class NeteaseCompatController {
         List<Song> songs = songMapper.selectList(
                 new LambdaQueryWrapper<Song>().eq(Song::getStatus, 1)
                         .orderByDesc(Song::getCreatedAt).last("LIMIT 30"));
+        Map<Long, Album> albumMap = albumMapFromSongs(songs);
+        Map<Long, Artist> artistMap = artistMapFromSongs(songs);
 
-        List<Map<String, Object>> list = songs.stream().map(s -> {
-            Map<String, Object> m = new LinkedHashMap<>();
-            m.put("id", s.getId());
-            m.put("name", s.getName());
-            m.put("dt", s.getDuration() * 1000);
-            m.put("al", Map.of("id", s.getAlbumId() != null ? s.getAlbumId() : 0, "picUrl", s.getCover()));
-            m.put("ar", List.of(Map.of("id", 1, "name", s.getArtistIds())));
-            return m;
-        }).toList();
+        List<Map<String, Object>> list = songs.stream()
+                .map(song -> trackOf(song, albumMap, artistMap))
+                .toList();
 
         return Map.of("code", 200, "data", Map.of("dailySongs", list));
     }
@@ -267,15 +246,11 @@ public class NeteaseCompatController {
                         .eq(Song::getStatus, 1)
                         .orderByDesc(Song::getPlayCount)
                         .last("LIMIT 50"));
-        List<Map<String, Object>> list = songs.stream().map(s -> {
-            Map<String, Object> m = new LinkedHashMap<>();
-            m.put("id", s.getId());
-            m.put("name", s.getName());
-            m.put("dt", s.getDuration() * 1000);
-            m.put("al", Map.of("id", s.getAlbumId() != null ? s.getAlbumId() : 0, "picUrl", s.getCover()));
-            m.put("ar", List.of(Map.of("id", 1, "name", s.getArtistIds())));
-            return m;
-        }).toList();
+        Map<Long, Album> albumMap = albumMapFromSongs(songs);
+        Map<Long, Artist> artistMap = artistMapFromSongs(songs);
+        List<Map<String, Object>> list = songs.stream()
+                .map(song -> trackOf(song, albumMap, artistMap))
+                .toList();
         return Map.of("code", 200, "songs", list);
     }
 
@@ -286,19 +261,33 @@ public class NeteaseCompatController {
             return Map.of("code", 404, "message", "专辑不存在");
         }
         List<Song> songs = songMapper.selectList(
-                new LambdaQueryWrapper<Song>().eq(Song::getAlbumId, id).eq(Song::getStatus, 1));
+                new LambdaQueryWrapper<Song>()
+                        .eq(Song::getAlbumId, id)
+                        .eq(Song::getStatus, 1)
+                        .orderByAsc(Song::getId));
+        Map<Long, Album> albumMap = albumMapFromSongs(songs);
+        albumMap.putIfAbsent(album.getId(), album);
+        Map<Long, Artist> artistMap = artistMapFromSongs(songs);
+        Artist albumArtist = album.getArtistId() == null ? null : artistMapper.selectById(album.getArtistId());
+        List<Map<String, Object>> tracks = songs.stream()
+                .map(song -> trackOf(song, albumMap, artistMap))
+                .toList();
+
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("id", album.getId());
         data.put("name", album.getName());
-        data.put("picUrl", album.getCover());
-        data.put("songs", songs.stream().map(s -> {
-            Map<String, Object> m = new LinkedHashMap<>();
-            m.put("id", s.getId());
-            m.put("name", s.getName());
-            m.put("dt", s.getDuration() * 1000);
-            return m;
-        }).toList());
-        return Map.of("code", 200, "album", data);
+        data.put("picUrl", coverOf(album));
+        data.put("description", album.getDescription());
+        data.put("publishTime", album.getReleaseDate() == null ? null : album.getReleaseDate().toString());
+        data.put("size", tracks.size());
+        data.put("artistName", albumArtist == null ? "" : albumArtist.getName());
+        data.put("artist", artistItem(albumArtist));
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("code", 200);
+        response.put("album", data);
+        response.put("songs", tracks);
+        return response;
     }
 
     @GetMapping("/record/recent/song")
@@ -334,5 +323,126 @@ public class NeteaseCompatController {
             }
         }
         return songs;
+    }
+
+    private Map<Long, Album> albumMapFromSongs(Collection<Song> songs) {
+        Set<Long> albumIds = songs.stream()
+                .map(Song::getAlbumId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (albumIds.isEmpty()) {
+            return new LinkedHashMap<>();
+        }
+        return albumMapper.selectBatchIds(albumIds).stream()
+                .collect(Collectors.toMap(Album::getId, Function.identity(), (a, b) -> a, LinkedHashMap::new));
+    }
+
+    private Map<Long, Artist> artistMapFromSongs(Collection<Song> songs) {
+        Set<Long> artistIds = songs.stream()
+                .flatMap(song -> parseArtistIds(song.getArtistIds()).stream())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (artistIds.isEmpty()) {
+            return new LinkedHashMap<>();
+        }
+        return artistMapper.selectBatchIds(artistIds).stream()
+                .collect(Collectors.toMap(Artist::getId, Function.identity(), (a, b) -> a, LinkedHashMap::new));
+    }
+
+    private List<Long> parseArtistIds(String artistIds) {
+        if (!StringUtils.hasText(artistIds)) {
+            return List.of();
+        }
+        List<Long> ids = new ArrayList<>();
+        for (String part : artistIds.split(",")) {
+            try {
+                ids.add(Long.parseLong(part.trim()));
+            } catch (NumberFormatException ignored) {
+                // 忽略非法歌手编号，兼容旧数据。
+            }
+        }
+        return ids;
+    }
+
+    private Map<String, Object> trackOf(Song song, Map<Long, Album> albumMap, Map<Long, Artist> artistMap) {
+        Map<String, Object> track = new LinkedHashMap<>();
+        track.put("id", song.getId());
+        track.put("name", song.getName());
+        track.put("dt", song.getDuration() == null ? 0 : song.getDuration() * 1000);
+        track.put("duration", song.getDuration() == null ? 0 : song.getDuration() * 1000);
+        track.put("cover", coverOf(song, albumMap));
+        track.put("albumId", song.getAlbumId() == null ? 0 : song.getAlbumId());
+        track.put("artistIds", song.getArtistIds());
+        track.put("artistName", artistNameOf(song.getArtistIds(), artistMap));
+        track.put("al", albumItem(song, albumMap));
+        track.put("album", albumItem(song, albumMap));
+        track.put("ar", artistItems(song.getArtistIds(), artistMap));
+        track.put("artists", artistItems(song.getArtistIds(), artistMap));
+        return track;
+    }
+
+    private Map<String, Object> albumItem(Song song, Map<Long, Album> albumMap) {
+        Album album = song.getAlbumId() == null ? null : albumMap.get(song.getAlbumId());
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("id", song.getAlbumId() == null ? 0 : song.getAlbumId());
+        item.put("name", album == null || album.getName() == null ? "" : album.getName());
+        item.put("picUrl", coverOf(song, albumMap));
+        return item;
+    }
+
+    private List<Map<String, Object>> artistItems(String artistIds, Map<Long, Artist> artistMap) {
+        List<Long> ids = parseArtistIds(artistIds);
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        List<Map<String, Object>> items = new ArrayList<>();
+        for (Long artistId : ids) {
+            Artist artist = artistMap.get(artistId);
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("id", artistId);
+            item.put("name", artist == null || !StringUtils.hasText(artist.getName())
+                    ? "歌手 " + artistId
+                    : artist.getName());
+            items.add(item);
+        }
+        return items;
+    }
+
+    private String artistNameOf(String artistIds, Map<Long, Artist> artistMap) {
+        List<Map<String, Object>> artists = artistItems(artistIds, artistMap);
+        if (artists.isEmpty()) {
+            return StringUtils.hasText(artistIds) ? artistIds : "";
+        }
+        return artists.stream()
+                .map(item -> String.valueOf(item.get("name")))
+                .collect(Collectors.joining(" / "));
+    }
+
+    private Map<String, Object> artistItem(Artist artist) {
+        Map<String, Object> item = new LinkedHashMap<>();
+        if (artist == null) {
+            item.put("id", 0);
+            item.put("name", "");
+            return item;
+        }
+        item.put("id", artist.getId());
+        item.put("name", artist.getName() == null ? "" : artist.getName());
+        return item;
+    }
+
+    private String coverOf(Song song, Map<Long, Album> albumMap) {
+        if (song != null && StringUtils.hasText(song.getCover())) {
+            return song.getCover();
+        }
+        Album album = song == null || song.getAlbumId() == null ? null : albumMap.get(song.getAlbumId());
+        if (album != null && StringUtils.hasText(album.getCover())) {
+            return album.getCover();
+        }
+        return Constants.DEFAULT_COVER;
+    }
+
+    private String coverOf(Album album) {
+        return album != null && StringUtils.hasText(album.getCover())
+                ? album.getCover()
+                : Constants.DEFAULT_COVER;
     }
 }

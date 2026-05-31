@@ -171,7 +171,7 @@ const isActive = (path: string) => {
       <!-- 滑动指示器 -->
       <div
         ref="indicatorRef"
-        class="nav-indicator pointer-events-none absolute right-2 left-2 rounded-lg bg-white/10 opacity-0"
+        class="nav-indicator pointer-events-none absolute right-2 left-2 rounded-xl bg-[rgba(31,124,255,0.14)] opacity-0"
         style="height: 40px; z-index: 0"
       ></div>
 
@@ -185,10 +185,10 @@ const isActive = (path: string) => {
               v-for="item in sec.items"
               :key="item.to"
               :to="item.to"
-              class="nav-link text-primary/70 hover:text-primary relative z-10 flex items-center space-x-3 rounded-lg p-2 transition-all duration-200"
+              class="nav-link text-primary/70 hover:text-primary relative z-10 flex items-center space-x-3 rounded-xl p-2 transition-all duration-200"
               :class="{
                 'nav-link-active text-primary font-medium': isActive(item.to),
-                'hover:bg-white/5': !isActive(item.to),
+                'hover:bg-hover-glass': !isActive(item.to),
               }"
             >
               <span
@@ -222,11 +222,11 @@ const isActive = (path: string) => {
             v-for="playlist in userPlaylists"
             :key="playlist.id"
             :to="`/playlist/${playlist.id}`"
-            class="group flex cursor-pointer items-center space-x-3 rounded-lg p-2 transition-all duration-200 hover:bg-white/10"
-            :class="{ 'nav-link-active bg-white/10': isActive(`/playlist/${playlist.id}`) }"
+            class="group flex cursor-pointer items-center space-x-3 rounded-xl p-2 transition-all duration-200 hover:bg-hover-glass"
+            :class="{ 'nav-link-active bg-hover-glass': isActive(`/playlist/${playlist.id}`) }"
           >
             <div
-              class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-linear-to-br from-pink-400 to-purple-500 text-xs transition-transform duration-200 group-hover:scale-105"
+              class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-linear-to-br from-slate-900 to-blue-600 text-xs text-white transition-transform duration-200 group-hover:scale-105"
             >
               <img
                 v-if="playlist.cover"
@@ -254,10 +254,10 @@ const isActive = (path: string) => {
             v-for="item in sec.items"
             :key="item.to"
             :to="item.to"
-            class="nav-link text-primary/70 hover:text-primary relative z-10 flex items-center space-x-3 rounded-lg p-2 transition-all duration-200"
+            class="nav-link text-primary/70 hover:text-primary relative z-10 flex items-center space-x-3 rounded-xl p-2 transition-all duration-200"
             :class="{
               'nav-link-active text-primary font-medium': isActive(item.to),
-              'hover:bg-white/5': !isActive(item.to),
+              'hover:bg-hover-glass': !isActive(item.to),
             }"
           >
             <span
@@ -307,7 +307,7 @@ const isActive = (path: string) => {
           type="text"
           maxlength="80"
           placeholder="请输入歌单名称"
-          class="text-primary glass-card mb-3 w-full rounded-xl border border-glass px-4 py-3 text-sm outline-none placeholder:text-white/30 focus:border-pink-400/50"
+          class="text-primary glass-card mb-3 w-full rounded-xl border border-glass px-4 py-3 text-sm outline-none placeholder:text-primary/30 focus:border-sky-400/50"
           @keyup.enter="submitCreatePlaylist"
         />
         <p v-if="createPlaylistError" class="mb-3 text-sm text-red-300">{{ createPlaylistError }}</p>
@@ -348,7 +348,7 @@ const isActive = (path: string) => {
 }
 
 .nav-link:hover::before {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(31, 124, 255, 0.08);
 }
 
 .nav-link-active::before {

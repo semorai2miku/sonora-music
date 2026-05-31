@@ -24,7 +24,7 @@ const {
 </script>
 
 <template>
-  <div class="navbar bg-[#fff] shadow-xs shadow-[rgba(0,21,41,0.08)]">
+  <div class="navbar">
     <LaySidebarTopCollapse
       v-if="device === 'mobile'"
       class="hamburger-container"
@@ -76,52 +76,58 @@ const {
 </template>
 
 <style lang="scss" scoped>
-.navbar {
-  width: 100%;
-  height: 48px;
-  overflow: hidden;
+  .navbar {
+    width: 100%;
+    height: 56px;
+    overflow: hidden;
 
-  .hamburger-container {
-    float: left;
-    height: 100%;
-    line-height: 48px;
-    cursor: pointer;
-  }
+    .hamburger-container {
+      float: left;
+      height: 100%;
+      line-height: 56px;
+      cursor: pointer;
+    }
 
-  .vertical-header-right {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    min-width: 280px;
-    height: 48px;
-    color: #000000d9;
-
-    .el-dropdown-link {
+    .vertical-header-right {
       display: flex;
       align-items: center;
-      justify-content: space-around;
-      height: 48px;
-      padding: 10px;
-      color: #000000d9;
-      cursor: pointer;
+      justify-content: flex-end;
+      min-width: 280px;
+      height: 56px;
+      color: var(--el-text-color-primary);
 
-      p {
-        font-size: 14px;
-      }
+      .el-dropdown-link {
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        gap: 10px;
+        height: 40px;
+        padding: 0 12px;
+        margin-right: 8px;
+        color: var(--el-text-color-primary);
+        cursor: pointer;
+        border-radius: 999px;
 
-      img {
-        width: 22px;
-        height: 22px;
-        border-radius: 50%;
+        p {
+          font-size: 13px;
+          font-weight: 600;
+        }
+
+        img {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          box-shadow: 0 0 0 1px var(--sonora-border);
+        }
       }
     }
-  }
 
-  .breadcrumb-container {
-    float: left;
-    margin-left: 16px;
+    .breadcrumb-container {
+      float: left;
+      margin-left: 20px;
+      line-height: 56px;
+    }
   }
-}
 
 .logout {
   width: 120px;

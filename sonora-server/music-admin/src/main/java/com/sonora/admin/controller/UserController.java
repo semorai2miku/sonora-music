@@ -30,7 +30,7 @@ public class UserController {
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
     private static final Pattern PASSWORD_PATTERN = Pattern.compile("^[\\x21-\\x7E]{6,72}$");
-    private static final Pattern PHONE_PATTERN = Pattern.compile("^[0-9+\\-\\s()]{0,32}$");
+    private static final Pattern PHONE_PATTERN = Pattern.compile("^1[3-9]\\d{9}$");
 
     private final UserMapper userMapper;
     private final RoleMapper roleMapper;
@@ -120,6 +120,7 @@ public class UserController {
         if (existsProfileId(profileId, null)) {
             return R.badRequest("角色ID已存在");
         }
+        userMapper.purgeDeletedIdentity(username, email, profileId);
 
         User user = new User();
         user.setUsername(username);
@@ -324,7 +325,7 @@ public class UserController {
         playlist.setDescription("自动收藏你点红心的歌曲");
         playlist.setPlayCount(0L);
         playlist.setCollectCount(0L);
-        playlist.setStatus(1);
+        playlist.setStatus(0);
         playlistMapper.insert(playlist);
         return playlist;
     }
@@ -416,7 +417,7 @@ public class UserController {
         userFavoriteMapper.delete(new LambdaQueryWrapper<UserFavorite>().eq(UserFavorite::getUserId, id));
         commentMapper.delete(new LambdaQueryWrapper<Comment>().eq(Comment::getUserId, id));
         userRoleMapper.delete(new LambdaQueryWrapper<UserRole>().eq(UserRole::getUserId, id));
-        userMapper.deleteById(id);
+        userMapper.hardDeleteById(id);
     }
 
     private BusinessException friendlyUserWriteException(String action, DataAccessException e) {

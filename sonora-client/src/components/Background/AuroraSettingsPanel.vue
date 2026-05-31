@@ -8,11 +8,11 @@ const { t } = useI18n()
 
 const state = reactive({
   // 颜色1（HEX）
-  color1: settings.aurora.colorStops[0] || '#667eea',
+  color1: settings.aurora.colorStops[0] || '#08111c',
   // 颜色2（HEX）
-  color2: settings.aurora.colorStops[1] || '#764ba2',
+  color2: settings.aurora.colorStops[1] || '#1f7cff',
   // 颜色3（HEX）
-  color3: settings.aurora.colorStops[2] || '#f093fb',
+  color3: settings.aurora.colorStops[2] || '#4da3ff',
   // 颜色位置1（0-1）
   pos1: settings.aurora.colorPositions[0] ?? 0,
   // 颜色位置2（0-1）

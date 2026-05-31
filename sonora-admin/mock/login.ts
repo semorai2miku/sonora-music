@@ -6,19 +6,19 @@ export default defineFakeRoute([
     url: "/login",
     method: "post",
     response: ({ body }) => {
-      if (body.username === "admin") {
+      if (body.username === "sonora-music") {
         return {
           success: true,
           data: {
-            avatar: "https://avatars.githubusercontent.com/u/44761321",
-            username: "admin",
-            nickname: "小铭",
+            avatar: "/default-avatar.svg",
+            username: "sonora-music",
+            nickname: "sonora-music",
             // 一个用户可能有多个角色
             roles: ["admin"],
             // 按钮级别权限
             permissions: ["*:*:*"],
-            accessToken: "eyJhbGciOiJIUzUxMiJ9.admin",
-            refreshToken: "eyJhbGciOiJIUzUxMiJ9.adminRefresh",
+            accessToken: "eyJhbGciOiJIUzUxMiJ9.sonoraMusic",
+            refreshToken: "eyJhbGciOiJIUzUxMiJ9.sonoraMusicRefresh",
             expires: "2030/10/30 00:00:00"
           }
         };

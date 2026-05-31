@@ -239,12 +239,12 @@ watch(
 }
 
 .song-item-active {
-  background: linear-gradient(to right, rgba(236, 72, 153, 0.2), rgba(139, 92, 246, 0.2));
+  background: linear-gradient(to right, rgba(31, 124, 255, 0.2), rgba(77, 163, 255, 0.2));
 }
 
 :root.dark .song-item-active,
 html.dark .song-item-active {
-  background: linear-gradient(to right, rgba(236, 72, 153, 0.25), rgba(139, 92, 246, 0.25));
+  background: linear-gradient(to right, rgba(31, 124, 255, 0.25), rgba(77, 163, 255, 0.25));
 }
 
 .song-item-compact:not(.song-item-active):active {

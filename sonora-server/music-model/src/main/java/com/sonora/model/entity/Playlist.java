@@ -39,7 +39,7 @@ public class Playlist {
     /** 收藏次数 */
     private Long collectCount;
 
-    /** 状态: 1-公开 0-私密 */
+    /** 状态: 1-公开 0-私有 */
     private Integer status;
 
     @TableField(fill = FieldFill.INSERT)

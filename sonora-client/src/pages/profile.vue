@@ -15,6 +15,7 @@ const router = useRouter()
 
 const emailPattern = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/
 const passwordPattern = /^[\x21-\x7E]{6,72}$/
+const phonePattern = /^1[3-9]\d{9}$/
 
 const uploadInputRef = ref<HTMLInputElement | null>(null)
 const cropperVisible = ref(false)
@@ -85,6 +86,10 @@ const validateProfile = () => {
   }
   if (!emailPattern.test(state.form.email.trim())) {
     setError('请输入正确的邮箱')
+    return false
+  }
+  if (state.form.phone.trim() && !phonePattern.test(state.form.phone.trim())) {
+    setError('联系电话需为 11 位大陆手机号')
     return false
   }
   return true
@@ -281,7 +286,8 @@ onMounted(loadProfile)
                 <input
                   v-model="state.form.phone"
                   class="text-primary glass-card w-full rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-purple-400/40"
-                  placeholder="请输入联系电话"
+                  maxlength="11"
+                  placeholder="请输入 11 位手机号"
                 />
               </label>
               <label class="block">

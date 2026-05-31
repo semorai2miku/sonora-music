@@ -3,11 +3,33 @@ body,
 #app {
   height: 100%;
   width: 100%;
-  font-family: 'hanyi';
+  font-family:
+    'Inter',
+    'PingFang SC',
+    'Microsoft YaHei',
+    'Helvetica Neue',
+    Arial,
+    sans-serif;
 }
 
 #app {
   display: flex;
+}
+
+body {
+  margin: 0;
+  color: var(--glass-text-primary);
+  background:
+    radial-gradient(circle at top left, rgba(77, 163, 255, 0.18), transparent 28%),
+    radial-gradient(circle at right top, rgba(31, 124, 255, 0.12), transparent 24%),
+    linear-gradient(180deg, #eff5fc 0%, #f7fbff 46%, #edf4fb 100%);
+}
+
+html.dark body {
+  background:
+    radial-gradient(circle at top left, rgba(77, 163, 255, 0.18), transparent 28%),
+    radial-gradient(circle at right top, rgba(31, 124, 255, 0.14), transparent 20%),
+    linear-gradient(180deg, #040912 0%, #07111d 46%, #050a14 100%);
 }
 
 /* ── 滚动条 ── */
@@ -52,8 +74,25 @@ html.dark * {
 }
 
 @font-face {
-  font-family: 'hanyi';
-  src: url('../assets/hanyi.woff2');
+  font-family: 'Orbitron';
+  src: url('/branding/Orbitron-Regular.ttf') format('truetype');
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: 'Orbitron';
+  src: url('/branding/Orbitron-Bold.ttf') format('truetype');
+  font-weight: 700;
+}
+
+.brand-font {
+  font-family:
+    'Orbitron',
+    'Inter',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
+  letter-spacing: 0.08em;
 }
 
 /* ── 播放动画图标 ── */
@@ -68,7 +107,7 @@ html.dark * {
 
 .bar {
   width: 3px;
-  background-color: #f472b6;
+  background-color: #1f7cff;
   height: 20%;
   border-radius: 1px;
   transition: height 0.2s ease;
