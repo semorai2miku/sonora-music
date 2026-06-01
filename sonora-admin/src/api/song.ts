@@ -62,6 +62,14 @@ export const updateSong = (id: number, data: object) => {
   return http.request<SongResult>("put", `/api/admin/songs/${id}`, { data });
 };
 
+/** 替换歌曲文件并更新信息 */
+export const replaceSong = (id: number, formData: FormData) => {
+  return http.request<SongResult>("post", `/api/admin/songs/${id}/replace`, {
+    data: formData,
+    headers: { "Content-Type": "multipart/form-data" }
+  });
+};
+
 /** 删除歌曲 */
 export const deleteSong = (id: number) => {
   return http.request("delete", `/api/admin/songs/${id}`);

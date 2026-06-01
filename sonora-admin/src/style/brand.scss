@@ -13,64 +13,64 @@
 }
 
 :root {
-  --sonora-ink: #050a14;
-  --sonora-navy: #08111c;
+  --sonora-ink: #08111c;
+  --sonora-navy: #0c1726;
   --sonora-blue: #1f7cff;
   --sonora-blue-soft: #4da3ff;
   --sonora-white: #f6fbff;
-  --sonora-surface: rgba(255, 255, 255, 0.9);
-  --sonora-surface-strong: rgba(255, 255, 255, 0.96);
-  --sonora-surface-muted: rgba(31, 124, 255, 0.04);
+  --sonora-surface: #ffffff;
+  --sonora-surface-strong: #ffffff;
+  --sonora-surface-muted: #f5f8fc;
   --sonora-border: rgba(8, 17, 28, 0.08);
   --sonora-border-strong: rgba(8, 17, 28, 0.14);
-  --sonora-shadow-sm: 0 14px 30px rgba(8, 17, 28, 0.06);
-  --sonora-shadow-lg: 0 22px 58px rgba(8, 17, 28, 0.12);
+  --sonora-shadow-sm: 0 8px 18px rgba(8, 17, 28, 0.06);
+  --sonora-shadow-lg: 0 16px 36px rgba(8, 17, 28, 0.1);
   --el-color-primary: var(--sonora-blue);
   --el-border-radius-base: 12px;
   --el-border-radius-small: 10px;
   --el-border-radius-round: 999px;
-  --el-text-color-primary: rgba(5, 10, 20, 0.92);
-  --el-text-color-regular: rgba(5, 10, 20, 0.66);
-  --el-text-color-secondary: rgba(5, 10, 20, 0.5);
+  --el-text-color-primary: rgba(8, 17, 28, 0.94);
+  --el-text-color-regular: rgba(8, 17, 28, 0.68);
+  --el-text-color-secondary: rgba(8, 17, 28, 0.48);
   --el-border-color: var(--sonora-border);
   --el-border-color-light: rgba(8, 17, 28, 0.06);
-  --el-fill-color-blank: #fff;
+  --el-fill-color-blank: #ffffff;
   --el-fill-color-light: rgba(31, 124, 255, 0.06);
   --el-fill-color-lighter: rgba(31, 124, 255, 0.04);
   --el-fill-color-extra-light: rgba(31, 124, 255, 0.03);
-  --el-bg-color: rgba(255, 255, 255, 0.86);
-  --el-bg-color-overlay: rgba(255, 255, 255, 0.96);
-  --el-mask-color: rgba(5, 10, 20, 0.36);
+  --el-bg-color: #f4f7fb;
+  --el-bg-color-overlay: #ffffff;
+  --el-mask-color: rgba(8, 17, 28, 0.28);
   --el-disabled-bg-color: rgba(8, 17, 28, 0.03);
 }
 
 html.dark {
-  --sonora-surface: rgba(10, 19, 33, 0.9);
-  --sonora-surface-strong: rgba(10, 19, 33, 0.96);
-  --sonora-surface-muted: rgba(77, 163, 255, 0.08);
+  --sonora-surface: #0d1727;
+  --sonora-surface-strong: #101c2d;
+  --sonora-surface-muted: #0b1523;
   --sonora-border: rgba(246, 251, 255, 0.08);
   --sonora-border-strong: rgba(246, 251, 255, 0.14);
-  --sonora-shadow-sm: 0 18px 36px rgba(0, 0, 0, 0.28);
-  --sonora-shadow-lg: 0 28px 64px rgba(0, 0, 0, 0.4);
+  --sonora-shadow-sm: 0 10px 22px rgba(0, 0, 0, 0.22);
+  --sonora-shadow-lg: 0 18px 42px rgba(0, 0, 0, 0.34);
   --el-text-color-primary: rgba(246, 251, 255, 0.94);
-  --el-text-color-regular: rgba(246, 251, 255, 0.68);
+  --el-text-color-regular: rgba(246, 251, 255, 0.7);
   --el-text-color-secondary: rgba(246, 251, 255, 0.48);
   --el-border-color: var(--sonora-border);
   --el-border-color-light: rgba(246, 251, 255, 0.06);
-  --el-fill-color-blank: #091223;
-  --el-fill-color-light: rgba(77, 163, 255, 0.12);
+  --el-fill-color-blank: #0d1727;
+  --el-fill-color-light: rgba(77, 163, 255, 0.14);
   --el-fill-color-lighter: rgba(77, 163, 255, 0.08);
   --el-fill-color-extra-light: rgba(77, 163, 255, 0.05);
-  --el-bg-color: rgba(9, 18, 35, 0.84);
-  --el-bg-color-overlay: rgba(7, 13, 24, 0.96);
-  --el-mask-color: rgba(0, 0, 0, 0.45);
-  --el-disabled-bg-color: rgba(255, 255, 255, 0.02);
+  --el-bg-color: #07111d;
+  --el-bg-color-overlay: #0d1727;
+  --el-mask-color: rgba(0, 0, 0, 0.42);
+  --el-disabled-bg-color: rgba(255, 255, 255, 0.03);
 }
 
 html,
 body,
 #app {
-  background: transparent;
+  background: var(--el-bg-color);
   color: var(--el-text-color-primary);
 }
 
@@ -82,17 +82,11 @@ body {
     "Helvetica Neue",
     Arial,
     sans-serif;
-  background:
-    radial-gradient(circle at top left, rgba(77, 163, 255, 0.18), transparent 28%),
-    radial-gradient(circle at right top, rgba(31, 124, 255, 0.1), transparent 24%),
-    linear-gradient(180deg, #eef4fb 0%, #f7faff 44%, #edf3fa 100%);
+  background: linear-gradient(180deg, #f3f7fb 0%, #f8fbff 40%, #f1f5fa 100%);
 }
 
 html.dark body {
-  background:
-    radial-gradient(circle at top left, rgba(77, 163, 255, 0.16), transparent 28%),
-    radial-gradient(circle at right top, rgba(31, 124, 255, 0.12), transparent 20%),
-    linear-gradient(180deg, #040912 0%, #07111d 44%, #050a14 100%);
+  background: linear-gradient(180deg, #06111d 0%, #08131f 44%, #050d18 100%);
 }
 
 .brand-font {
@@ -116,28 +110,24 @@ html.dark body {
   padding: 24px;
 }
 
-.fixed-header {
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+.fixed-header,
+.sidebar-container {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 .navbar,
 .horizontal-header {
-  background: rgba(255, 255, 255, 0.84) !important;
+  background: rgba(255, 255, 255, 0.96) !important;
   border-bottom: 1px solid var(--sonora-border);
-  box-shadow: 0 12px 30px rgba(8, 17, 28, 0.05);
+  box-shadow: var(--sonora-shadow-sm);
 }
 
 html.dark .navbar,
 html.dark .horizontal-header {
-  background: rgba(5, 10, 20, 0.82) !important;
+  background: rgba(12, 23, 38, 0.98) !important;
   border-bottom-color: var(--sonora-border);
-  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.24);
-}
-
-.sidebar-container {
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  box-shadow: var(--sonora-shadow-sm);
 }
 
 .sidebar-logo-container {
@@ -154,7 +144,7 @@ html.dark .horizontal-header {
 .el-popper.is-light {
   background: var(--sonora-surface-strong) !important;
   border: 1px solid var(--sonora-border) !important;
-  border-radius: 16px !important;
+  border-radius: 14px !important;
   box-shadow: var(--sonora-shadow-lg) !important;
 }
 
@@ -177,16 +167,16 @@ html.dark .horizontal-header {
 .el-table {
   --el-table-bg-color: transparent;
   --el-table-tr-bg-color: transparent;
-  --el-table-header-bg-color: rgba(31, 124, 255, 0.06);
+  --el-table-header-bg-color: rgba(31, 124, 255, 0.05);
   --el-table-border-color: var(--sonora-border);
   --el-table-header-text-color: var(--el-text-color-primary);
-  --el-table-row-hover-bg-color: rgba(31, 124, 255, 0.06);
+  --el-table-row-hover-bg-color: rgba(31, 124, 255, 0.05);
   --el-table-current-row-bg-color: rgba(31, 124, 255, 0.08);
   color: var(--el-text-color-primary);
 }
 
 html.dark .el-table {
-  --el-table-header-bg-color: rgba(77, 163, 255, 0.1);
+  --el-table-header-bg-color: rgba(77, 163, 255, 0.08);
   --el-table-row-hover-bg-color: rgba(77, 163, 255, 0.08);
   --el-table-current-row-bg-color: rgba(77, 163, 255, 0.12);
 }
@@ -207,7 +197,7 @@ html.dark .el-table {
 .el-input-number {
   border-radius: 12px !important;
   box-shadow: 0 0 0 1px var(--sonora-border) inset !important;
-  background: rgba(255, 255, 255, 0.78) !important;
+  background: #ffffff !important;
 }
 
 html.dark .el-input__wrapper,
@@ -215,7 +205,7 @@ html.dark .el-textarea__inner,
 html.dark .el-select__wrapper,
 html.dark .el-date-editor.el-input__wrapper,
 html.dark .el-input-number {
-  background: rgba(9, 18, 35, 0.9) !important;
+  background: #0d1727 !important;
 }
 
 .el-input__wrapper.is-focus,
@@ -224,7 +214,7 @@ html.dark .el-input-number {
 .el-input-number:focus-within {
   box-shadow:
     0 0 0 1px var(--el-color-primary) inset,
-    0 0 0 4px rgba(31, 124, 255, 0.12) !important;
+    0 0 0 3px rgba(31, 124, 255, 0.12) !important;
 }
 
 .el-button {
@@ -233,11 +223,11 @@ html.dark .el-input-number {
 }
 
 .el-button--primary {
-  box-shadow: 0 10px 24px rgba(31, 124, 255, 0.22);
+  box-shadow: 0 8px 18px rgba(31, 124, 255, 0.16);
 }
 
 .el-button--primary:hover {
-  box-shadow: 0 16px 28px rgba(31, 124, 255, 0.3);
+  box-shadow: 0 12px 24px rgba(31, 124, 255, 0.2);
 }
 
 .el-tag {

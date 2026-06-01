@@ -31,7 +31,7 @@ public class FileController {
             @RequestParam(defaultValue = "general") String dir) {
         try {
             String objectKey = minioService.upload(file, dir);
-            String url = minioService.getPresignedUrl(objectKey);
+            String url = minioService.buildPreviewUrl(objectKey);
 
             Map<String, Object> data = new LinkedHashMap<>();
             data.put("objectKey", objectKey);

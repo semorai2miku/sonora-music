@@ -227,8 +227,7 @@ useEventListener(document, "keydown", ({ code }) => {
   inset: 0;
   content: "";
   background:
-    radial-gradient(circle at left top, rgba(77, 163, 255, 0.24), transparent 24%),
-    radial-gradient(circle at right bottom, rgba(31, 124, 255, 0.14), transparent 28%);
+    linear-gradient(180deg, rgba(31, 124, 255, 0.04) 0%, rgba(31, 124, 255, 0) 42%);
   pointer-events: none;
 }
 
@@ -253,8 +252,6 @@ useEventListener(document, "keydown", ({ code }) => {
 
 .login-brand,
 .login-card {
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
   border: 1px solid var(--sonora-border);
   box-shadow: var(--sonora-shadow-lg);
 }
@@ -264,12 +261,8 @@ useEventListener(document, "keydown", ({ code }) => {
   flex-direction: column;
   justify-content: center;
   padding: 48px;
-  background: linear-gradient(
-    160deg,
-    rgba(255, 255, 255, 0.88),
-    rgba(246, 251, 255, 0.98)
-  );
-  border-radius: 28px;
+  background: var(--sonora-surface-strong);
+  border-radius: 22px;
 }
 
 .brand-lockup {
@@ -302,9 +295,9 @@ useEventListener(document, "keydown", ({ code }) => {
 
 .brand-card {
   padding: 20px;
-  border: 1px solid rgba(31, 124, 255, 0.1);
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid var(--sonora-border);
+  border-radius: 16px;
+  background: var(--sonora-surface-muted);
 }
 
 .brand-card__label {
@@ -336,8 +329,8 @@ useEventListener(document, "keydown", ({ code }) => {
 .login-card {
   align-self: center;
   padding: 32px;
-  background: rgba(255, 255, 255, 0.94);
-  border-radius: 24px;
+  background: var(--sonora-surface-strong);
+  border-radius: 20px;
 }
 
 .login-card__head {
@@ -382,11 +375,7 @@ useEventListener(document, "keydown", ({ code }) => {
 
 html.dark {
   .login-brand {
-    background: linear-gradient(
-      160deg,
-      rgba(8, 17, 28, 0.86),
-      rgba(10, 19, 33, 0.96)
-    );
+    background: var(--sonora-surface-strong);
   }
 
   .brand-heading,
@@ -396,12 +385,12 @@ html.dark {
   }
 
   .brand-card {
-    background: rgba(8, 17, 28, 0.72);
-    border-color: rgba(77, 163, 255, 0.14);
+    background: var(--sonora-surface-muted);
+    border-color: var(--sonora-border);
   }
 
   .login-card {
-    background: rgba(8, 17, 28, 0.92);
+    background: var(--sonora-surface-strong);
   }
 
   .login-hint {

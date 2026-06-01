@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.sonora.common.constant.Constants;
 import com.sonora.common.exception.BusinessException;
 import com.sonora.common.result.R;
+import com.sonora.file.service.MinioService;
 import com.sonora.mapper.*;
 import com.sonora.model.entity.*;
 import io.swagger.v3.oas.annotations.Operation;
@@ -40,6 +41,7 @@ public class UserController {
     private final UserFavoriteMapper userFavoriteMapper;
     private final CommentMapper commentMapper;
     private final PasswordEncoder passwordEncoder;
+    private final MinioService minioService;
 
     public UserController(UserMapper userMapper,
                           RoleMapper roleMapper,
@@ -48,7 +50,8 @@ public class UserController {
                           PlaylistSongMapper playlistSongMapper,
                           UserFavoriteMapper userFavoriteMapper,
                           CommentMapper commentMapper,
-                          PasswordEncoder passwordEncoder) {
+                          PasswordEncoder passwordEncoder,
+                          MinioService minioService) {
         this.userMapper = userMapper;
         this.roleMapper = roleMapper;
         this.userRoleMapper = userRoleMapper;
@@ -57,6 +60,7 @@ public class UserController {
         this.userFavoriteMapper = userFavoriteMapper;
         this.commentMapper = commentMapper;
         this.passwordEncoder = passwordEncoder;
+        this.minioService = minioService;
     }
 
     @Operation(summary = "分页查询客户端用户")
@@ -129,7 +133,9 @@ public class UserController {
         user.setPassword(passwordEncoder.encode(body.password()));
         user.setEmail(email);
         user.setPhone(phone);
-        user.setAvatar(StringUtils.hasText(body.avatar()) ? body.avatar().trim() : Constants.DEFAULT_AVATAR);
+        user.setAvatar(StringUtils.hasText(body.avatar())
+                ? minioService.normalizeForStorage(body.avatar().trim())
+                : Constants.DEFAULT_AVATAR);
         user.setBio(normalizeBio(body.bio()));
         user.setGender(0);
         user.setStatus(body.status() == null ? 1 : body.status());
@@ -196,7 +202,9 @@ public class UserController {
             user.setPhone(phone);
         }
         if (body.avatar() != null) {
-            user.setAvatar(StringUtils.hasText(body.avatar()) ? body.avatar().trim() : Constants.DEFAULT_AVATAR);
+            user.setAvatar(StringUtils.hasText(body.avatar())
+                    ? minioService.normalizeForStorage(body.avatar().trim())
+                    : Constants.DEFAULT_AVATAR);
         }
         if (body.bio() != null) {
             user.setBio(normalizeBio(body.bio()));
@@ -280,7 +288,8 @@ public class UserController {
         data.put("nickname", StringUtils.hasText(user.getNickname()) ? user.getNickname() : user.getUsername());
         data.put("email", user.getEmail());
         data.put("phone", user.getPhone());
-        data.put("avatar", StringUtils.hasText(user.getAvatar()) ? user.getAvatar() : Constants.DEFAULT_AVATAR);
+        data.put("avatar", minioService.resolvePreviewUrl(
+                StringUtils.hasText(user.getAvatar()) ? user.getAvatar() : Constants.DEFAULT_AVATAR));
         data.put("bio", user.getBio());
         data.put("status", user.getStatus());
         data.put("lastLoginAt", user.getLastLoginAt());

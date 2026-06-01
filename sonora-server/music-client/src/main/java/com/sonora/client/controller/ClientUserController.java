@@ -211,7 +211,9 @@ public class ClientUserController {
             user.setPhone(phone);
         }
         if (body.avatar() != null) {
-            user.setAvatar(StringUtils.hasText(body.avatar()) ? body.avatar().trim() : Constants.DEFAULT_AVATAR);
+            user.setAvatar(StringUtils.hasText(body.avatar())
+                    ? minioService.normalizeForStorage(body.avatar().trim())
+                    : Constants.DEFAULT_AVATAR);
         }
         if (body.bio() != null) {
             user.setBio(normalizeBio(body.bio()));
@@ -232,7 +234,7 @@ public class ClientUserController {
         }
         try {
             String objectKey = minioService.upload(file, "avatar");
-            String url = minioService.getPresignedUrl(objectKey);
+            String url = minioService.buildPreviewUrl(objectKey);
             Map<String, Object> data = new LinkedHashMap<>();
             data.put("objectKey", objectKey);
             data.put("url", url);
@@ -322,7 +324,9 @@ public class ClientUserController {
         playlist.setUserId(userId);
         playlist.setType(PLAYLIST_TYPE_NORMAL);
         playlist.setPinned(Objects.equals(body.pinned(), 1) ? 1 : 0);
-        playlist.setCover(StringUtils.hasText(body.cover()) ? body.cover().trim() : null);
+        playlist.setCover(StringUtils.hasText(body.cover())
+                ? minioService.normalizeForStorage(body.cover().trim())
+                : null);
         playlist.setDescription(body.description() == null ? null : body.description().trim());
         playlist.setPlayCount(0L);
         playlist.setCollectCount(0L);
@@ -355,7 +359,9 @@ public class ClientUserController {
             playlist.setName(body.name().trim());
         }
         if (body.cover() != null) {
-            playlist.setCover(StringUtils.hasText(body.cover()) ? body.cover().trim() : null);
+            playlist.setCover(StringUtils.hasText(body.cover())
+                    ? minioService.normalizeForStorage(body.cover().trim())
+                    : null);
         }
         if (body.description() != null) {
             playlist.setDescription(body.description().trim());
@@ -432,7 +438,7 @@ public class ClientUserController {
         }
         String songCover = songCoverOf(song);
         if (!StringUtils.hasText(playlist.getCover()) && StringUtils.hasText(songCover)) {
-            playlist.setCover(songCover);
+            playlist.setCover(minioService.normalizeForStorage(songCover));
             playlistMapper.updateById(playlist);
         }
         return R.ok(playlistOf(playlistMapper.selectById(playlistId)));
@@ -545,7 +551,7 @@ public class ClientUserController {
         }
         String songCover = songCoverOf(song);
         if (StringUtils.hasText(songCover)) {
-            liked.setCover(songCover);
+            liked.setCover(minioService.normalizeForStorage(songCover));
             playlistMapper.updateById(liked);
         }
         return R.ok(songOf(song, true));
@@ -602,7 +608,8 @@ public class ClientUserController {
         data.put("nickname", StringUtils.hasText(user.getNickname()) ? user.getNickname() : user.getUsername());
         data.put("email", user.getEmail());
         data.put("phone", user.getPhone());
-        data.put("avatarUrl", StringUtils.hasText(user.getAvatar()) ? user.getAvatar() : Constants.DEFAULT_AVATAR);
+        data.put("avatarUrl", minioService.resolvePreviewUrl(
+                StringUtils.hasText(user.getAvatar()) ? user.getAvatar() : Constants.DEFAULT_AVATAR));
         data.put("bio", user.getBio());
         data.put("status", user.getStatus());
         return data;
@@ -612,7 +619,8 @@ public class ClientUserController {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("id", playlist.getId());
         data.put("name", playlist.getName());
-        data.put("cover", StringUtils.hasText(playlist.getCover()) ? playlist.getCover() : Constants.DEFAULT_COVER);
+        data.put("cover", minioService.resolvePreviewUrl(
+                StringUtils.hasText(playlist.getCover()) ? playlist.getCover() : Constants.DEFAULT_COVER));
         data.put("type", playlist.getType());
         data.put("pinned", playlist.getPinned());
         data.put("description", playlist.getDescription());
@@ -757,7 +765,7 @@ public class ClientUserController {
             return;
         }
         Song lastSong = songMapper.selectById(songs.get(0).getSongId());
-        playlist.setCover(lastSong == null ? null : songCoverOf(lastSong));
+        playlist.setCover(lastSong == null ? null : minioService.normalizeForStorage(songCoverOf(lastSong)));
         playlistMapper.updateById(playlist);
     }
 
@@ -834,11 +842,11 @@ public class ClientUserController {
 
     private String songCoverOf(Song song, Map<Long, Album> albumMap) {
         if (song != null && StringUtils.hasText(song.getCover())) {
-            return song.getCover();
+            return minioService.resolvePreviewUrl(song.getCover());
         }
         Album album = song == null || song.getAlbumId() == null ? null : albumMap.get(song.getAlbumId());
         if (album != null && StringUtils.hasText(album.getCover())) {
-            return album.getCover();
+            return minioService.resolvePreviewUrl(album.getCover());
         }
         return Constants.DEFAULT_COVER;
     }

@@ -2,11 +2,13 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import ImageUploadCropper from "@/components/ImageUploadCropper.vue";
+import SimpleAudioPreviewBar from "@/components/SimpleAudioPreviewBar.vue";
 import RemotePagedTagSelect from "@/components/RemotePagedTagSelect.vue";
 import {
   batchDeleteSongs,
   getSongPage,
   createSong,
+  replaceSong,
   updateSong,
   deleteSong,
   type SongItem
@@ -16,25 +18,6 @@ import { getAlbumOptions, type AlbumItem } from "@/api/album";
 import { Delete, Plus, Search, RefreshRight, UserFilled } from "@element-plus/icons-vue";
 
 const DEFAULT_COVER = "/default-cover.svg";
-
-// --- 播放 ---
-const audio = ref<HTMLAudioElement | null>(null);
-const playingId = ref<number | null>(null);
-
-function togglePlay(row: SongItem) {
-  if (!audio.value) return;
-  if (playingId.value === row.id) {
-    audio.value.paused ? audio.value.play() : audio.value.pause();
-    return;
-  }
-  audio.value.src = `/api/client/songs/${row.id}/stream`;
-  audio.value.play();
-  playingId.value = row.id;
-}
-
-function onAudioEnded() {
-  playingId.value = null;
-}
 
 // --- 列表 ---
 const loading = ref(false);
@@ -315,6 +298,7 @@ const isEdit = ref(false);
 const form = ref<Partial<SongItem>>({ name: "", artistIds: "", albumId: undefined, lyrics: "" });
 const selectedArtistIds = ref<number[]>([]);
 const audioFile = ref<File | null>(null);
+const uploadPreviewUrl = ref("");
 const detectedDuration = ref<number | null>(null);
 const submitting = ref(false);
 const backfillLoading = ref(false);
@@ -331,6 +315,9 @@ const artistSelectTotal = ref(0);
 const artistSelectLoading = ref(false);
 let artistSearchTimer: ReturnType<typeof setTimeout> | null = null;
 let artistSelectRequestSeq = 0;
+const previewRow = ref<SongItem | null>(null);
+const previewSource = ref("");
+const previewAutoplayToken = ref(0);
 
 const selectedArtistTags = computed(() =>
   selectedArtistIds.value.map(id => ({
@@ -456,6 +443,7 @@ function openCreate() {
     status: 1
   };
   audioFile.value = null;
+  resetUploadPreview();
   detectedDuration.value = null;
   parsedArtistName.value = "";
   dialogVisible.value = true;
@@ -468,6 +456,7 @@ function openEdit(row: SongItem) {
   selectedArtistIds.value = parseArtistIds(row.artistIds);
   ensureArtistOptionsByIds(selectedArtistIds.value);
   audioFile.value = null;
+  resetUploadPreview();
   detectedDuration.value = row.duration || null;
   parsedArtistName.value = "";
   dialogVisible.value = true;
@@ -539,6 +528,19 @@ function readAudioDuration(file: File) {
   });
 }
 
+function updateUploadPreview(file: File | null) {
+  resetUploadPreview();
+  if (!file) return;
+  uploadPreviewUrl.value = URL.createObjectURL(file);
+}
+
+function resetUploadPreview() {
+  if (uploadPreviewUrl.value) {
+    URL.revokeObjectURL(uploadPreviewUrl.value);
+    uploadPreviewUrl.value = "";
+  }
+}
+
 function readSongDurationFromStream(songId: number) {
   return new Promise<number | null>(resolve => {
     const audio = document.createElement("audio");
@@ -562,6 +564,7 @@ async function handleAudioFileChange(event: Event) {
   const target = event.target as HTMLInputElement;
   const file = target.files?.[0] || null;
   audioFile.value = file;
+  updateUploadPreview(file);
   detectedDuration.value = null;
   parsedArtistName.value = "";
   if (!file) return;
@@ -592,11 +595,56 @@ async function handleAudioFileChange(event: Event) {
   }
 }
 
+function previewSong(row: SongItem) {
+  previewRow.value = row;
+  previewSource.value = `/api/client/songs/${row.id}/stream`;
+  previewAutoplayToken.value += 1;
+}
+
+function handleDialogClosed() {
+  audioFile.value = null;
+  detectedDuration.value = null;
+  parsedArtistName.value = "";
+  resetUploadPreview();
+}
+
+const uploadPreviewArtistText = computed(() => {
+  if (selectedArtistIds.value.length) {
+    return selectedArtistTags.value.map(item => item.name).join(" / ");
+  }
+  return parsedArtistName.value || "";
+});
+
 function handleSubmit() {
   if (!form.value.name) { ElMessage.warning("请输入歌曲名称"); return; }
+  if (!selectedArtistIds.value.length) { ElMessage.warning("请选择至少一位歌手"); return; }
   submitting.value = true;
 
   if (isEdit.value) {
+    if (audioFile.value) {
+      const fd = new FormData();
+      fd.append("audioFile", audioFile.value);
+      fd.append("name", form.value.name);
+      fd.append("artistIds", selectedArtistIds.value.join(","));
+      if (form.value.albumId) fd.append("albumId", String(form.value.albumId));
+      if (detectedDuration.value && detectedDuration.value > 0) {
+        fd.append("duration", String(detectedDuration.value));
+      }
+      if (form.value.cover) fd.append("cover", form.value.cover);
+      if (form.value.lyrics) fd.append("lyrics", form.value.lyrics);
+      replaceSong(form.value.id!, fd)
+        .then(() => {
+          ElMessage.success("歌曲已替换");
+          dialogVisible.value = false;
+          loadData();
+        })
+        .catch(error => {
+          ElMessage.error(getErrorMessage(error, "替换歌曲失败"));
+        })
+        .finally(() => (submitting.value = false));
+      return;
+    }
+
     updateSong(form.value.id!, {
       name: form.value.name,
       artistIds: selectedArtistIds.value.join(","),
@@ -604,7 +652,14 @@ function handleSubmit() {
       cover: form.value.cover || DEFAULT_COVER,
       lyrics: form.value.lyrics
     })
-      .then(() => { ElMessage.success("修改成功"); dialogVisible.value = false; loadData(); })
+      .then(() => {
+        ElMessage.success("修改成功");
+        dialogVisible.value = false;
+        loadData();
+      })
+      .catch(error => {
+        ElMessage.error(getErrorMessage(error, "修改歌曲失败"));
+      })
       .finally(() => (submitting.value = false));
   } else {
     if (!audioFile.value) { ElMessage.warning("请选择音频文件"); submitting.value = false; return; }
@@ -619,7 +674,15 @@ function handleSubmit() {
     if (form.value.cover) fd.append("cover", form.value.cover);
     if (form.value.lyrics) fd.append("lyrics", form.value.lyrics);
     createSong(fd)
-      .then(() => { ElMessage.success("新增成功"); dialogVisible.value = false; loadData(); })
+      .then(() => {
+        ElMessage.success("新增成功");
+        dialogVisible.value = false;
+        resetUploadPreview();
+        loadData();
+      })
+      .catch(error => {
+        ElMessage.error(getErrorMessage(error, "上传歌曲失败"));
+      })
       .finally(() => (submitting.value = false));
   }
 }
@@ -738,6 +801,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   document.removeEventListener("click", handleDocumentClick);
+  resetUploadPreview();
   if (artistSearchTimer) {
     clearTimeout(artistSearchTimer);
   }
@@ -839,14 +903,30 @@ onBeforeUnmount(() => {
           </el-table-column>
           <el-table-column label="操作" width="240" fixed="right">
             <template #default="{ row }">
-              <el-button link :type="playingId === row.id ? 'warning' : 'info'" @click="togglePlay(row)">
-                {{ playingId === row.id ? '⏸ 暂停' : '▶ 试听' }}
+              <el-button
+                link
+                :type="previewRow?.id === row.id ? 'warning' : 'info'"
+                @click="previewSong(row)"
+              >
+                {{ previewRow?.id === row.id ? "重新预览" : "预览" }}
               </el-button>
               <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
               <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
             </template>
           </el-table-column>
         </el-table>
+
+        <div v-if="previewRow && previewSource" class="song-preview-panel">
+          <div class="song-preview-panel__title">歌曲预览</div>
+          <SimpleAudioPreviewBar
+            :key="`${previewRow.id}-${previewAutoplayToken}`"
+            :source="previewSource"
+            :title="previewRow.name"
+            :subtitle="getArtistNames(previewRow.artistIds)"
+            :cover="coverOf(previewRow)"
+            auto-play
+          />
+        </div>
 
         <!-- 分页 -->
         <div class="flex justify-end mt-4">
@@ -862,19 +942,36 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- 新增/编辑对话框 -->
-    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑歌曲' : '上传歌曲'" width="560px" destroy-on-close>
+    <el-dialog
+      v-model="dialogVisible"
+      :title="isEdit ? '编辑歌曲' : '上传歌曲'"
+      width="560px"
+      destroy-on-close
+      @closed="handleDialogClosed"
+    >
       <el-form :model="form" label-width="80px">
         <el-form-item label="歌曲名" required>
           <el-input v-model="form.name" placeholder="歌曲名称" />
         </el-form-item>
-        <el-form-item v-if="!isEdit" label="音频文件" required>
+        <el-form-item :label="isEdit ? '替换歌曲' : '音频文件'" :required="!isEdit">
           <input type="file" accept="audio/*" @change="handleAudioFileChange" />
+          <div v-if="isEdit" class="mt-2 text-xs text-gray-500">
+            重新选择音频后，保存时会删除原有歌曲文件并替换为新文件。
+          </div>
           <div v-if="parsedArtistName" class="mt-2 text-xs text-gray-500">
             已从文件名识别歌手：{{ parsedArtistName }}
           </div>
           <div v-if="detectedDuration" class="mt-1 text-xs text-gray-500">
             已识别时长：{{ Math.floor(detectedDuration / 60) }}:{{ String(detectedDuration % 60).padStart(2, "0") }}
           </div>
+        </el-form-item>
+        <el-form-item v-if="uploadPreviewUrl" :label="isEdit ? '新歌预览' : '歌曲预览'">
+          <SimpleAudioPreviewBar
+            :source="uploadPreviewUrl"
+            :title="form.name || '未命名歌曲'"
+            :subtitle="uploadPreviewArtistText"
+            :cover="form.cover || DEFAULT_COVER"
+          />
         </el-form-item>
         <el-form-item label="封面">
           <ImageUploadCropper
@@ -913,9 +1010,6 @@ onBeforeUnmount(() => {
         <el-button type="primary" :loading="submitting" @click="handleSubmit">{{ isEdit ? '保存' : '上传' }}</el-button>
       </template>
     </el-dialog>
-
-    <!-- 音频播放器 (隐藏) -->
-    <audio ref="audio" @ended="onAudioEnded" @pause="() => {}" preload="none" style="display:none" />
   </div>
 </template>
 
@@ -935,6 +1029,21 @@ onBeforeUnmount(() => {
   border-radius: 8px;
   background: var(--el-fill-color-light);
   cursor: zoom-in;
+}
+
+.song-preview-panel {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 14px;
+  background: var(--el-fill-color-blank);
+}
+
+.song-preview-panel__title {
+  margin-bottom: 12px;
+  color: var(--el-text-color-primary);
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .artist-filter-scroll {

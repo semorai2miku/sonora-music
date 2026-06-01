@@ -1,7 +1,9 @@
 package com.sonora.admin.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.sonora.common.constant.Constants;
 import com.sonora.common.result.R;
+import com.sonora.file.service.MinioService;
 import com.sonora.model.entity.Song;
 import com.sonora.service.SongService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,9 +27,11 @@ import java.util.Objects;
 public class SongController {
 
     private final SongService songService;
+    private final MinioService minioService;
 
-    public SongController(SongService songService) {
+    public SongController(SongService songService, MinioService minioService) {
         this.songService = songService;
+        this.minioService = minioService;
     }
 
     @Operation(summary = "分页查询歌曲列表")
@@ -40,6 +44,7 @@ public class SongController {
             @RequestParam(required = false) Long artistId) {
 
         Page<Song> page = songService.pageSongs(pageNum, pageSize, keyword, albumId, artistId);
+        page.getRecords().forEach(this::resolveSongPreview);
 
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("list", page.getRecords());
@@ -56,7 +61,7 @@ public class SongController {
         if (song == null) {
             return R.notFound("歌曲不存在");
         }
-        return R.ok(song);
+        return R.ok(resolveSongPreview(song));
     }
 
     @Operation(summary = "创建歌曲 (上传音频 + 封面)")
@@ -82,14 +87,39 @@ public class SongController {
         song.setPlayCount(0L);
 
         Song created = songService.createSong(audioFile, coverFile, song);
-        return R.ok(created);
+        return R.ok(resolveSongPreview(created));
     }
 
     @Operation(summary = "编辑歌曲元数据")
     @PutMapping("/{id}")
     public R<Song> update(@PathVariable Long id, @RequestBody Song song) {
         Song updated = songService.updateSong(id, song);
-        return R.ok(updated);
+        return R.ok(resolveSongPreview(updated));
+    }
+
+    @Operation(summary = "替换歌曲文件并更新信息")
+    @PostMapping("/{id}/replace")
+    public R<Song> replace(
+            @PathVariable Long id,
+            @RequestParam("audioFile") MultipartFile audioFile,
+            @RequestParam(value = "coverFile", required = false) MultipartFile coverFile,
+            @RequestParam String name,
+            @RequestParam(required = false) String artistIds,
+            @RequestParam(required = false) Long albumId,
+            @RequestParam(required = false) Integer duration,
+            @RequestParam(required = false) String cover,
+            @RequestParam(required = false) String lyrics) {
+
+        Song song = new Song();
+        song.setName(name);
+        song.setArtistIds(artistIds);
+        song.setAlbumId(albumId);
+        song.setDuration(duration);
+        song.setCover(cover);
+        song.setLyrics(lyrics);
+
+        Song updated = songService.replaceSong(id, audioFile, coverFile, song);
+        return R.ok(resolveSongPreview(updated));
     }
 
     @Operation(summary = "删除歌曲")
@@ -133,8 +163,17 @@ public class SongController {
         }
         song.setStatus(status);
         songService.updateById(song);
-        return R.ok(song);
+        return R.ok(resolveSongPreview(song));
     }
 
     public record BatchDeleteRequest(List<Long> ids) {}
+
+    private Song resolveSongPreview(Song song) {
+        if (song == null) {
+            return null;
+        }
+        song.setCover(minioService.resolvePreviewUrl(
+                org.springframework.util.StringUtils.hasText(song.getCover()) ? song.getCover() : Constants.DEFAULT_COVER));
+        return song;
+    }
 }

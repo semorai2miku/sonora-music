@@ -3,6 +3,7 @@ package com.sonora.admin.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.sonora.common.result.R;
+import com.sonora.file.service.MinioService;
 import com.sonora.mapper.BannerMapper;
 import com.sonora.model.entity.Banner;
 import io.swagger.v3.oas.annotations.Operation;
@@ -23,9 +24,11 @@ import java.util.Objects;
 public class BannerController {
 
     private final BannerMapper bannerMapper;
+    private final MinioService minioService;
 
-    public BannerController(BannerMapper bannerMapper) {
+    public BannerController(BannerMapper bannerMapper, MinioService minioService) {
         this.bannerMapper = bannerMapper;
+        this.minioService = minioService;
     }
 
     @Operation(summary = "分页查询轮播图列表")
@@ -45,6 +48,7 @@ public class BannerController {
         wrapper.orderByAsc(Banner::getId);
 
         Page<Banner> page = bannerMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
+        page.getRecords().forEach(this::resolveBannerPreview);
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("list", page.getRecords());
         data.put("total", page.getTotal());
@@ -60,7 +64,7 @@ public class BannerController {
         if (banner == null) {
             return R.notFound("轮播图不存在");
         }
-        return R.ok(banner);
+        return R.ok(resolveBannerPreview(banner));
     }
 
     @Operation(summary = "新增轮播图")
@@ -76,8 +80,9 @@ public class BannerController {
         if (banner.getStatus() == null) {
             banner.setStatus(1);
         }
+        banner.setImageUrl(minioService.normalizeForStorage(banner.getImageUrl()));
         bannerMapper.insert(banner);
-        return R.ok(banner);
+        return R.ok(resolveBannerPreview(banner));
     }
 
     @Operation(summary = "编辑轮播图")
@@ -90,9 +95,10 @@ public class BannerController {
         if (invalid != null) {
             return invalid;
         }
+        banner.setImageUrl(minioService.normalizeForStorage(banner.getImageUrl()));
         banner.setId(id);
         bannerMapper.updateById(banner);
-        return R.ok(bannerMapper.selectById(id));
+        return R.ok(resolveBannerPreview(bannerMapper.selectById(id)));
     }
 
     @Operation(summary = "删除轮播图")
@@ -136,7 +142,7 @@ public class BannerController {
         }
         banner.setStatus(status);
         bannerMapper.updateById(banner);
-        return R.ok(banner);
+        return R.ok(resolveBannerPreview(banner));
     }
 
     private R<Banner> validateBanner(Banner banner) {
@@ -147,4 +153,12 @@ public class BannerController {
     }
 
     public record BatchDeleteRequest(List<Long> ids) {}
+
+    private Banner resolveBannerPreview(Banner banner) {
+        if (banner == null) {
+            return null;
+        }
+        banner.setImageUrl(minioService.resolvePreviewUrl(banner.getImageUrl()));
+        return banner;
+    }
 }

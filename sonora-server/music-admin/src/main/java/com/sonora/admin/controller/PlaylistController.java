@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.sonora.common.constant.Constants;
 import com.sonora.common.result.R;
+import com.sonora.file.service.MinioService;
 import com.sonora.mapper.AlbumMapper;
 import com.sonora.mapper.PlaylistMapper;
 import com.sonora.mapper.PlaylistSongMapper;
@@ -42,17 +43,20 @@ public class PlaylistController {
     private final SongMapper songMapper;
     private final AlbumMapper albumMapper;
     private final UserMapper userMapper;
+    private final MinioService minioService;
 
     public PlaylistController(PlaylistMapper playlistMapper,
                               PlaylistSongMapper playlistSongMapper,
                               SongMapper songMapper,
                               AlbumMapper albumMapper,
-                              UserMapper userMapper) {
+                              UserMapper userMapper,
+                              MinioService minioService) {
         this.playlistMapper = playlistMapper;
         this.playlistSongMapper = playlistSongMapper;
         this.songMapper = songMapper;
         this.albumMapper = albumMapper;
         this.userMapper = userMapper;
+        this.minioService = minioService;
     }
 
     @Operation(summary = "分页查询歌单列表")
@@ -301,7 +305,7 @@ public class PlaylistController {
         Map<String, Object> item = new LinkedHashMap<>();
         item.put("id", playlist.getId());
         item.put("name", playlist.getName());
-        item.put("cover", playlistCover(playlist));
+        item.put("cover", minioService.resolvePreviewUrl(playlistCover(playlist)));
         item.put("userId", playlist.getUserId());
         String publisher = publisherName(playlist.getUserId());
         item.put("publisher", publisher);
@@ -326,6 +330,7 @@ public class PlaylistController {
         for (Long songId : songIds) {
             Song song = songMap.get(songId);
             if (song != null) {
+                song.setCover(resolveSongCover(song));
                 songs.add(song);
             }
         }
@@ -352,7 +357,8 @@ public class PlaylistController {
 
     private void copyToPlaylist(PlaylistRequest request, Playlist playlist) {
         playlist.setName(request.name().trim());
-        playlist.setCover(trimToNull(request.cover()));
+        String cover = trimToNull(request.cover());
+        playlist.setCover(cover == null ? null : minioService.normalizeForStorage(cover));
         playlist.setDescription(trimToNull(request.description()));
         playlist.setTags(trimToNull(request.tags()));
         playlist.setStatus(request.status());
@@ -360,9 +366,9 @@ public class PlaylistController {
 
     private String resolvePlaylistCover(String cover, List<Long> songIds) {
         if (hasCustomCover(cover)) {
-            return cover.trim();
+            return minioService.normalizeForStorage(cover.trim());
         }
-        return firstSongCover(songIds);
+        return minioService.normalizeForStorage(firstSongCover(songIds));
     }
 
     private String playlistCover(Playlist playlist) {
@@ -444,6 +450,22 @@ public class PlaylistController {
 
     private boolean isValidStatus(Integer status) {
         return status == null || status == 0 || status == 1;
+    }
+
+    private String resolveSongCover(Song song) {
+        if (song == null) {
+            return Constants.DEFAULT_COVER;
+        }
+        if (hasCustomCover(song.getCover())) {
+            return minioService.resolvePreviewUrl(song.getCover());
+        }
+        if (song.getAlbumId() != null) {
+            Album album = albumMapper.selectById(song.getAlbumId());
+            if (album != null && hasCustomCover(album.getCover())) {
+                return minioService.resolvePreviewUrl(album.getCover());
+            }
+        }
+        return Constants.DEFAULT_COVER;
     }
 
     public record PlaylistRequest(

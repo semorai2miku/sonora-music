@@ -8,7 +8,7 @@ const TITLE = getConfig("Title");
   <footer
     class="layout-footer text-[rgba(0,0,0,0.6)] dark:text-[rgba(220,220,242,0.8)]"
   >
-    <span>Copyright © 2020-present</span>
+    <span>Copyright © 2026-present</span>
     <span class="brand-font">&nbsp;SONORA</span>
     <span>&nbsp;|&nbsp;{{ TITLE }}</span>
   </footer>

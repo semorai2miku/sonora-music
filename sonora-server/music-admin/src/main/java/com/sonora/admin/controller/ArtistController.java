@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.sonora.common.constant.Constants;
 import com.sonora.common.result.R;
+import com.sonora.file.service.MinioService;
 import com.sonora.mapper.AlbumMapper;
 import com.sonora.mapper.ArtistMapper;
 import com.sonora.mapper.SongMapper;
@@ -30,11 +31,14 @@ public class ArtistController {
     private final ArtistMapper artistMapper;
     private final SongMapper songMapper;
     private final AlbumMapper albumMapper;
+    private final MinioService minioService;
 
-    public ArtistController(ArtistMapper artistMapper, SongMapper songMapper, AlbumMapper albumMapper) {
+    public ArtistController(ArtistMapper artistMapper, SongMapper songMapper, AlbumMapper albumMapper,
+                            MinioService minioService) {
         this.artistMapper = artistMapper;
         this.songMapper = songMapper;
         this.albumMapper = albumMapper;
+        this.minioService = minioService;
     }
 
     @Operation(summary = "分页查询歌手列表")
@@ -76,8 +80,10 @@ public class ArtistController {
     @Operation(summary = "查询所有歌手 (下拉列表用)")
     @GetMapping("/all")
     public R<java.util.List<Artist>> all() {
-        return R.ok(artistMapper.selectList(
-                new LambdaQueryWrapper<Artist>().eq(Artist::getStatus, 1).orderByAsc(Artist::getId)));
+        List<Artist> artists = artistMapper.selectList(
+                new LambdaQueryWrapper<Artist>().eq(Artist::getStatus, 1).orderByAsc(Artist::getId));
+        artists.forEach(this::resolveArtistPreview);
+        return R.ok(artists);
     }
 
     @Operation(summary = "分页查询歌手选项")
@@ -101,6 +107,7 @@ public class ArtistController {
         }
         wrapper.orderByAsc(Artist::getId);
         Page<Artist> page = artistMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
+        page.getRecords().forEach(this::resolveArtistPreview);
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("list", page.getRecords());
         data.put("total", page.getTotal());
@@ -216,7 +223,8 @@ public class ArtistController {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("id", artist.getId());
         data.put("name", artist.getName());
-        data.put("avatar", StringUtils.hasText(artist.getAvatar()) ? artist.getAvatar() : Constants.DEFAULT_AVATAR);
+        data.put("avatar", minioService.resolvePreviewUrl(
+                StringUtils.hasText(artist.getAvatar()) ? artist.getAvatar() : Constants.DEFAULT_AVATAR));
         data.put("region", artist.getRegion());
         data.put("description", artist.getDescription());
         data.put("status", artist.getStatus());
@@ -305,9 +313,19 @@ public class ArtistController {
 
     private void normalizeArtist(Artist artist) {
         artist.setName(artist.getName() == null ? "" : artist.getName().trim());
-        artist.setAvatar(StringUtils.hasText(artist.getAvatar()) ? artist.getAvatar().trim() : Constants.DEFAULT_AVATAR);
+        artist.setAvatar(StringUtils.hasText(artist.getAvatar())
+                ? minioService.normalizeForStorage(artist.getAvatar().trim())
+                : Constants.DEFAULT_AVATAR);
         artist.setRegion(StringUtils.hasText(artist.getRegion()) ? artist.getRegion().trim() : null);
         artist.setDescription(StringUtils.hasText(artist.getDescription()) ? artist.getDescription().trim() : null);
         artist.setStatus(artist.getStatus() == null ? 1 : artist.getStatus());
+    }
+
+    private Artist resolveArtistPreview(Artist artist) {
+        if (artist == null) {
+            return null;
+        }
+        artist.setAvatar(minioService.resolvePreviewUrl(artist.getAvatar()));
+        return artist;
     }
 }

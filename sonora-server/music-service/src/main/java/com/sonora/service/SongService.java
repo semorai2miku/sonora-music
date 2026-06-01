@@ -16,6 +16,9 @@ public interface SongService extends IService<Song> {
     /** 更新歌曲元数据 */
     Song updateSong(Long id, Song song);
 
+    /** 替换歌曲音频文件并更新信息 */
+    Song replaceSong(Long id, MultipartFile audioFile, MultipartFile coverFile, Song song);
+
     /** 删除歌曲 (逻辑删除 + 删除 MinIO 文件) */
     void deleteSong(Long id);
 

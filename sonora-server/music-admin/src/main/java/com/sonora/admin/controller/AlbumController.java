@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.sonora.common.constant.Constants;
 import com.sonora.common.result.R;
+import com.sonora.file.service.MinioService;
 import com.sonora.mapper.AlbumMapper;
 import com.sonora.model.entity.Album;
 import io.swagger.v3.oas.annotations.Operation;
@@ -24,9 +25,11 @@ import java.util.Objects;
 public class AlbumController {
 
     private final AlbumMapper albumMapper;
+    private final MinioService minioService;
 
-    public AlbumController(AlbumMapper albumMapper) {
+    public AlbumController(AlbumMapper albumMapper, MinioService minioService) {
         this.albumMapper = albumMapper;
+        this.minioService = minioService;
     }
 
     @Operation(summary = "分页查询专辑列表")
@@ -45,6 +48,7 @@ public class AlbumController {
         }
         wrapper.orderByAsc(Album::getId);
         Page<Album> page = albumMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
+        page.getRecords().forEach(this::resolveAlbumPreview);
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("list", page.getRecords());
         data.put("total", page.getTotal());
@@ -56,7 +60,7 @@ public class AlbumController {
     @Operation(summary = "专辑详情")
     @GetMapping("/{id}")
     public R<Album> getById(@PathVariable Long id) {
-        return R.ok(albumMapper.selectById(id));
+        return R.ok(resolveAlbumPreview(albumMapper.selectById(id)));
     }
 
     @Operation(summary = "分页查询专辑选项")
@@ -85,6 +89,7 @@ public class AlbumController {
         }
         wrapper.orderByAsc(Album::getId);
         Page<Album> page = albumMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
+        page.getRecords().forEach(this::resolveAlbumPreview);
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("list", page.getRecords());
         data.put("total", page.getTotal());
@@ -105,7 +110,7 @@ public class AlbumController {
         normalizeAlbum(album, null);
         album.setStatus(1);
         albumMapper.insert(album);
-        return R.ok(album);
+        return R.ok(resolveAlbumPreview(album));
     }
 
     @Operation(summary = "编辑专辑")
@@ -124,7 +129,7 @@ public class AlbumController {
         normalizeAlbum(album, existing);
         album.setId(id);
         albumMapper.updateById(album);
-        return R.ok(albumMapper.selectById(id));
+        return R.ok(resolveAlbumPreview(albumMapper.selectById(id)));
     }
 
     @Operation(summary = "删除专辑")
@@ -186,10 +191,18 @@ public class AlbumController {
         } else if (!StringUtils.hasText(album.getCover())) {
             album.setCover(Constants.DEFAULT_COVER);
         } else {
-            album.setCover(album.getCover().trim());
+            album.setCover(minioService.normalizeForStorage(album.getCover().trim()));
         }
         if (album.getDescription() != null) {
             album.setDescription(StringUtils.hasText(album.getDescription()) ? album.getDescription().trim() : null);
         }
+    }
+
+    private Album resolveAlbumPreview(Album album) {
+        if (album == null) {
+            return null;
+        }
+        album.setCover(minioService.resolvePreviewUrl(album.getCover()));
+        return album;
     }
 }
