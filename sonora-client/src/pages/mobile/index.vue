@@ -1,64 +1,77 @@
 <script setup lang="ts">
-import { banner, personalized, personalizedNewsong, personalizedMv, topArtists } from '@/api'
+import { banner, topPlaylist, recommendSongs } from '@/api'
 import { useI18n } from 'vue-i18n'
 import { Swiper, SwiperSlide } from 'swiper/vue'
-import { Autoplay, Pagination, EffectCards } from 'swiper/modules'
+import { Autoplay, Pagination } from 'swiper/modules'
 import 'swiper/css'
 import 'swiper/css/pagination'
-import 'swiper/css/effect-cards'
-
-import { formatCount } from '@/utils/time'
 import {
   transformBanners,
   transformPlaylists,
   transformSongs,
-  transformMVs,
-  transformArtists,
   type BannerData,
   type PlaylistData,
   type SongData,
-  type MVData,
-  type ArtistData,
 } from '@/utils/transformers'
 
 const { t } = useI18n()
 
 interface HomeState {
   banners: BannerData[]
+  playlistPool: PlaylistData[]
+  songPool: SongData[]
   playlists: PlaylistData[]
-  newSongs: SongData[]
-  mvs: MVData[]
-  artists: ArtistData[]
+  songs: SongData[]
   isLoading: boolean
 }
 
 const state = reactive<HomeState>({
   banners: [],
+  playlistPool: [],
+  songPool: [],
   playlists: [],
-  newSongs: [],
-  mvs: [],
-  artists: [],
+  songs: [],
   isLoading: true,
 })
 
-const { banners, playlists, newSongs, mvs, artists, isLoading } = toRefs(state)
+const { banners, playlists, songs, isLoading } = toRefs(state)
+
+const shuffleList = <T,>(items: T[]) => {
+  const list = [...items]
+  for (let i = list.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[list[i], list[j]] = [list[j], list[i]]
+  }
+  return list
+}
+
+const refreshPlaylists = () => {
+  state.playlists = shuffleList(state.playlistPool).slice(0, 6)
+}
+
+const refreshSongs = () => {
+  state.songs = shuffleList(state.songPool).slice(0, 6)
+}
 
 const loadHomeData = async () => {
   state.isLoading = true
   try {
-    const [b, p, s, m, a] = await Promise.all([
+    const [b, p, s] = await Promise.allSettled([
       banner({ type: 2 }),
-      personalized({ limit: 6 }),
-      personalizedNewsong({ limit: 6 }),
-      personalizedMv(),
-      topArtists({ limit: 10 }),
+      topPlaylist({ order: 'hot', limit: 12 }),
+      recommendSongs(),
     ])
 
-    state.banners = transformBanners(b as Record<string, unknown>, 5)
-    state.playlists = transformPlaylists(p as Record<string, unknown>, 6, t('home.playlistFallback'))
-    state.newSongs = transformSongs(s as Record<string, unknown>, 6)
-    state.mvs = transformMVs(m as Record<string, unknown>, 4)
-    state.artists = transformArtists(a as Record<string, unknown>, 10)
+    state.banners =
+      b.status === 'fulfilled' ? transformBanners(b.value as Record<string, unknown>, 5) : []
+    state.playlistPool =
+      p.status === 'fulfilled'
+        ? transformPlaylists(p.value as Record<string, unknown>, 12, t('home.playlistFallback'))
+        : []
+    state.songPool =
+      s.status === 'fulfilled' ? transformSongs(s.value as Record<string, unknown>, 12) : []
+    refreshPlaylists()
+    refreshSongs()
   } finally {
     state.isLoading = false
   }
@@ -66,7 +79,7 @@ const loadHomeData = async () => {
 
 onMounted(loadHomeData)
 
-const swiperModules = [Autoplay, Pagination, EffectCards]
+const swiperModules = [Autoplay, Pagination]
 </script>
 
 <template>
@@ -83,13 +96,13 @@ const swiperModules = [Autoplay, Pagination, EffectCards]
             :space-between="12"
             :autoplay="{ delay: 4000, disableOnInteraction: false }"
             :pagination="{ clickable: true }"
-            class="home-swiper h-44 overflow-visible rounded-2xl"
+            class="home-swiper h-44 overflow-hidden rounded-2xl"
           >
             <SwiperSlide v-for="(item, i) in banners" :key="i" class="rounded-2xl">
               <a
-                :href="item.url || '#'"
-                target="_blank"
-                class="relative block h-full w-full overflow-hidden rounded-2xl"
+                :href="item.url || undefined"
+                :target="item.url ? '_blank' : undefined"
+                class="relative block h-full w-full overflow-hidden rounded-2xl border border-[var(--glass-border-default)] bg-[var(--glass-bg-card)]"
               >
                 <LazyImage
                   :src="item.coverImgUrl"
@@ -101,7 +114,7 @@ const swiperModules = [Autoplay, Pagination, EffectCards]
                 ></div>
                 <div v-if="item.title" class="absolute right-3 bottom-3 left-3">
                   <span
-                    class="text-primary inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1.5 text-xs font-medium backdrop-blur-md"
+                    class="text-primary inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/20 px-3 py-1.5 text-xs font-medium"
                   >
                     <span class="icon-[mdi--fire] h-3.5 w-3.5 text-orange-300"></span>
                     {{ item.title }}
@@ -120,6 +133,16 @@ const swiperModules = [Autoplay, Pagination, EffectCards]
               </span>
               {{ t('home.recommendPlaylists') }}
             </h2>
+            <div class="flex items-center gap-2">
+              <button class="mobile-action-button" type="button" @click="refreshPlaylists">
+                <span class="icon-[mdi--refresh] h-3.5 w-3.5"></span>
+                {{ t('common.refresh') }}
+              </button>
+              <router-link to="/playlists" class="mobile-action-button">
+                <span class="icon-[mdi--dots-horizontal-circle-outline] h-3.5 w-3.5"></span>
+                {{ t('common.more') }}
+              </router-link>
+            </div>
           </div>
           <div class="grid grid-cols-3 gap-3">
             <router-link
@@ -130,58 +153,12 @@ const swiperModules = [Autoplay, Pagination, EffectCards]
             >
               <div class="playlist-cover relative mb-2 aspect-square overflow-hidden rounded-xl">
                 <LazyImage
-                  :src="pl.coverImgUrl + '?param=200y200'"
+                  :src="pl.coverImgUrl"
                   :alt="pl.name"
                   imgClass="h-full w-full object-cover transition-transform duration-300 group-active:scale-105"
                 />
-                <div
-                  class="absolute inset-0 bg-linear-to-t from-black/50 via-transparent to-transparent"
-                ></div>
-                <div
-                  class="bg-overlay/50 text-primary absolute top-1.5 right-1.5 flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] backdrop-blur-sm"
-                >
-                  <span class="icon-[mdi--play] h-2.5 w-2.5"></span>
-                  {{ formatCount(pl.playCount) }}
-                </div>
-                <div class="absolute right-1.5 bottom-1.5 left-1.5">
-                  <div
-                    class="flex h-6 w-6 items-center justify-center rounded-full bg-white/90 shadow-md dark:bg-black/70"
-                  >
-                    <span class="icon-[mdi--play] h-3.5 w-3.5 text-pink-500"></span>
-                  </div>
-                </div>
               </div>
               <p class="playlist-name line-clamp-2 text-xs leading-tight">{{ pl.name }}</p>
-            </router-link>
-          </div>
-        </section>
-
-        <section v-if="artists.length" class="mb-6">
-          <div class="mb-3 flex items-center justify-between px-4">
-            <h2 class="section-title">
-              <span class="mobile-section-icon">
-                <span class="icon-[mdi--account-music] text-primary h-4 w-4"></span>
-              </span>
-              {{ t('components.discover.hotArtists') }}
-            </h2>
-          </div>
-          <div class="scrollbar-hide flex gap-3 overflow-x-auto px-4 pb-2">
-            <router-link
-              v-for="artist in artists"
-              :key="artist.id"
-              :to="`/artist/${artist.id}`"
-              class="flex shrink-0 flex-col items-center"
-            >
-              <div class="artist-avatar relative mb-1.5 h-16 w-16 overflow-hidden rounded-full">
-                <LazyImage
-                  :src="artist.picUrl + '?param=100y100'"
-                  :alt="artist.name"
-                  imgClass="h-full w-full object-cover"
-                />
-              </div>
-              <span class="artist-name w-16 truncate text-center text-[10px]">{{
-                artist.name
-              }}</span>
             </router-link>
           </div>
         </section>
@@ -192,56 +169,52 @@ const swiperModules = [Autoplay, Pagination, EffectCards]
               <span class="mobile-section-icon">
                 <span class="icon-[mdi--music-note-plus] text-primary h-4 w-4"></span>
               </span>
-              {{ t('components.discover.newSongs') }}
+              {{ t('home.recommendSongs') }}
             </h2>
+            <div class="flex items-center gap-2">
+              <button class="mobile-action-button" type="button" @click="refreshSongs">
+                <span class="icon-[mdi--refresh] h-3.5 w-3.5"></span>
+                {{ t('common.refresh') }}
+              </button>
+              <router-link to="/library" class="mobile-action-button">
+                <span class="icon-[mdi--dots-horizontal-circle-outline] h-3.5 w-3.5"></span>
+                {{ t('common.more') }}
+              </router-link>
+            </div>
           </div>
-          <MobileSongList :songs="newSongs" variant="compact" :show-index="true" />
-        </section>
-
-        <section v-if="mvs.length" class="px-4 pb-6">
-          <div class="mb-4 flex items-center justify-between">
-            <h2 class="section-title">
-              <span class="mobile-section-icon">
-                <span class="icon-[mdi--video] text-primary h-4 w-4"></span>
-              </span>
-              {{ t('components.discover.recommendMv') }}
-            </h2>
-            <router-link to="/mv-list" class="view-more-link">
-              {{ t('components.discover.viewMore') }}
-              <span class="icon-[mdi--chevron-right] h-4 w-4"></span>
-            </router-link>
-          </div>
-          <div class="grid grid-cols-2 gap-3">
-            <router-link v-for="mv in mvs" :key="mv.id" :to="`/mv-player/${mv.id}`" class="group">
-              <div class="mv-cover relative aspect-video overflow-hidden rounded-xl">
-                <LazyImage
-                  :src="mv.cover + '?param=320y180'"
-                  :alt="mv.name"
-                  imgClass="h-full w-full object-cover transition-transform duration-300 group-active:scale-105"
-                />
-                <div
-                  class="absolute inset-0 bg-linear-to-t from-black/70 via-transparent to-transparent"
-                ></div>
-                <div
-                  class="bg-overlay/50 text-primary absolute top-2 right-2 flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] backdrop-blur-sm"
-                >
-                  <span class="icon-[mdi--play] h-2.5 w-2.5"></span>
-                  {{ formatCount(mv.playCount) }}
-                </div>
-                <div class="absolute inset-0 flex items-center justify-center">
-                  <div
-                    class="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm"
-                  >
-                    <span class="icon-[mdi--play] text-primary h-5 w-5"></span>
-                  </div>
-                </div>
-                <div class="absolute right-0 bottom-0 left-0 p-2">
-                  <p class="text-primary truncate text-xs font-medium">{{ mv.name }}</p>
-                  <p class="text-primary/60 truncate text-[10px]">{{ mv.artist }}</p>
-                </div>
+          <div class="space-y-2.5">
+            <router-link
+              v-for="song in songs"
+              :key="song.id"
+              :to="`/song/${song.id}`"
+              class="mobile-song-row"
+            >
+              <div class="mobile-song-row__cover">
+                <LazyImage :src="song.cover" :alt="song.name" imgClass="h-full w-full object-cover" />
+              </div>
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-sm font-medium text-[var(--glass-text-primary)]">
+                  {{ song.name }}
+                </p>
+                <p class="mt-1 truncate text-xs text-[var(--glass-text-muted)]">
+                  {{ song.artist || t('player.unknownArtist') }}
+                </p>
               </div>
             </router-link>
           </div>
+        </section>
+
+        <section
+          v-if="!banners.length && !playlists.length && !songs.length"
+          class="mx-4 rounded-2xl border border-[var(--glass-border-default)] bg-[var(--glass-bg-card)] px-5 py-8 text-center"
+        >
+          <div class="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--glass-interactive-bg)]">
+            <span class="icon-[mdi--music-note-outline] h-5 w-5 text-[var(--sonora-blue)]" />
+          </div>
+          <p class="text-sm font-semibold text-[var(--glass-text-primary)]">首页内容暂时为空</p>
+          <p class="mt-2 text-xs leading-5 text-[var(--glass-text-muted)]">
+            请先在管理端启用轮播图，或新增公开歌单与可播放歌曲。
+          </p>
         </section>
       </template>
     </div>
@@ -282,9 +255,10 @@ const swiperModules = [Autoplay, Pagination, EffectCards]
   width: 1.75rem;
   align-items: center;
   justify-content: center;
-  border-radius: 0.75rem;
-  background: linear-gradient(135deg, rgba(31, 124, 255, 0.92), rgba(77, 163, 255, 0.8));
-  box-shadow: 0 8px 18px rgba(31, 124, 255, 0.16);
+  border-radius: 0.65rem;
+  background: var(--glass-interactive-bg);
+  border: 1px solid var(--glass-border-default);
+  box-shadow: none;
 }
 
 .view-more-link {
@@ -301,17 +275,22 @@ const swiperModules = [Autoplay, Pagination, EffectCards]
   opacity: 0.7;
 }
 
-.playlist-cover {
-  box-shadow:
-    0 10px 15px -3px rgba(0, 0, 0, 0.1),
-    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+.mobile-action-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid var(--glass-border-default);
+  border-radius: 9999px;
+  background: var(--glass-bg-card);
+  color: var(--glass-text-secondary);
+  padding: 0.4rem 0.625rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
 }
 
-:root.dark .playlist-cover,
-html.dark .playlist-cover {
-  box-shadow:
-    0 10px 15px -3px rgba(0, 0, 0, 0.3),
-    0 4px 6px -2px rgba(0, 0, 0, 0.2);
+.playlist-cover {
+  border: 1px solid var(--glass-border-subtle);
+  background: var(--glass-bg-subtle);
 }
 
 .playlist-name {
@@ -319,75 +298,23 @@ html.dark .playlist-cover {
   opacity: 0.8;
 }
 
-.artist-avatar {
-  box-shadow: 0 0 0 2px var(--glass-border-default);
+.mobile-song-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid var(--glass-border-default);
+  border-radius: 1rem;
+  background: var(--glass-bg-card);
+  padding: 0.75rem;
 }
 
-:root.dark .artist-avatar,
-html.dark .artist-avatar {
-  box-shadow: 0 0 0 2px var(--glass-border-default);
-}
-
-.artist-name {
-  color: var(--glass-text-primary);
-  opacity: 0.7;
-}
-
-.song-item:not(.song-item-active):active {
-  background: var(--glass-interactive-hover-muted);
-}
-
-.song-item-active {
-  background: linear-gradient(to right, rgba(31, 124, 255, 0.2), rgba(77, 163, 255, 0.2));
-}
-
-:root.dark .song-item-active,
-html.dark .song-item-active {
-  background: linear-gradient(to right, rgba(31, 124, 255, 0.3), rgba(77, 163, 255, 0.3));
-}
-
-.song-index {
-  color: var(--glass-text-primary);
-  opacity: 0.3;
-}
-
-.song-cover {
-  box-shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.1),
-    0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-
-:root.dark .song-cover,
-html.dark .song-cover {
-  box-shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.3),
-    0 2px 4px -1px rgba(0, 0, 0, 0.2);
-}
-
-.song-name {
-  color: var(--glass-text-primary);
-}
-
-.song-artist {
-  color: var(--glass-text-primary);
-  opacity: 0.4;
-}
-
-.song-duration {
-  color: var(--glass-text-primary);
-  opacity: 0.3;
-}
-
-.mv-cover {
-  box-shadow:
-    0 10px 15px -3px rgba(0, 0, 0, 0.1),
-    0 4px 6px -2px rgba(0, 0, 0, 0.05);
-}
-
-:root.dark .mv-cover,
-html.dark .mv-cover {
-  box-shadow:
-    0 10px 15px -3px rgba(0, 0, 0, 0.3),
-    0 4px 6px -2px rgba(0, 0, 0, 0.2);
+.mobile-song-row__cover {
+  height: 3rem;
+  width: 3rem;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 0.875rem;
+  border: 1px solid var(--glass-border-subtle);
+  background: var(--glass-bg-subtle);
 }
 </style>

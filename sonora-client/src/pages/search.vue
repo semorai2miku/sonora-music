@@ -6,7 +6,7 @@ import SearchMVs from '@/components/Search/SearchMVs.vue'
 import PageSkeleton from '@/components/PageSkeleton.vue'
 import TabGroup from '@/components/Ui/TabGroup.vue'
 import Button from '@/components/Ui/Button.vue'
-import { searchHotDetail, searchDefault } from '@/api'
+import { searchDefault } from '@/api'
 import { useGlobalStore } from '@/stores/modules/global'
 import { storeToRefs } from 'pinia'
 
@@ -26,8 +26,6 @@ const state = reactive({
   lastLoadedCount: 0,
   total: 0,
   isLoading: false,
-  hotSearches: [] as { searchWord: string; score: number; iconType?: number }[],
-  loadingHot: false,
 })
 const { activeType, page, total, isLoading } = toRefs(state)
 
@@ -112,19 +110,6 @@ const clearHistory = () => {
   globalStore.clearSearchHistory()
 }
 
-// 获取热门搜索
-const fetchHotSearch = async () => {
-  state.loadingHot = true
-  try {
-    const res: any = await searchHotDetail()
-    state.hotSearches = res?.data || []
-  } catch {
-    state.hotSearches = []
-  } finally {
-    state.loadingHot = false
-  }
-}
-
 // 获取默认搜索词作为 placeholder
 const fetchPlaceholder = async () => {
   try {
@@ -137,21 +122,8 @@ const fetchPlaceholder = async () => {
 
 onMounted(() => {
   if (!q.value) {
-    fetchHotSearch()
     fetchPlaceholder()
   }
-})
-
-watch(q, (val) => {
-  if (!val && state.hotSearches.length === 0) {
-    fetchHotSearch()
-  }
-})
-
-// 热搜最大分数，用于计算热度条宽度
-const maxScore = computed(() => {
-  if (!state.hotSearches.length) return 1
-  return Math.max(...state.hotSearches.map(h => h.score))
 })
 </script>
 
@@ -355,79 +327,13 @@ const maxScore = computed(() => {
           </div>
         </div>
 
-        <!-- 热门搜索 -->
         <div class="relative z-10 min-h-0 flex-1 pb-6">
-          <div class="mb-3 flex items-center gap-2">
-            <span class="icon-[mdi--fire] h-4 w-4 text-orange-500/60" />
-            <span class="text-primary/40 text-xs font-medium">{{ $t('search.hotSearches') }}</span>
-          </div>
-
-          <!-- 骨架屏 -->
-          <div v-if="state.loadingHot" class="space-y-1.5">
-            <div v-for="i in 12" :key="i" class="flex items-center gap-4 rounded-xl px-3 py-3">
-              <div class="h-5 w-5 animate-pulse rounded bg-white/[0.05]" />
-              <div class="h-3 animate-pulse rounded bg-white/[0.05]" :style="{ width: `${30 + Math.random() * 35}%` }" />
+          <div class="rounded-2xl border border-white/[0.05] bg-white/[0.025] px-5 py-8 text-center">
+            <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.04]">
+              <span class="icon-[mdi--magnify] h-6 w-6 text-primary/35" />
             </div>
-          </div>
-
-          <!-- 热搜双栏列表 -->
-          <div v-else class="grid grid-cols-1 sm:grid-cols-2 sm:gap-x-6">
-            <button
-              v-for="(item, index) in state.hotSearches.slice(0, 20)"
-              :key="item.searchWord"
-              class="hot-item group flex items-center gap-3 rounded-xl px-3 py-[10px] text-left transition-all duration-200 hover:bg-white/[0.04]"
-              :style="{ animationDelay: `${index * 25}ms` }"
-              @click="doSearch(item.searchWord)"
-            >
-              <!-- 排名 -->
-              <span
-                class="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md text-[11px] font-bold leading-none"
-                :class="[
-                  index === 0
-                    ? 'bg-gradient-to-br from-rose-500 to-orange-500 text-white'
-                    : index === 1
-                      ? 'bg-gradient-to-br from-orange-400 to-amber-500 text-white'
-                      : index === 2
-                        ? 'bg-gradient-to-br from-amber-400 to-yellow-500 text-amber-900'
-                        : 'text-primary/25'
-                ]"
-              >
-                {{ index + 1 }}
-              </span>
-
-              <!-- 关键词 + 热度条 -->
-              <div class="min-w-0 flex-1">
-                <span
-                  class="block truncate text-sm transition-colors duration-200"
-                  :class="index < 3 ? 'text-primary/90 font-semibold' : 'text-primary/60 group-hover:text-primary/85'"
-                >
-                  {{ item.searchWord }}
-                </span>
-                <!-- 热度渐变条 -->
-                <div class="mt-1 h-[2px] w-full overflow-hidden rounded-full bg-white/[0.04]">
-                  <div
-                    class="h-full rounded-full transition-all duration-500"
-                    :class="index < 3 ? 'bg-gradient-to-r from-pink-500/60 to-purple-500/40' : 'bg-white/[0.08]'"
-                    :style="{ width: `${Math.max(8, (item.score / maxScore) * 100)}%` }"
-                  />
-                </div>
-              </div>
-
-              <!-- 标签 -->
-              <span
-                v-if="item.iconType === 1"
-                class="shrink-0 rounded-md bg-rose-500/15 px-1.5 py-0.5 text-[10px] font-bold leading-none text-rose-400"
-              >HOT</span>
-              <span
-                v-else-if="item.iconType === 5"
-                class="shrink-0 rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-bold leading-none text-emerald-400"
-              >NEW</span>
-
-              <!-- 热度值 -->
-              <span class="text-primary/15 w-10 shrink-0 text-right text-[10px] tabular-nums">
-                {{ Math.round(item.score / 10000) }}w
-              </span>
-            </button>
+            <p class="text-primary/80 text-sm font-medium">{{ $t('search.enterKeyword') }}</p>
+            <p class="text-primary/40 mt-2 text-xs">{{ $t('search.hint') }}</p>
           </div>
         </div>
       </div>
@@ -468,15 +374,6 @@ const maxScore = computed(() => {
 @keyframes chip-in {
   from { opacity: 0; transform: translateY(4px) scale(0.97); }
   to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-/* ═══ 热搜入场 ═══ */
-.hot-item {
-  animation: item-in 0.3s var(--glass-ease-out) both;
-}
-@keyframes item-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 /* ═══ 淡入缩放过渡（清除按钮） ═══ */

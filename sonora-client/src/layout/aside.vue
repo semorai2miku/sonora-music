@@ -12,22 +12,17 @@ const sections = [
     titleKey: 'layout.aside.explore',
     items: [
       { to: '/', labelKey: 'layout.aside.menu.home', icon: 'mdi--home' },
-      { to: '/mv-list', labelKey: 'layout.aside.menu.mv', icon: 'mdi--video' },
-      { to: '/charts', labelKey: 'layout.aside.menu.charts', icon: 'mdi--chart-line' },
+      { to: '/search', labelKey: 'layout.aside.menu.search', icon: 'mdi--magnify' },
+      { to: '/library', labelKey: 'layout.aside.menu.library', icon: 'mdi--music-box-multiple-outline' },
       { to: '/artists', labelKey: 'layout.aside.menu.artists', icon: 'mdi--account-music' },
-      { to: '/new-albums', labelKey: 'layout.aside.menu.newAlbums', icon: 'mdi--album' },
-      { to: '/search', labelKey: 'layout.aside.menu.search', icon: 'ic--round-search' },
+      { to: '/albums', labelKey: 'layout.aside.menu.albums', icon: 'mdi--album' },
+      { to: '/playlists', labelKey: 'layout.aside.menu.playlists', icon: 'mdi--playlist-music' },
     ],
   },
   {
     titleKey: 'layout.aside.myMusic',
     items: [
-      { to: '/my-music', labelKey: 'layout.aside.menu.recent', icon: 'mdi--music-box-multiple' },
-      {
-        to: '/local-music',
-        labelKey: 'layout.aside.menu.localMusic',
-        icon: 'mdi--folder-music-outline',
-      },
+      { to: '/my-music', labelKey: 'layout.aside.menu.recent', icon: 'mdi--history' },
     ],
   },
   {
@@ -171,7 +166,7 @@ const isActive = (path: string) => {
       <!-- 滑动指示器 -->
       <div
         ref="indicatorRef"
-        class="nav-indicator pointer-events-none absolute right-2 left-2 rounded-xl bg-[rgba(31,124,255,0.14)] opacity-0"
+        class="nav-indicator pointer-events-none absolute right-2 left-2 rounded-xl bg-[rgba(31,124,255,0.08)] opacity-0"
         style="height: 40px; z-index: 0"
       ></div>
 
@@ -226,7 +221,7 @@ const isActive = (path: string) => {
             :class="{ 'nav-link-active bg-hover-glass': isActive(`/playlist/${playlist.id}`) }"
           >
             <div
-              class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-linear-to-br from-slate-900 to-blue-600 text-xs text-white transition-transform duration-200 group-hover:scale-105"
+              class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg border border-glass bg-button-glass text-xs text-primary transition-transform duration-200 group-hover:scale-105"
             >
               <img
                 v-if="playlist.cover"
@@ -280,7 +275,8 @@ const isActive = (path: string) => {
         <span class="icon-[mdi--chevron-right] h-5 w-5"></span>
         <span class="icon-[mdi--account-music] h-5 w-5"></span>
         <span class="icon-[mdi--album] h-5 w-5"></span>
-        <span class="icon-[mdi--folder-music-outline] h-5 w-5"></span>
+        <span class="icon-[mdi--music-box-multiple-outline] h-5 w-5"></span>
+        <span class="icon-[mdi--magnify] h-5 w-5"></span>
         <span class="icon-[mdi--plus] h-5 w-5"></span>
         <span class="icon-[mdi--playlist-music] h-5 w-5"></span>
       </div>
@@ -348,7 +344,7 @@ const isActive = (path: string) => {
 }
 
 .nav-link:hover::before {
-  background: rgba(31, 124, 255, 0.08);
+  background: rgba(31, 124, 255, 0.05);
 }
 
 .nav-link-active::before {

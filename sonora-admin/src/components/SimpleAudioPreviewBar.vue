@@ -365,7 +365,7 @@ onBeforeUnmount(() => {
 .preview-bar__range::-webkit-slider-thumb {
   width: 11px;
   height: 11px;
-  margin-top: -5px;
+  margin-top: -4px;
   appearance: none;
   border: 2px solid #fff;
   border-radius: 50%;

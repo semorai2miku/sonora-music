@@ -2,6 +2,7 @@ package com.sonora.client.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.sonora.common.constant.Constants;
+import com.sonora.file.service.MinioService;
 import com.sonora.mapper.*;
 import com.sonora.model.entity.*;
 import org.springframework.util.StringUtils;
@@ -26,19 +27,22 @@ public class NeteaseCompatController {
     private final PlaylistSongMapper playlistSongMapper;
     private final ArtistMapper artistMapper;
     private final AlbumMapper albumMapper;
+    private final MinioService minioService;
 
     public NeteaseCompatController(BannerMapper bannerMapper,
                                    SongMapper songMapper,
                                    PlaylistMapper playlistMapper,
                                    PlaylistSongMapper playlistSongMapper,
                                    ArtistMapper artistMapper,
-                                   AlbumMapper albumMapper) {
+                                   AlbumMapper albumMapper,
+                                   MinioService minioService) {
         this.bannerMapper = bannerMapper;
         this.songMapper = songMapper;
         this.playlistMapper = playlistMapper;
         this.playlistSongMapper = playlistSongMapper;
         this.artistMapper = artistMapper;
         this.albumMapper = albumMapper;
+        this.minioService = minioService;
     }
 
     // ==================== Banner ====================
@@ -49,7 +53,7 @@ public class NeteaseCompatController {
                 new LambdaQueryWrapper<Banner>().eq(Banner::getStatus, 1).orderByAsc(Banner::getSort));
         List<Map<String, Object>> list = banners.stream().map(b -> {
             Map<String, Object> m = new LinkedHashMap<>();
-            m.put("imageUrl", b.getImageUrl());
+            m.put("imageUrl", previewUrl(b.getImageUrl()));
             m.put("title", b.getTitle());
             m.put("url", b.getLinkUrl());
             return m;
@@ -146,7 +150,7 @@ public class NeteaseCompatController {
         Map<String, Object> pl = new LinkedHashMap<>();
         pl.put("id", playlist.getId());
         pl.put("name", playlist.getName());
-        pl.put("coverImgUrl", playlist.getCover());
+        pl.put("coverImgUrl", previewUrl(playlist.getCover()));
         pl.put("description", playlist.getDescription());
         pl.put("trackCount", songs.size());
         pl.put("playCount", playlist.getPlayCount());
@@ -188,7 +192,7 @@ public class NeteaseCompatController {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("id", p.getId());
             m.put("name", p.getName());
-            m.put("picUrl", p.getCover());
+            m.put("picUrl", previewUrl(p.getCover()));
             m.put("playCount", p.getPlayCount());
             return m;
         }).toList();
@@ -200,6 +204,22 @@ public class NeteaseCompatController {
     public Map<String, Object> topPlaylist(@RequestParam(defaultValue = "hot") String order,
                                             @RequestParam(defaultValue = "20") int limit) {
         return personalized(limit);
+    }
+
+    @GetMapping("/top/song")
+    public Map<String, Object> topSong(@RequestParam(defaultValue = "0") int type) {
+        List<Song> songs = songMapper.selectList(
+                new LambdaQueryWrapper<Song>().eq(Song::getStatus, 1)
+                        .orderByDesc(Song::getCreatedAt)
+                        .last("LIMIT 30"));
+        Map<Long, Album> albumMap = albumMapFromSongs(songs);
+        Map<Long, Artist> artistMap = artistMapFromSongs(songs);
+
+        List<Map<String, Object>> list = songs.stream()
+                .map(song -> trackOf(song, albumMap, artistMap))
+                .toList();
+
+        return Map.of("code", 200, "data", list);
     }
 
     @GetMapping("/recommend/songs")
@@ -233,7 +253,7 @@ public class NeteaseCompatController {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("id", artist.getId());
         data.put("name", artist.getName());
-        data.put("picUrl", artist.getAvatar());
+        data.put("picUrl", previewUrl(artist.getAvatar()));
         data.put("briefDesc", artist.getDescription());
         return Map.of("code", 200, "data", Map.of("artist", data));
     }
@@ -303,7 +323,7 @@ public class NeteaseCompatController {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("id", p.getId());
             m.put("name", p.getName());
-            m.put("coverImgUrl", p.getCover());
+            m.put("coverImgUrl", previewUrl(p.getCover()));
             return m;
         }).toList());
     }
@@ -431,18 +451,23 @@ public class NeteaseCompatController {
 
     private String coverOf(Song song, Map<Long, Album> albumMap) {
         if (song != null && StringUtils.hasText(song.getCover())) {
-            return song.getCover();
+            return previewUrl(song.getCover());
         }
         Album album = song == null || song.getAlbumId() == null ? null : albumMap.get(song.getAlbumId());
         if (album != null && StringUtils.hasText(album.getCover())) {
-            return album.getCover();
+            return previewUrl(album.getCover());
         }
-        return Constants.DEFAULT_COVER;
+        return previewUrl(Constants.DEFAULT_COVER);
     }
 
     private String coverOf(Album album) {
-        return album != null && StringUtils.hasText(album.getCover())
+        return previewUrl(album != null && StringUtils.hasText(album.getCover())
                 ? album.getCover()
-                : Constants.DEFAULT_COVER;
+                : Constants.DEFAULT_COVER);
+    }
+
+    private String previewUrl(String value) {
+        String resolved = minioService.resolvePreviewUrl(value);
+        return StringUtils.hasText(resolved) ? resolved : value;
     }
 }

@@ -1,158 +1,170 @@
 <script setup lang="ts">
-import { useAudioStore } from '@/stores/modules/audio'
-import { useAudio } from '@/composables/useAudio'
-import type { Song as StoreSong } from '@/stores/interface'
+import { myPlaylists, type ClientPlaylist } from '@/api'
+import LoginDialog from '@/components/Auth/LoginDialog.vue'
 import SongList from '@/components/SongList.vue'
-import TabGroup from '@/components/Ui/TabGroup.vue'
 import Button from '@/components/Ui/Button.vue'
-import { useI18n } from 'vue-i18n'
+import HeroCard from '@/components/Ui/HeroCard.vue'
+import { useAudio } from '@/composables/useAudio'
+import { useUserStore } from '@/stores/modules/user'
+import type { Song as StoreSong } from '@/stores/interface'
+import { useAudioStore } from '@/stores/modules/audio'
 
-const { t } = useI18n()
-const { setPlaylist, play, playlist, clearPlaylist } = useAudio()
-
-const state = reactive({
-  activeTab: 'playlist' as 'playlist' | 'history',
-})
-
-const { activeTab } = toRefs(state)
-
+const userStore = useUserStore()
 const audioStore = useAudioStore()
 const { audio } = storeToRefs(audioStore)
-const recentSongs = computed<StoreSong[]>(() => audio.value?.playHistory || [])
+const { setPlaylist, play } = useAudio()
+
+const state = reactive({
+  playlists: [] as ClientPlaylist[],
+  isLoadingPlaylists: false,
+  showLogin: false,
+})
+
+const recentList = computed<StoreSong[]>(() => audio.value?.playHistory || [])
+
+const loadUserPlaylists = async () => {
+  if (!userStore.isLoggedIn) {
+    state.playlists = []
+    return
+  }
+
+  state.isLoadingPlaylists = true
+  try {
+    const res = await myPlaylists()
+    state.playlists = Array.isArray(res?.data) ? res.data : []
+  } catch {
+    state.playlists = []
+  } finally {
+    state.isLoadingPlaylists = false
+  }
+}
 
 const playAllRecent = () => {
-  if (!recentSongs.value.length) return
-  const list = recentSongs.value
+  if (!recentList.value.length) return
+  const list = recentList.value
   setPlaylist(list, 0)
   play(list[0], 0)
 }
 
-const playAllQueue = () => {
-  if (!playlist.value.length) return
-  play(playlist.value[0], 0)
+const openLogin = () => {
+  state.showLogin = true
 }
 
-const handleClearQueue = () => {
-  clearPlaylist()
-}
+onMounted(() => {
+  loadUserPlaylists()
+  window.addEventListener('sonora:playlists-updated', loadUserPlaylists)
+})
 
-const tabs = computed(() => [
-  {
-    key: 'playlist',
-    icon: 'icon-[mdi--playlist-play]',
-    labelKey: 'mobile.recent.playlist',
-    count: playlist.value.length,
-  },
-  {
-    key: 'history',
-    icon: 'icon-[mdi--history]',
-    labelKey: 'mobile.recent.history',
-    count: recentSongs.value.length,
-  },
-])
+onUnmounted(() => {
+  window.removeEventListener('sonora:playlists-updated', loadUserPlaylists)
+})
+
+watch(() => userStore.isLoggedIn, loadUserPlaylists)
 </script>
 
 <template>
-  <div class="flex h-full flex-1 flex-col overflow-hidden p-4">
-    <!-- 顶部操作栏 -->
-    <div class="mb-6 flex shrink-0 flex-wrap items-center justify-between gap-4">
-      <!-- Tab 导航 -->
-      <TabGroup v-model="state.activeTab" :tabs="tabs" variant="gradient" size="sm" />
-
-      <!-- 操作按钮 -->
-      <div class="flex items-center gap-3">
+  <div class="flex flex-1 flex-col overflow-hidden p-4">
+    <section class="glass-card mb-4 shrink-0 p-5">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 class="text-primary text-2xl font-bold">{{ $t('myMusic.title') }}</h1>
+          <p class="text-primary/60 mt-2 text-sm">{{ $t('myMusic.subtitle') }}</p>
+        </div>
         <Button
-          v-if="activeTab === 'playlist' && playlist.length > 0"
-          variant="ghost"
-          size="sm"
-          rounded="lg"
-          class="gap-2"
-          @click="handleClearQueue"
-        >
-          <span class="icon-[mdi--delete-outline] h-4 w-4" />
-          {{ t('mobile.myMusic.clear') }}
-        </Button>
-        <Button
-          v-if="activeTab === 'playlist' && playlist.length > 0"
           variant="solid"
-          size="sm"
-          rounded="lg"
-          class="gap-2 shadow-md shadow-pink-500/20 hover:shadow-lg hover:shadow-pink-500/30"
-          @click="playAllQueue"
-        >
-          <span class="icon-[mdi--play] h-4 w-4" />
-          {{ t('actions.playAll') }}
-        </Button>
-        <Button
-          v-if="activeTab === 'history' && recentSongs.length > 0"
-          variant="solid"
-          size="sm"
-          rounded="lg"
-          class="gap-2 shadow-md shadow-pink-500/20 hover:shadow-lg hover:shadow-pink-500/30"
+          size="md"
+          rounded="full"
+          class="px-6"
+          :disabled="!recentList.length"
           @click="playAllRecent"
         >
-          <span class="icon-[mdi--play] h-4 w-4" />
-          {{ t('actions.playAll') }}
+          <span class="icon-[mdi--play] mr-2 h-4.5 w-4.5"></span>
+          {{ $t('actions.playAll') }}
         </Button>
       </div>
-    </div>
+      <div class="text-primary/55 mt-4 flex flex-wrap items-center gap-4 text-sm">
+        <span class="inline-flex items-center gap-2">
+          <span class="icon-[mdi--history] h-4.5 w-4.5"></span>
+          {{ $t('commonUnits.songsShort', { count: recentList.length }) }}
+        </span>
+        <span class="inline-flex items-center gap-2">
+          <span class="icon-[mdi--playlist-music] h-4.5 w-4.5"></span>
+          {{ $t('myMusic.playlistsCount', { count: state.playlists.length }) }}
+        </span>
+      </div>
+    </section>
 
-    <!-- 内容区域 -->
-    <div class="relative min-h-0 flex-1 overflow-hidden">
-      <Transition name="slide-fade" mode="out-in">
-        <!-- 播放列表 -->
-        <div v-if="activeTab === 'playlist'" key="playlist" class="h-full overflow-hidden">
-          <div v-if="playlist.length === 0" class="flex h-full flex-col items-center justify-center">
-            <div class="mb-6 rounded-full glass-card p-8">
-              <span class="icon-[mdi--playlist-music] text-primary/20 h-16 w-16" />
-            </div>
-            <p class="text-primary/60 mb-2 text-base font-semibold">{{ t('mobile.myMusic.emptyTitle') }}</p>
-            <p class="text-primary/40 text-sm">{{ t('mobile.myMusic.emptyHint') }}</p>
+    <div class="custom-scrollbar min-h-0 flex-1 overflow-y-auto pr-1">
+      <section class="mb-6">
+        <div class="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h2 class="text-primary text-lg font-semibold">{{ $t('myMusic.playlistsTitle') }}</h2>
+            <p class="text-primary/50 mt-1 text-sm">{{ $t('myMusic.playlistsSubtitle') }}</p>
           </div>
-          <SongList
-            v-else
-            :songs="playlist"
-            :show-header="true"
-            :show-controls="true"
-            context="queue"
+          <Button
+            v-if="!userStore.isLoggedIn"
+            variant="ghost"
+            size="sm"
+            rounded="full"
+            class="px-4"
+            @click="openLogin"
+          >
+            {{ $t('auth.login') }}
+          </Button>
+        </div>
+
+        <div
+          v-if="state.isLoadingPlaylists"
+          class="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
+        >
+          <div
+            v-for="idx in 5"
+            :key="idx"
+            class="aspect-square animate-pulse rounded-2xl border border-white/6 bg-white/5"
+          ></div>
+        </div>
+
+        <div v-else-if="userStore.isLoggedIn && state.playlists.length" class="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+          <HeroCard
+            v-for="playlist in state.playlists"
+            :key="playlist.id"
+            :id="playlist.id"
+            :cover-url="playlist.cover || '/default-cover.svg'"
+            :title="playlist.name"
+            :track-count="playlist.songCount"
+            :to="`/playlist/${playlist.id}`"
+            :enable-tilt="false"
           />
         </div>
 
-        <!-- 历史记录 -->
-        <div v-else key="history" class="h-full overflow-hidden">
-          <div v-if="recentSongs.length === 0" class="flex h-full flex-col items-center justify-center">
-            <div class="mb-6 rounded-full glass-card p-8">
-              <span class="icon-[mdi--history] text-primary/20 h-16 w-16" />
-            </div>
-            <p class="text-primary/60 mb-2 text-base font-semibold">{{ t('recent.empty') }}</p>
-            <p class="text-primary/40 text-sm">{{ t('mobile.myMusic.emptyHint') }}</p>
-          </div>
-          <SongList
-            v-else
-            :songs="recentSongs"
-            :show-header="true"
-            :show-controls="true"
-            context="queue"
-          />
+        <div
+          v-else
+          class="rounded-2xl border border-white/6 bg-white/4 px-5 py-8 text-center"
+        >
+          <p class="text-primary/70 text-base font-medium">
+            {{
+              userStore.isLoggedIn
+                ? $t('myMusic.playlistsEmpty')
+                : $t('myMusic.playlistsLoginHint')
+            }}
+          </p>
+          <p class="text-primary/45 mt-2 text-sm">{{ $t('myMusic.playlistsHelper') }}</p>
         </div>
-      </Transition>
+      </section>
+
+      <section class="min-h-[420px]">
+        <div class="mb-4">
+          <h2 class="text-primary text-lg font-semibold">{{ $t('recent.title') }}</h2>
+          <p class="text-primary/50 mt-1 text-sm">{{ $t('recent.subtitle') }}</p>
+        </div>
+        <SongList
+          :songs="recentList"
+          :show-header="true"
+          :show-controls="true"
+          :empty-message="$t('recent.empty')"
+        />
+      </section>
     </div>
   </div>
+  <LoginDialog v-if="state.showLogin" @close="state.showLogin = false" @success="loadUserPlaylists" />
 </template>
-
-<style scoped>
-.slide-fade-enter-active,
-.slide-fade-leave-active {
-  transition: all 0.2s ease;
-}
-
-.slide-fade-enter-from {
-  opacity: 0;
-  transform: translateX(20px);
-}
-
-.slide-fade-leave-to {
-  opacity: 0;
-  transform: translateX(-20px);
-}
-</style>

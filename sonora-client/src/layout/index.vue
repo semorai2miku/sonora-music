@@ -17,12 +17,9 @@ const openPlayerDrawer = () => {
 
 <template>
   <div class="relative flex h-full w-full overflow-hidden">
-    <div class="custom-theme absolute inset-0 h-full w-full">
-      <div class="shell-backdrop h-full w-full" />
-    </div>
-    <div class="shell-filter absolute inset-0"></div>
+    <div class="custom-theme absolute inset-0 h-full w-full"></div>
     <!-- 主容器 -->
-    <div class="z-50 flex w-full flex-col px-6 py-5 xl:px-16">
+    <div class="z-50 flex w-full flex-col px-4 py-4 xl:px-8">
       <div class="shell-frame glass-container flex flex-1 flex-col overflow-hidden">
         <!-- 头部区域 -->
         <Header />
@@ -48,42 +45,18 @@ const openPlayerDrawer = () => {
 </template>
 <style>
 .custom-theme {
-  background:
-    linear-gradient(180deg, #f3f7fb 0%, #f8fbff 40%, #f1f5fa 100%);
+  background: var(--glass-bg-solid);
 }
 
 html.dark .custom-theme {
-  background:
-    linear-gradient(180deg, #06111d 0%, #08131f 44%, #050d18 100%);
-}
-
-.shell-backdrop {
-  background:
-    linear-gradient(135deg, rgba(31, 124, 255, 0.06), transparent 42%),
-    linear-gradient(315deg, rgba(77, 163, 255, 0.06), transparent 38%);
-}
-
-html.dark .shell-backdrop {
-  background:
-    linear-gradient(135deg, rgba(77, 163, 255, 0.08), transparent 42%),
-    linear-gradient(315deg, rgba(31, 124, 255, 0.07), transparent 38%);
-}
-
-.shell-filter {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 100%);
-  pointer-events: none;
-}
-
-html.dark .shell-filter {
-  background:
-    linear-gradient(180deg, rgba(5, 10, 20, 0.1) 0%, rgba(5, 10, 20, 0) 100%);
+  background: var(--glass-bg-solid);
 }
 
 .shell-frame {
-  min-height: calc(100vh - 2.5rem);
+  min-height: calc(100vh - 2rem);
   background: var(--glass-bg-elevated);
   border: 1px solid var(--glass-border-default);
+  box-shadow: none;
 }
 
 .fade-transform-enter-active,

@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { useIntersectionObserver } from '@vueuse/core'
+import { resolveMediaUrl } from '@/utils/media'
+
 const props = withDefaults(
   defineProps<{ src?: string; alt?: string; imgClass?: string; wrapperClass?: string }>(),
   {
@@ -13,16 +15,44 @@ const el = ref<HTMLElement | null>(null)
 const realSrc = ref<string>('')
 const isLoading = ref(false)
 const hasError = ref(false)
+const isVisible = ref(false)
+
+const loadImage = () => {
+  if (!props.src) {
+    realSrc.value = ''
+    isLoading.value = false
+    hasError.value = false
+    return
+  }
+
+  const nextSrc = resolveMediaUrl(props.src)
+  if (nextSrc === realSrc.value && !hasError.value) {
+    return
+  }
+
+  realSrc.value = nextSrc
+  isLoading.value = true
+  hasError.value = false
+}
+
 useIntersectionObserver(
   el,
   ([entry]) => {
-    if (entry.isIntersecting && !realSrc.value && props.src) {
-      realSrc.value = props.src
-      isLoading.value = true
-      hasError.value = false
+    isVisible.value = entry.isIntersecting
+    if (entry.isIntersecting) {
+      loadImage()
     }
   },
   { rootMargin: '300px' }
+)
+
+watch(
+  () => props.src,
+  () => {
+    if (isVisible.value || realSrc.value) {
+      loadImage()
+    }
+  }
 )
 const handleLoad = () => {
   isLoading.value = false

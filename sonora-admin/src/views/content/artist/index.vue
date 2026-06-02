@@ -7,17 +7,15 @@ import {
   Plus,
   RefreshRight,
   Search,
-  Upload,
   UserFilled
 } from "@element-plus/icons-vue";
-import AvatarCropperDialog from "@/components/AvatarCropperDialog.vue";
+import ImageUploadCropper from "@/components/ImageUploadCropper.vue";
 import {
   batchDeleteArtists,
   createArtist,
   deleteArtist,
   getArtistPage,
   updateArtist,
-  uploadArtistAvatar,
   type ArtistItem,
   type ArtistRelatedItem
 } from "@/api/artist";
@@ -55,11 +53,6 @@ const form = ref<ArtistPayload>({
   description: "",
   status: 1
 });
-
-const cropperVisible = ref(false);
-const cropperFile = ref<File | null>(null);
-const uploadInputRef = ref<HTMLInputElement | null>(null);
-const uploadingAvatar = ref(false);
 
 const relationDialog = ref({
   visible: false,
@@ -245,46 +238,6 @@ function openRelation(row: ArtistItem, type: "songs" | "albums") {
   };
 }
 
-function triggerAvatarUpload() {
-  uploadInputRef.value?.click();
-}
-
-function onAvatarFileChange(event: Event) {
-  const input = event.target as HTMLInputElement;
-  const file = input.files?.[0];
-  input.value = "";
-  if (!file) return;
-  if (!file.type.startsWith("image/")) {
-    ElMessage.warning("请选择图片文件");
-    return;
-  }
-  if (file.size > 5 * 1024 * 1024) {
-    ElMessage.warning("头像图片不能超过 5MB");
-    return;
-  }
-  cropperFile.value = file;
-  cropperVisible.value = true;
-}
-
-function onCropConfirm(file: File) {
-  uploadingAvatar.value = true;
-  uploadArtistAvatar(file)
-    .then(res => {
-      if (res.code !== 200 || !res.data?.url) {
-        ElMessage.error((res as any).message || "头像上传失败");
-        return;
-      }
-      form.value.avatar = res.data.url;
-      ElMessage.success("头像已上传");
-    })
-    .catch(error => {
-      ElMessage.error(getErrorMessage(error, "头像上传失败"));
-    })
-    .finally(() => {
-      uploadingAvatar.value = false;
-    });
-}
-
 function onSelectionChange(rows: ArtistItem[]) {
   selectedRows.value = rows;
 }
@@ -399,28 +352,20 @@ onMounted(loadData);
     >
       <el-form :model="form" label-width="80px">
         <el-form-item label="头像">
-          <div class="avatar-editor">
-            <button
-              class="avatar-editor__trigger"
-              type="button"
-              :disabled="uploadingAvatar"
-              title="修改头像"
-              @click="triggerAvatarUpload"
-            >
-              <el-image class="avatar-editor__image" :src="avatarOf(form.avatar)" fit="cover" />
-              <span class="avatar-editor__mask">
-                <el-icon><Upload /></el-icon>
-                <span>{{ uploadingAvatar ? "上传中" : "修改头像" }}</span>
-              </span>
-            </button>
-            <input
-              ref="uploadInputRef"
-              class="avatar-editor__input"
-              type="file"
-              accept="image/*"
-              @change="onAvatarFileChange"
-            />
-          </div>
+          <ImageUploadCropper
+            v-model="form.avatar"
+            :fallback-src="DEFAULT_AVATAR"
+            dir="artist-avatar"
+            shape="circle"
+            :size="72"
+            :output-width="600"
+            :output-height="600"
+            title="修改头像"
+            mask-text="修改头像"
+            crop-title="裁剪歌手头像"
+            confirm-text="使用头像"
+            hint="拖动裁剪框或图片调整头像区域，超出图片范围的部分会自动补白。"
+          />
         </el-form-item>
         <el-form-item label="歌手" required>
           <el-input v-model="form.name" maxlength="128" placeholder="请输入歌手名称" />
@@ -458,8 +403,6 @@ onMounted(loadData);
         <el-table-column prop="name" label="名称" min-width="220" show-overflow-tooltip />
       </el-table>
     </el-dialog>
-
-    <AvatarCropperDialog v-model="cropperVisible" :file="cropperFile" @confirm="onCropConfirm" />
   </div>
 </template>
 
@@ -512,52 +455,4 @@ onMounted(loadData);
   margin-top: 16px;
 }
 
-.avatar-editor {
-  display: inline-flex;
-  align-items: center;
-}
-
-.avatar-editor__trigger {
-  position: relative;
-  width: 72px;
-  height: 72px;
-  padding: 0;
-  overflow: hidden;
-  border: 1px solid var(--el-border-color);
-  border-radius: 50%;
-  background: transparent;
-  cursor: pointer;
-}
-
-.avatar-editor__trigger:disabled {
-  cursor: wait;
-}
-
-.avatar-editor__image {
-  width: 100%;
-  height: 100%;
-}
-
-.avatar-editor__mask {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 12px;
-  background: rgb(0 0 0 / 58%);
-  opacity: 0;
-  transition: opacity 0.18s ease;
-}
-
-.avatar-editor__trigger:hover .avatar-editor__mask {
-  opacity: 1;
-}
-
-.avatar-editor__input {
-  display: none;
-}
 </style>

@@ -2,6 +2,7 @@
  * API 响应数据转换器
  * 统一处理各种 API 响应格式的数据转换
  */
+import { resolveMediaUrl } from '@/utils/media'
 
 const DEFAULT_COVER = '/default-cover.svg'
 
@@ -124,7 +125,7 @@ export function extractArray<T = unknown>(
  */
 export function transformBanner(item: Record<string, unknown>): BannerData {
   return {
-    coverImgUrl: (item?.pic as string) || (item?.imageUrl as string) || '',
+    coverImgUrl: resolveMediaUrl((item?.pic as string) || (item?.imageUrl as string) || ''),
     title: (item?.typeTitle as string) || '',
     description: (item?.title as string) || '',
     url: (item?.url as string) || '',
@@ -153,7 +154,9 @@ export function transformPlaylist(
   return {
     id: (item?.id as number | string) || 0,
     name: (item?.name as string) || fallbackName,
-    coverImgUrl: (item?.picUrl as string) || (item?.coverImgUrl as string) || '',
+    coverImgUrl: resolveMediaUrl(
+      (item?.picUrl as string) || (item?.coverImgUrl as string) || ''
+    ),
     playCount: (item?.playCount as number) || 0,
     trackCount: (item?.trackCount as number) || 0,
   }
@@ -226,11 +229,12 @@ export function transformSong(item: Record<string, unknown>): SongData {
     artists,
     album: (albumData?.name as string) || '',
     albumId: (albumData?.id as number | string) || 0,
-    cover:
+    cover: resolveMediaUrl(
       (albumData?.picUrl as string) ||
       (item?.cover as string) ||
       (item?.picUrl as string) ||
-      DEFAULT_COVER,
+      DEFAULT_COVER
+    ),
     duration: (item?.dt as number) ?? (item?.duration as number) ?? (song?.duration as number) ?? 0,
     liked: false,
     mvId: (item?.mv as number | string) || (item?.mvid as number | string) || 0,
@@ -246,6 +250,7 @@ export function transformSongs(
 ): SongData[] {
   const list = extractArray(
     response,
+    'data.dailySongs',
     'songs',
     'data.songs',
     'result',
@@ -263,12 +268,13 @@ export function transformArtist(item: Record<string, unknown>): ArtistData {
   return {
     id: (item?.id as number | string) || 0,
     name: (item?.name as string) || '',
-    picUrl:
+    picUrl: resolveMediaUrl(
       (item?.picUrl as string) ||
       (item?.img1v1Url as string) ||
       (item?.cover as string) ||
       (item?.avatar as string) ||
-      '',
+      ''
+    ),
     alias: (item?.alias as string[]) || [],
     albumSize: (item?.albumSize as number) || 0,
     musicSize: (item?.musicSize as number) || 0,
@@ -295,11 +301,12 @@ export function transformMV(item: Record<string, unknown>): MVData {
   return {
     id: (item?.id as number | string) || 0,
     name: (item?.name as string) || '',
-    cover:
+    cover: resolveMediaUrl(
       (item?.cover as string) ||
       (item?.picUrl as string) ||
       (item?.imgurl as string) ||
-      '',
+      ''
+    ),
     artist: (item?.artistName as string) || '',
     playCount: (item?.playCount as number) || 0,
     duration: (item?.duration as number) || 0,
@@ -327,7 +334,9 @@ export function transformAlbum(item: Record<string, unknown>): AlbumData {
   return {
     id: (item?.id as number | string) || 0,
     name: (item?.name as string) || '',
-    picUrl: (item?.picUrl as string) || (item?.blurPicUrl as string) || DEFAULT_COVER,
+    picUrl: resolveMediaUrl(
+      (item?.picUrl as string) || (item?.blurPicUrl as string) || DEFAULT_COVER
+    ),
     artist: (artist?.name as string) || (item?.artistName as string) || '',
     artistId: (artist?.id as number | string) || 0,
     publishTime: item?.publishTime
@@ -380,7 +389,7 @@ export function transformPlaylistDetail(
     name: (detail?.name as string) || '',
     description: (detail?.description as string) || '',
     creator: (creator?.nickname as string) || '',
-    creatorAvatar: (creator?.avatarUrl as string) || '',
+    creatorAvatar: resolveMediaUrl((creator?.avatarUrl as string) || ''),
     createTime: detail?.createTime
       ? new Date(detail.createTime as number).toLocaleDateString()
       : '',
@@ -388,7 +397,7 @@ export function transformPlaylistDetail(
     playCount: (detail?.playCount as string | number) || 0,
     likes: (detail?.subscribedCount as number) || (detail?.bookedCount as number) || 0,
     category: tags?.[0] || fallbackCategory,
-    coverImgUrl: (detail?.coverImgUrl as string) || '',
+    coverImgUrl: resolveMediaUrl((detail?.coverImgUrl as string) || ''),
   }
 }
 
@@ -409,11 +418,12 @@ export function transformArtistDetail(
   return {
     id: (artist?.id as number | string) || 0,
     name: (artist?.name as string) || '',
-    picUrl:
+    picUrl: resolveMediaUrl(
       (artist?.cover as string) ||
       (artist?.picUrl as string) ||
       (artist?.avatar as string) ||
-      '',
+      ''
+    ),
     alias: (artist?.alias as string[]) || [],
     albumSize: (artist?.albumSize as number) || 0,
     musicSize: (artist?.musicSize as number) || 0,

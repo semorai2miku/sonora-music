@@ -3,7 +3,6 @@ import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
 
 const router = useRouter()
-const route = useRoute()
 const { t } = useI18n()
 const state = reactive({
   searchQuery: '',
@@ -15,13 +14,6 @@ const { searchQuery, showLogin, historyOpen, searchFocused } = toRefs(state)
 const userStore = useUserStore()
 const globalStore = useGlobalStore()
 const { searchHistory, theme } = storeToRefs(globalStore)
-const navLinks = [
-  { to: '/', label: '发现音乐' },
-  { to: '/artists', label: '歌手' },
-  { to: '/new-albums', label: '新专辑' },
-  { to: '/charts', label: '排行榜' },
-  { to: '/mv-list', label: 'MV' },
-]
 const themeIcon = computed(() => {
   if (theme.value === 'system') return 'icon-[mdi--theme-light-dark]'
   if (theme.value === 'dark') return 'icon-[mdi--weather-night]'
@@ -85,7 +77,7 @@ onMounted(() => {
 onUnmounted(() => document.removeEventListener('pointerdown', onDocClick))
 </script>
 <template>
-  <header class="glass-nav sonora-header m-3 mx-4 flex items-center justify-between gap-4 px-4 py-4">
+  <header class="glass-nav sonora-header m-3 mx-4 flex items-center justify-between gap-4 px-4 py-3.5">
     <!-- 左侧：Logo + 导航 -->
     <div class="flex items-center gap-5">
       <!-- Logo -->
@@ -125,22 +117,6 @@ onUnmounted(() => document.removeEventListener('pointerdown', onDocClick))
         </Button>
       </div>
 
-      <!-- 站内导航 -->
-      <nav class="hidden items-center gap-3 xl:flex">
-        <router-link
-          v-for="link in navLinks"
-          :key="link.to"
-          :to="link.to"
-          class="nav-ext-link rounded-full px-4 py-2 text-sm font-medium transition-all"
-          :class="
-            route.path === link.to
-              ? 'bg-hover-glass text-primary shadow-sm'
-              : 'text-primary/58 hover:bg-hover-glass hover:text-primary'
-          "
-        >
-          <span class="link-label">{{ link.label }}</span>
-        </router-link>
-      </nav>
     </div>
 
     <!-- 右侧功能区 -->
@@ -151,7 +127,7 @@ onUnmounted(() => document.removeEventListener('pointerdown', onDocClick))
         class="bg-button-glass hidden items-center gap-2 rounded-[10px] px-3 py-1.5 transition-all duration-300 lg:flex"
         :class="[
           searchFocused
-            ? 'border-glass min-w-80 border ring-1 ring-white/5'
+            ? 'border-glass min-w-80 border'
             : 'min-w-60 border border-transparent',
         ]"
       >
@@ -268,18 +244,8 @@ onUnmounted(() => document.removeEventListener('pointerdown', onDocClick))
 <style scoped>
 @reference "../style/tailwind.css";
 
-/* 外链标签响应式隐藏 */
-@media (max-width: 1440px) {
-  .link-label {
-    display: none;
-  }
-  .nav-ext-link {
-    @apply px-1.5;
-  }
-}
-
 .sonora-header {
-  border-radius: 18px;
+  border-radius: 12px;
 }
 
 .brand-badge {
@@ -288,9 +254,10 @@ onUnmounted(() => document.removeEventListener('pointerdown', onDocClick))
   justify-content: center;
   width: 2.6rem;
   height: 2.6rem;
-  border-radius: 0.95rem;
-  background: linear-gradient(135deg, rgba(31, 124, 255, 0.18), rgba(77, 163, 255, 0.08));
-  box-shadow: 0 12px 24px rgba(31, 124, 255, 0.16);
+  border-radius: 0.85rem;
+  background: var(--glass-bg-base);
+  border: 1px solid var(--glass-border-default);
+  box-shadow: none;
 }
 
 /* 搜索清除按钮动画 */

@@ -60,6 +60,7 @@ public class SecurityConfig {
                     "/playlist/track/all",
                     "/personalized",
                     "/top/playlist",
+                    "/top/song",
                     "/recommend/songs",
                     "/recommend/resource",
                     "/artist/detail",

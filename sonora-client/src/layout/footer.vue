@@ -235,23 +235,6 @@ const emit = defineEmits(['show'])
 </script>
 <template>
   <footer class="glass-nav relative m-4 overflow-hidden p-4">
-    <!-- 音频可视化器背景 -->
-    <div
-      v-if="isAnalyserInitialized && audioVisualizer.enabledInFooter"
-      class="absolute bottom-0 w-full left-0 -z-10 opacity-30"
-    >
-      <AudioVisualizer
-        :frequency-data="frequencyData"
-        :time-domain-data="timeDomainData"
-        type="bars"
-        :bar-count="64"
-        :bar-width="3"
-        :bar-gap="2"
-        :gradient-colors="visualizerGradient"
-        :height="80"
-      />
-    </div>
-
     <div class="relative z-10 flex items-center justify-between">
       <!-- 左侧：当前歌曲信息 -->
       <div class="flex min-w-0 flex-1 space-x-4">
@@ -261,12 +244,12 @@ const emit = defineEmits(['show'])
             ref="coverRef"
             id="footer-cover"
             @click="emit('show')"
-            class="cover-inner flex h-12 w-12 cursor-pointer items-center justify-center rounded-lg bg-cover shadow-lg transition-shadow duration-300 hover:shadow-xl"
-            :class="{ 'animate-pulse-subtle': isPlaying }"
+            class="cover-inner flex h-12 w-12 cursor-pointer items-center justify-center rounded-lg bg-cover transition-shadow duration-300"
             :style="{
               backgroundImage: state.displayCover
                 ? `url(${state.displayCover + '?param=128x128'})`
-                : 'linear-gradient(135deg, #08111c 0%, #1f7cff 100%)',
+                : 'none',
+              backgroundColor: state.displayCover ? undefined : 'var(--glass-interactive-bg)',
             }"
           >
             <!-- 播放状态指示器 -->
@@ -389,20 +372,6 @@ const emit = defineEmits(['show'])
   transform-style: preserve-3d;
   backface-visibility: hidden;
   will-change: transform;
-}
-
-/* 播放时微微脉动 */
-@keyframes pulse-subtle {
-  0%, 100% {
-    box-shadow: 0 4px 12px rgba(31, 124, 255, 0.18);
-  }
-  50% {
-    box-shadow: 0 4px 20px rgba(31, 124, 255, 0.32);
-  }
-}
-
-.animate-pulse-subtle {
-  animation: pulse-subtle 2s ease-in-out infinite;
 }
 
 /* 音频均衡器动画 */

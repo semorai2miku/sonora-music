@@ -55,6 +55,30 @@ const router = createRouter({
           ),
         },
         {
+          path: '/library',
+          name: 'library',
+          component: responsive(
+            () => import('@/pages/library.vue'),
+            () => import('@/pages/library.vue')
+          ),
+        },
+        {
+          path: '/playlists',
+          name: 'playlists',
+          component: responsive(
+            () => import('@/pages/playlists.vue'),
+            () => import('@/pages/playlists.vue')
+          ),
+        },
+        {
+          path: '/albums',
+          name: 'albums',
+          component: responsive(
+            () => import('@/pages/new-albums.vue'),
+            () => import('@/pages/new-albums.vue')
+          ),
+        },
+        {
           path: '/playlist/:id',
           name: 'playlist',
           component: responsive(
@@ -91,7 +115,7 @@ const router = createRouter({
           name: 'my-music',
           component: responsive(
             () => import('@/pages/my-music.vue'),
-            () => import('@/pages/mobile/recent.vue')
+            () => import('@/pages/mobile/my-music.vue')
           ),
         },
         {
@@ -173,6 +197,7 @@ const router = createRouter({
             () => import('@/pages/local-music.vue'),
             () => import('@/pages/mobile/local-music.vue')
           ),
+          meta: { hidden: true },
         },
         {
           path: '/settings',

@@ -15,7 +15,7 @@ import {
 } from "@/api/song";
 import { getArtistOptions, type ArtistItem } from "@/api/artist";
 import { getAlbumOptions, type AlbumItem } from "@/api/album";
-import { Delete, Plus, Search, RefreshRight, UserFilled } from "@element-plus/icons-vue";
+import { Delete, Plus, Search, RefreshRight, UserFilled, Close } from "@element-plus/icons-vue";
 
 const DEFAULT_COVER = "/default-cover.svg";
 
@@ -601,6 +601,11 @@ function previewSong(row: SongItem) {
   previewAutoplayToken.value += 1;
 }
 
+function closePreview() {
+  previewRow.value = null;
+  previewSource.value = "";
+}
+
 function handleDialogClosed() {
   audioFile.value = null;
   detectedDuration.value = null;
@@ -917,7 +922,16 @@ onBeforeUnmount(() => {
         </el-table>
 
         <div v-if="previewRow && previewSource" class="song-preview-panel">
-          <div class="song-preview-panel__title">歌曲预览</div>
+          <div class="song-preview-panel__header">
+            <div class="song-preview-panel__title">歌曲预览</div>
+            <el-button
+              class="song-preview-panel__close"
+              circle
+              text
+              :icon="Close"
+              @click="closePreview"
+            />
+          </div>
           <SimpleAudioPreviewBar
             :key="`${previewRow.id}-${previewAutoplayToken}`"
             :source="previewSource"
@@ -1040,10 +1054,20 @@ onBeforeUnmount(() => {
 }
 
 .song-preview-panel__title {
-  margin-bottom: 12px;
   color: var(--el-text-color-primary);
   font-size: 14px;
   font-weight: 600;
+}
+
+.song-preview-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.song-preview-panel__close {
+  color: var(--el-text-color-secondary);
 }
 
 .artist-filter-scroll {

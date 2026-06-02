@@ -12,11 +12,10 @@ const props = defineProps({
 // 生成渐变样式
 const gradientStyle = computed(() => {
   if (props.color.length === 0) {
-    // 使用默认渐变
-    return 'linear-gradient(90deg, #08111c, #1f7cff, #4da3ff)'
+    return '#1f7cff'
   }
-  // 使用传入的颜色数组生成渐变
-  return `linear-gradient(90deg, ${props.color.join(', ')})`
+  const midIndex = Math.floor(props.color.length / 2)
+  return props.color[midIndex] || '#1f7cff'
 })
 
 // 生成圆点纯色样式 - 使用渐变的中间色或主色
@@ -211,7 +210,6 @@ const previewPositionPercent = computed(() => {
 }
 
 .progress-fill {
-  box-shadow: 0 0 10px rgba(31, 124, 255, 0.24);
   transition: width 0.05s linear;
 }
 
@@ -235,9 +233,7 @@ const previewPositionPercent = computed(() => {
 
 .progress-thumb.active {
   transform: translate(-50%, -50%) scale(1.15);
-  box-shadow:
-    0 2px 10px rgba(0, 0, 0, 0.25),
-    0 0 16px rgba(31, 124, 255, 0.38);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
 }
 
 .time-preview {

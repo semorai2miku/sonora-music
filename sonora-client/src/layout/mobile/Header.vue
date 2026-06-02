@@ -57,8 +57,9 @@ const { showLogin } = toRefs(state)
   justify-content: center;
   width: 2.15rem;
   height: 2.15rem;
-  border-radius: 0.8rem;
-  background: linear-gradient(135deg, rgba(31, 124, 255, 0.18), rgba(77, 163, 255, 0.08));
-  box-shadow: 0 8px 18px rgba(31, 124, 255, 0.15);
+  border-radius: 0.7rem;
+  background: var(--glass-bg-base);
+  border: 1px solid var(--glass-border-default);
+  box-shadow: none;
 }
 </style>

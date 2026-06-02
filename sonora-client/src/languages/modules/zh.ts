@@ -1,6 +1,7 @@
 export default {
   home: {
     recommendPlaylists: '推荐歌单',
+    recommendSongs: '推荐歌曲',
     hotSongs: '热门单曲',
     playlistFallback: '歌单',
   },
@@ -14,6 +15,8 @@ export default {
     roma: '罗马音',
     delete: '删除',
     clear: '清除',
+    refresh: '刷新',
+    more: '更多',
     loading: '加载中',
     noData: '暂无数据',
     search: { placeholder: '搜索音乐、歌手、专辑...', label: '搜索', suggest: '搜索建议' },
@@ -172,7 +175,7 @@ export default {
   layout: {
     nav: {
       home: '首页',
-      myMusic: '我的',
+      myMusic: '我的音乐',
       repo: '项目仓库',
       movies: '影视网站',
       projectDocs: '项目文档',
@@ -185,10 +188,10 @@ export default {
       playlists: { created: '创建的歌单' },
       menu: {
         home: '首页',
-        mv: 'MV',
-        charts: '排行榜',
+        library: '曲库',
         artists: '歌手',
-        newAlbums: '新碟上架',
+        albums: '专辑',
+        playlists: '歌单',
         search: '搜索',
         recent: '最近播放',
         likes: '我喜欢的',
@@ -305,7 +308,28 @@ export default {
   recent: {
     title: '最近播放',
     subtitle: '为你记录最近的动人旋律与精彩瞬间',
+    playHistory: '播放记录',
     empty: '暂无播放记录，快去发现好音乐吧！',
+  },
+  myMusic: {
+    title: '我的音乐',
+    subtitle: '集中查看你的最近播放和创建的歌单',
+    playlistsTitle: '创建的歌单',
+    playlistsSubtitle: '你收藏与创建的内容都会从这里继续听',
+    playlistsEmpty: '你还没有创建歌单',
+    playlistsLoginHint: '登录后即可同步你的歌单内容',
+    playlistsHelper: '默认“我喜欢的音乐”和你创建的歌单都会显示在这里',
+    playlistsCount: '{count} 个歌单',
+  },
+  library: {
+    title: '曲库',
+    subtitle: '集中查看当前可播放的歌曲内容',
+    empty: '暂无可播放歌曲',
+  },
+  playlists: {
+    title: '歌单',
+    subtitle: '浏览平台公开歌单与精选内容',
+    loadMore: '加载更多',
   },
   mobile: {
     myMusic: {

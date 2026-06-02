@@ -41,19 +41,83 @@ const hintText = computed(
 const outputFileName = computed(() => props.outputFileName || "avatar.png");
 const outputWidth = computed(() => props.outputWidth || 600);
 const outputHeight = computed(() => props.outputHeight || outputWidth.value);
-const stencilSize = computed(() => {
-  if (props.stencilWidth && props.stencilHeight) {
-    return { width: props.stencilWidth, height: props.stencilHeight };
+const aspectRatio = computed(() => {
+  if (props.shape === "circle" || props.shape === "square") {
+    return 1;
   }
-  if (props.shape === "rectangle") {
-    const width = 360;
-    return {
-      width,
-      height: Math.round((width * outputHeight.value) / outputWidth.value)
-    };
-  }
-  return { width: 280, height: 280 };
+  return outputWidth.value / outputHeight.value;
 });
+const stencilProps = computed(() => ({
+  aspectRatio: aspectRatio.value,
+  movable: true,
+  resizable: true
+}));
+
+function defaultStencilSize({
+  boundaries
+}: {
+  boundaries: { width: number; height: number };
+}) {
+  const maxWidth = boundaries.width * 0.82;
+  const maxHeight = boundaries.height * 0.82;
+  let width = props.stencilWidth || maxWidth;
+  let height = props.stencilHeight || width / aspectRatio.value;
+
+  if (!props.stencilWidth && !props.stencilHeight) {
+    if (height > maxHeight) {
+      height = maxHeight;
+      width = height * aspectRatio.value;
+    }
+    if (width > maxWidth) {
+      width = maxWidth;
+      height = width / aspectRatio.value;
+    }
+  } else {
+    if (width > maxWidth) {
+      width = maxWidth;
+      height = width / aspectRatio.value;
+    }
+    if (height > maxHeight) {
+      height = maxHeight;
+      width = height * aspectRatio.value;
+    }
+  }
+
+  return {
+    width: Math.max(120, Math.round(width)),
+    height: Math.max(120, Math.round(height))
+  };
+}
+
+function defaultStencilPosition({
+  coordinates,
+  imageSize
+}: {
+  coordinates: { width: number; height: number };
+  imageSize: { width: number; height: number };
+}) {
+  return {
+    left: Math.round((imageSize.width - coordinates.width) / 2),
+    top: Math.round((imageSize.height - coordinates.height) / 2)
+  };
+}
+
+function defaultBoundaries({
+  cropper,
+  imageSize
+}: {
+  cropper: { clientWidth: number; clientHeight: number };
+  imageSize: { width: number; height: number };
+}) {
+  const padding = 24;
+  const availableWidth = Math.max(240, cropper.clientWidth - padding * 2);
+  const availableHeight = Math.max(240, cropper.clientHeight - padding * 2);
+  const scale = Math.min(availableWidth / imageSize.width, availableHeight / imageSize.height, 1);
+  return {
+    width: Math.round(imageSize.width * scale),
+    height: Math.round(imageSize.height * scale)
+  };
+}
 
 function releaseUrl() {
   if (objectUrl.value) {
@@ -99,14 +163,18 @@ onBeforeUnmount(releaseUrl);
         class="avatar-cropper__cropper"
         :src="imageSrc"
         :stencil-component="stencilComponent"
-        :stencil-size="stencilSize"
+        :stencil-props="stencilProps"
+        :default-size="defaultStencilSize"
+        :default-position="defaultStencilPosition"
+        :default-boundaries="defaultBoundaries"
         :canvas="{
           width: outputWidth,
           height: outputHeight,
           imageSmoothingEnabled: true,
-          imageSmoothingQuality: 'high'
+          imageSmoothingQuality: 'high',
+          fillColor: '#ffffff'
         }"
-        :resize-image="{ touch: true, wheel: { ratio: 0.08 }, adjustStencil: false }"
+        :resize-image="{ touch: true, wheel: { ratio: 0.08 }, adjustStencil: true }"
         :move-image="{ touch: true, mouse: true }"
         image-restriction="none"
         :auto-zoom="false"

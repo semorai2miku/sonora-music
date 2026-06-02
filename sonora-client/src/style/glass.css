@@ -26,9 +26,9 @@
     --glass-blur-lg: 0px;
     --glass-blur-xl: 0px;
 
-    --glass-bg-solid: #f4f7fb;
+    --glass-bg-solid: #f3f6fa;
     --glass-bg-base: #ffffff;
-    --glass-bg-subtle: #f7faff;
+    --glass-bg-subtle: #edf2f7;
     --glass-bg-elevated: #ffffff;
     --glass-bg-card: #ffffff;
     --glass-bg-overlay: #ffffff;
@@ -50,11 +50,11 @@
     --glass-interactive-active: rgba(31, 124, 255, 0.16);
     --glass-interactive-text-hover: rgba(8, 17, 28, 1);
 
-    --glass-shadow-xs: 0 1px 2px rgba(8, 17, 28, 0.03);
-    --glass-shadow-sm: 0 6px 16px rgba(8, 17, 28, 0.06);
-    --glass-shadow-md: 0 10px 26px rgba(8, 17, 28, 0.08);
-    --glass-shadow-lg: 0 16px 38px rgba(8, 17, 28, 0.1);
-    --glass-shadow-xl: 0 22px 48px rgba(8, 17, 28, 0.12);
+    --glass-shadow-xs: 0 1px 2px rgba(8, 17, 28, 0.02);
+    --glass-shadow-sm: 0 2px 8px rgba(8, 17, 28, 0.04);
+    --glass-shadow-md: 0 4px 14px rgba(8, 17, 28, 0.05);
+    --glass-shadow-lg: 0 6px 18px rgba(8, 17, 28, 0.06);
+    --glass-shadow-xl: 0 8px 24px rgba(8, 17, 28, 0.08);
     --glass-shadow-inset: none;
 
     --glass-dropdown-blur: 0px;
@@ -74,12 +74,12 @@
   :root.dark,
   html.dark {
     color-scheme: dark;
-    --glass-bg-solid: #07111d;
-    --glass-bg-base: #0c1726;
-    --glass-bg-subtle: #0f1b2c;
-    --glass-bg-elevated: #0c1726;
-    --glass-bg-card: #101c2d;
-    --glass-bg-overlay: #0c1726;
+    --glass-bg-solid: #08111c;
+    --glass-bg-base: #0d1724;
+    --glass-bg-subtle: #111d2b;
+    --glass-bg-elevated: #0d1724;
+    --glass-bg-card: #111d2b;
+    --glass-bg-overlay: #0d1724;
     --glass-bg-mask: rgba(0, 0, 0, 0.26);
 
     --glass-text-primary: rgba(246, 251, 255, 0.94);
@@ -97,11 +97,11 @@
     --glass-interactive-active: rgba(77, 163, 255, 0.22);
     --glass-interactive-text-hover: rgba(255, 255, 255, 1);
 
-    --glass-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.22);
-    --glass-shadow-sm: 0 8px 18px rgba(0, 0, 0, 0.24);
-    --glass-shadow-md: 0 12px 28px rgba(0, 0, 0, 0.28);
-    --glass-shadow-lg: 0 18px 40px rgba(0, 0, 0, 0.34);
-    --glass-shadow-xl: 0 24px 52px rgba(0, 0, 0, 0.4);
+    --glass-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.16);
+    --glass-shadow-sm: 0 4px 10px rgba(0, 0, 0, 0.2);
+    --glass-shadow-md: 0 6px 16px rgba(0, 0, 0, 0.24);
+    --glass-shadow-lg: 0 8px 20px rgba(0, 0, 0, 0.28);
+    --glass-shadow-xl: 0 10px 24px rgba(0, 0, 0, 0.32);
     --glass-progress-track: rgba(246, 251, 255, 0.14);
     --glass-skeleton: rgba(246, 251, 255, 0.06);
   }
@@ -114,13 +114,11 @@
   }
 
   body {
-    background:
-      linear-gradient(180deg, #f3f7fb 0%, #f8fbff 40%, #f1f5fa 100%);
+    background: var(--glass-bg-solid);
   }
 
   html.dark body {
-    background:
-      linear-gradient(180deg, #06111d 0%, #08131f 44%, #050d18 100%);
+    background: var(--glass-bg-solid);
   }
 
   html:not(.dark) body .custom-theme::after {
@@ -148,43 +146,39 @@
 
   .glass-container {
     background: var(--glass-bg-elevated);
-    border-radius: 24px;
-    box-shadow: var(--glass-shadow-lg);
+    border-radius: 18px;
+    box-shadow: var(--glass-shadow-sm);
   }
 
   .glass-container-strong {
     background: var(--glass-bg-overlay);
-    border-radius: 24px;
-    box-shadow: var(--glass-shadow-lg);
+    border-radius: 18px;
+    box-shadow: var(--glass-shadow-md);
   }
 
   .glass-card {
     background: var(--glass-bg-card);
-    border-radius: 16px;
-    box-shadow: var(--glass-shadow-sm);
+    border-radius: 12px;
+    box-shadow: none;
   }
 
   .glass-nav {
     background: var(--glass-bg-subtle);
-    border-radius: 14px;
-    box-shadow: var(--glass-shadow-xs);
+    border-radius: 12px;
+    box-shadow: none;
   }
 
   .mobile-tabbar {
     background: var(--glass-bg-elevated);
     border-top: 1px solid var(--glass-border-default);
-    box-shadow: 0 -8px 24px rgba(8, 17, 28, 0.08);
-  }
-
-  html.dark .mobile-tabbar {
-    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.28);
+    box-shadow: none;
   }
 
   .glass-button {
     display: flex;
     align-items: center;
     background: var(--glass-interactive-bg);
-    border-radius: 12px;
+    border-radius: 10px;
     box-shadow: none;
     transition:
       background 0.2s var(--glass-ease, ease),
@@ -205,13 +199,13 @@
 
   .glass-dropdown {
     background: var(--glass-bg-overlay);
-    border-radius: 14px;
-    box-shadow: var(--glass-shadow-md);
+    border-radius: 12px;
+    box-shadow: var(--glass-shadow-sm);
     color: var(--glass-text-contrast);
   }
 
   .anime-gradient {
-    background: linear-gradient(135deg, #0f1b2c 0%, #1f7cff 100%);
+    background: var(--sonora-blue);
   }
 
   .particle {

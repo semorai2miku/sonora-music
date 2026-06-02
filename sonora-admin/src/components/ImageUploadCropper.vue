@@ -34,6 +34,7 @@ const props = withDefaults(
     maskText?: string;
     cropTitle?: string;
     confirmText?: string;
+    hint?: string;
     clearable?: boolean;
     disabled?: boolean;
   }>(),
@@ -48,6 +49,7 @@ const props = withDefaults(
     maskText: "修改图片",
     cropTitle: "裁剪图片",
     confirmText: "使用图片",
+    hint: "拖动裁剪框或图片调整位置，滚轮或双指缩放，超出图片部分会自动补白。",
     clearable: true,
     disabled: false
   }
@@ -163,7 +165,7 @@ function clearImage() {
       :stencil-width="stencilWidth"
       :stencil-height="stencilHeight"
       output-file-name="cover.png"
-      hint="拖动图片调整位置，滚轮或双指缩放封面区域。"
+      :hint="hint"
       @confirm="onCropConfirm"
     />
   </div>

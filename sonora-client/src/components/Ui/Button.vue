@@ -155,9 +155,9 @@ const variantClasses = computed(() => {
     case 'glass':
       return 'glass-button text-primary active:scale-95'
     case 'solid':
-      return 'bg-sky-500 text-white shadow-lg shadow-sky-500/25 hover:bg-sky-600 hover:shadow-xl hover:shadow-sky-500/30'
+      return 'bg-sky-500 text-white hover:bg-sky-600'
     case 'soft':
-      return 'bg-[rgba(31,124,255,0.12)] text-primary backdrop-blur-sm hover:bg-[rgba(31,124,255,0.18)]'
+      return 'bg-[rgba(31,124,255,0.1)] text-primary hover:bg-[rgba(31,124,255,0.16)]'
     case 'ghost':
       return 'text-primary/70 hover:text-primary bg-transparent hover:bg-hover-glass'
     case 'text':
@@ -282,14 +282,14 @@ const gradientStyle = computed(() => {
 <style>
 @reference "../../style/tailwind.css";
 .play-btn {
-  @apply flex items-center justify-center rounded-full text-white shadow-2xl transition-all duration-300;
-  background: linear-gradient(135deg, #08111c 0%, #1f7cff 58%, #4da3ff 100%);
-  box-shadow: 0 6px 24px rgba(31, 124, 255, 0.28);
+  @apply flex items-center justify-center rounded-full text-white transition-all duration-300;
+  background: #1f7cff;
+  box-shadow: none;
 }
 
 .play-btn:hover {
-  @apply scale-110;
-  box-shadow: 0 8px 32px rgba(31, 124, 255, 0.38);
+  @apply scale-105;
+  background: #166fe6;
 }
 .play-btn.loading {
   @apply cursor-wait opacity-70;
@@ -320,34 +320,7 @@ const gradientStyle = computed(() => {
   will-change: transform;
 }
 
-/* 渐变播放按钮增强 */
 .play-btn {
   position: relative;
-}
-
-.play-btn::before {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  border-radius: inherit;
-  background: linear-gradient(135deg, #08111c, #1f7cff, #4da3ff);
-  background-size: 200% 200%;
-  opacity: 0;
-  z-index: -1;
-  transition: opacity 0.3s ease;
-  animation: gradient-rotate 3s ease infinite;
-}
-
-.play-btn:hover::before {
-  opacity: 0.6;
-}
-
-@keyframes gradient-rotate {
-  0%, 100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
 }
 </style>
