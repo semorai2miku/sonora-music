@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.sonora.common.constant.Constants;
 import com.sonora.common.result.R;
 import com.sonora.file.service.MinioService;
+import com.sonora.mapper.AlbumMapper;
+import com.sonora.model.entity.Album;
 import com.sonora.model.entity.Song;
 import com.sonora.service.SongService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -28,10 +30,12 @@ public class SongController {
 
     private final SongService songService;
     private final MinioService minioService;
+    private final AlbumMapper albumMapper;
 
-    public SongController(SongService songService, MinioService minioService) {
+    public SongController(SongService songService, MinioService minioService, AlbumMapper albumMapper) {
         this.songService = songService;
         this.minioService = minioService;
+        this.albumMapper = albumMapper;
     }
 
     @Operation(summary = "分页查询歌曲列表")
@@ -81,7 +85,6 @@ public class SongController {
         song.setArtistIds(artistIds);
         song.setAlbumId(albumId);
         song.setDuration(duration);
-        song.setCover(cover);
         song.setLyrics(lyrics);
         song.setStatus(1);
         song.setPlayCount(0L);
@@ -115,7 +118,6 @@ public class SongController {
         song.setArtistIds(artistIds);
         song.setAlbumId(albumId);
         song.setDuration(duration);
-        song.setCover(cover);
         song.setLyrics(lyrics);
 
         Song updated = songService.replaceSong(id, audioFile, coverFile, song);
@@ -172,8 +174,18 @@ public class SongController {
         if (song == null) {
             return null;
         }
-        song.setCover(minioService.resolvePreviewUrl(
-                org.springframework.util.StringUtils.hasText(song.getCover()) ? song.getCover() : Constants.DEFAULT_COVER));
+        song.setCover(minioService.resolvePreviewUrl(resolveSongCover(song.getAlbumId())));
         return song;
+    }
+
+    private String resolveSongCover(Long albumId) {
+        if (albumId == null) {
+            return Constants.DEFAULT_COVER;
+        }
+        Album album = albumMapper.selectById(albumId);
+        if (album != null && org.springframework.util.StringUtils.hasText(album.getCover())) {
+            return album.getCover();
+        }
+        return Constants.DEFAULT_COVER;
     }
 }

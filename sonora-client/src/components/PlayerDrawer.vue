@@ -15,6 +15,8 @@ import { useAudioAnalyser } from '@/composables/useAudioAnalyser'
 import { useLyricsDrag } from '@/composables/useLyricsDrag'
 import { useDrawerTransition } from '@/composables/useDrawerTransition'
 import VinylDisc from '@/components/Player/VinylDisc.vue'
+import { withImageParam } from '@/utils/media'
+import type { Artist as SongArtist } from '@/stores/interface'
 
 const { t } = useI18n()
 const globalStore = useGlobalStore()
@@ -198,9 +200,41 @@ const state = reactive({
   circularCover: '' as string,
   /** 封面翻转动画锁 */
   isCircularFlipping: false,
+  /** 滚轮预览歌词索引 */
+  wheelPreviewIndex: -1,
+  /** 是否显示滚轮预览线 */
+  wheelPreviewVisible: false,
 })
 
 const { isRecentOpen, isCommentsOpen, showMobileLyrics } = toRefs(state)
+let wheelPreviewTimer: ReturnType<typeof setTimeout> | null = null
+
+const playerArtists = computed<SongArtist[]>(() => {
+  const artists = currentSong.value?.artists
+  if (Array.isArray(artists) && artists.length > 0) {
+    return artists
+      .filter(artist => artist?.name)
+      .map(artist => ({ id: artist.id, name: artist.name }))
+  }
+
+  if (currentSong.value?.artistId && currentSong.value?.artist) {
+    return [{ id: currentSong.value.artistId, name: currentSong.value.artist }]
+  }
+
+  return (currentSong.value?.artist || '')
+    .split('/')
+    .map(name => name.trim())
+    .filter(Boolean)
+    .map(name => ({ id: '', name }))
+})
+
+const wheelPreviewTimeLabel = computed(() => {
+  if (state.wheelPreviewIndex < 0) return ''
+  const time = timeForIndex(state.wheelPreviewIndex) ?? 0
+  const minutes = Math.floor(time / 60)
+  const seconds = Math.floor(time % 60)
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`
+})
 
 // ═══ 圆形可视化器封面翻转动画 ═══
 
@@ -305,6 +339,80 @@ const handleAlbumCoverClick = () => {
   }
 }
 
+const scrollLyricsToIndex = (index: number, instant = false) => {
+  if (!lyricsRef.value || !lyricsContainerRef.value || index < 0) return
+  const lyricsContainer = lyricsRef.value
+  const targetElement = lyricsContainer.children[index] as HTMLElement | undefined
+  if (!targetElement) return
+
+  const containerHeight = lyricsContainerRef.value.clientHeight
+  const targetScrollTop =
+    targetElement.offsetTop - containerHeight / 2 + targetElement.clientHeight / 2
+
+  if (instant) {
+    gsap.set(lyricsContainer, { y: -targetScrollTop })
+    return
+  }
+
+  gsap.to(lyricsContainer, {
+    y: -targetScrollTop,
+    duration: 0.35,
+    ease: 'power2.out',
+  })
+}
+
+const resetWheelPreview = (restoreAutoScroll = true) => {
+  state.wheelPreviewIndex = -1
+  state.wheelPreviewVisible = false
+  if (wheelPreviewTimer) {
+    clearTimeout(wheelPreviewTimer)
+    wheelPreviewTimer = null
+  }
+  if (restoreAutoScroll) {
+    autoScroll.value = true
+    updateCurrentLyric(true)
+  }
+}
+
+const scheduleWheelPreviewReset = () => {
+  if (wheelPreviewTimer) {
+    clearTimeout(wheelPreviewTimer)
+  }
+  wheelPreviewTimer = setTimeout(() => {
+    resetWheelPreview(true)
+  }, 2400)
+}
+
+const handleLyricsWheel = (event: WheelEvent) => {
+  if (!activeSingleLyrics.value.length || lyricsDragging.value) return
+
+  event.preventDefault()
+
+  const step = Math.abs(event.deltaY) > 80 ? 2 : 1
+  const direction = event.deltaY > 0 ? 1 : -1
+  const baseIndex = state.wheelPreviewVisible ? state.wheelPreviewIndex : currentLyricIndex.value
+  const nextIndex = Math.max(
+    0,
+    Math.min(activeSingleLyrics.value.length - 1, baseIndex + direction * step)
+  )
+
+  autoScroll.value = false
+  state.wheelPreviewIndex = nextIndex
+  state.wheelPreviewVisible = true
+  scrollLyricsToIndex(nextIndex)
+  scheduleWheelPreviewReset()
+}
+
+const applyWheelPreview = () => {
+  if (!state.wheelPreviewVisible || state.wheelPreviewIndex < 0) return
+  const targetTime = timeForIndex(state.wheelPreviewIndex) ?? 0
+  setCurrentTime(targetTime)
+  currentLyricIndex.value = state.wheelPreviewIndex
+  resetWheelPreview(false)
+  autoScroll.value = true
+  scrollToCurrentLyric()
+}
+
 // ═══ Watchers ═══
 
 /** 抽屉开关：打开时初始化动画和背景，关闭时清理 */
@@ -350,6 +458,7 @@ watch(currentTime, () => {
 watch(
   currentSong,
   async (s, oldSong) => {
+    resetWheelPreview(false)
     await fetchLyrics(s?.id)
     resetLyrics()
     await nextTick()
@@ -394,6 +503,9 @@ watch(
 
 onUnmounted(() => {
   stopBackgroundBreathing()
+  if (wheelPreviewTimer) {
+    clearTimeout(wheelPreviewTimer)
+  }
 })
 </script>
 
@@ -612,7 +724,7 @@ onUnmounted(() => {
           >
             <img
               v-if="state.circularCover"
-              :src="state.circularCover + '?param=320x320'"
+              :src="withImageParam(state.circularCover, '320x320')"
               :alt="currentSong?.name"
               class="h-full w-full object-cover"
               style="backface-visibility: hidden"
@@ -636,15 +748,40 @@ onUnmounted(() => {
 
       <!-- 歌曲信息（两种模式共享） -->
       <div class="song-info mb-4 text-center lg:mb-6">
+        <RouterLink
+          v-if="currentSong?.id"
+          :to="`/song/${currentSong.id}`"
+          class="song-title text-primary mb-1 block line-clamp-1 text-xl font-bold transition-colors hover:text-pink-300 sm:text-2xl lg:text-3xl"
+        >
+          {{ currentSong?.name || t('player.unknownSong') }}
+        </RouterLink>
         <h2
+          v-else
           class="song-title text-primary mb-1 line-clamp-1 text-xl font-bold sm:text-2xl lg:text-3xl"
         >
           {{ currentSong?.name || t('player.unknownSong') }}
         </h2>
-        <p class="text-primary/60 text-sm sm:text-base lg:text-lg">
-          {{ currentSong?.artist || t('player.unknownArtist') }}
-        </p>
-        <p v-if="currentSong?.album" class="text-primary/35 mt-0.5 text-xs sm:text-sm">
+        <div class="mt-1 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-sm sm:text-base lg:text-lg">
+          <template v-for="(artist, index) in playerArtists" :key="`${artist.id}-${artist.name}-${index}`">
+            <RouterLink
+              v-if="artist.id"
+              :to="`/artist/${artist.id}`"
+              class="text-primary/60 transition-colors hover:text-pink-300"
+            >
+              {{ artist.name }}
+            </RouterLink>
+            <span v-else class="text-primary/60">{{ artist.name }}</span>
+            <span v-if="index < playerArtists.length - 1" class="text-primary/35">/</span>
+          </template>
+        </div>
+        <RouterLink
+          v-if="currentSong?.albumId && currentSong?.album"
+          :to="`/album/${currentSong.albumId}`"
+          class="text-primary/35 mt-0.5 inline-block text-xs transition-colors hover:text-pink-300 sm:text-sm"
+        >
+          {{ currentSong.album }}
+        </RouterLink>
+        <p v-else-if="currentSong?.album" class="text-primary/35 mt-0.5 text-xs sm:text-sm">
           {{ currentSong.album }}
         </p>
       </div>
@@ -753,6 +890,7 @@ onUnmounted(() => {
         ref="lyricsContainerRef"
         class="lyrics-container relative h-full flex-1 overflow-hidden"
         :class="{ 'cursor-grabbing': lyricsDragging, 'cursor-grab': !lyricsDragging }"
+        @wheel.prevent="handleLyricsWheel"
       >
         <div
           ref="lyricsRef"
@@ -782,11 +920,18 @@ onUnmounted(() => {
         </div>
 
         <!-- 歌词中心指示线 -->
-        <!-- <div class="pointer-events-none absolute top-1/2 right-0 left-0 -z-10 flex items-center">
-          <div
-            class="center-line h-px flex-1 bg-gradient-to-r from-transparent via-white/15 to-transparent"
-          ></div>
-        </div> -->
+        <button
+          v-if="state.wheelPreviewVisible && !lyricsDragging"
+          type="button"
+          class="wheel-preview-line absolute top-1/2 right-0 left-0 z-30 flex -translate-y-1/2 items-center gap-4 px-8"
+          @click.stop="applyWheelPreview"
+        >
+          <span class="wheel-preview-time shrink-0 rounded-full px-3 py-1 text-xs font-semibold">
+            {{ wheelPreviewTimeLabel }}
+          </span>
+          <span class="h-px flex-1 bg-linear-to-r from-transparent via-white/55 to-transparent"></span>
+          <span class="wheel-preview-dot h-2.5 w-2.5 shrink-0 rounded-full"></span>
+        </button>
 
         <!-- 拖动时显示的时间和歌词提示 -->
         <Transition name="fade-scale">
@@ -921,6 +1066,25 @@ onUnmounted(() => {
 
 .lyric-sub {
   @apply text-primary/40 mt-0.5 text-sm;
+}
+
+.wheel-preview-line {
+  color: var(--glass-text-primary);
+  cursor: pointer;
+}
+
+.wheel-preview-time {
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.28);
+  backdrop-filter: blur(16px);
+}
+
+.wheel-preview-dot {
+  background: linear-gradient(135deg, rgba(77, 163, 255, 0.95), rgba(255, 105, 180, 0.92));
+  box-shadow:
+    0 0 0 6px rgba(255, 255, 255, 0.04),
+    0 0 24px rgba(77, 163, 255, 0.35);
 }
 
 @media (max-width: 1024px) {

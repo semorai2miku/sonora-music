@@ -4,6 +4,7 @@ import { commentMusic } from '@/api'
 import Pagination from '@/components/Ui/Pagination.vue'
 import PageSkeleton from '@/components/PageSkeleton.vue'
 import Button from '@/components/Ui/Button.vue'
+import { withImageParam } from '@/utils/media'
 
 const show = defineModel<boolean>('show', { default: false })
 const props = defineProps<{ songId: number | string | null }>()
@@ -169,7 +170,7 @@ const formatTime = (t: number | string) => {
                 <div class="h-10 w-10 shrink-0 overflow-hidden rounded-full md:h-11 md:w-11">
                   <img
                     v-if="c.user?.avatarUrl"
-                    :src="c.user?.avatarUrl + '?param=100y100'"
+                    :src="withImageParam(c.user?.avatarUrl, '100y100')"
                     class="h-full w-full object-cover"
                     alt=""
                   />
@@ -220,7 +221,7 @@ const formatTime = (t: number | string) => {
                     <div class="h-6 w-6 shrink-0 overflow-hidden rounded-full">
                       <img
                         v-if="r?.user?.avatarUrl"
-                        :src="r.user.avatarUrl + '?param=50y50'"
+                        :src="withImageParam(r.user.avatarUrl, '50y50')"
                         class="h-full w-full object-cover"
                         alt=""
                       />

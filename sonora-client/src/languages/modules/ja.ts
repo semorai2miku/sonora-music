@@ -1,6 +1,9 @@
 export default {
   home: {
     recommendPlaylists: 'おすすめプレイリスト',
+    recommendSongs: 'おすすめ楽曲',
+    followArtists: '注目アーティスト',
+    latestAlbums: '注目アルバム',
     hotSongs: '人気曲',
     playlistFallback: 'プレイリスト',
   },
@@ -52,11 +55,18 @@ export default {
     resultsFor: '検索',
     results: '件',
     enterKeyword: 'キーワードを入力して検索',
-    hint: '曲、プレイリスト、MVなどを検索',
+    hint: '曲、アーティスト、アルバムを検索',
     title: '音楽を探す',
     recentSearches: '検索履歴',
     hotSearches: '人気の検索',
     foundResults: '{count} 件見つかりました',
+    showingCount: '{count} / {total} 件を表示',
+    searchingHint: 'ここでは曲、アーティスト、アルバムのみ表示します',
+    sections: {
+      songs: '曲',
+      artists: 'アーティスト',
+      albums: 'アルバム',
+    },
   },
   charts: {
     types: { all: '全部', mandarin: '華語', west: '洋楽', japan: '日本', korea: '韓国' },
@@ -356,7 +366,7 @@ export default {
   artistPage: {
     bioTitle: 'アーティスト紹介',
     playTop: '人気曲を再生',
-    tabs: { hotSongs: '人気曲', albums: 'アルバム' },
+    tabs: { hotSongs: 'すべての曲', albums: 'アルバム' },
     stats: { songs: '曲', albums: 'アルバム', mvs: 'MV', fans: 'ファン' },
     albumsEmpty: 'アルバムはありません',
   },

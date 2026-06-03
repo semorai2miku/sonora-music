@@ -4,6 +4,7 @@ import LoginDialog from '@/components/Auth/LoginDialog.vue'
 import { useAudioStore } from '@/stores/modules/audio'
 import type { Song as StoreSong } from '@/stores/interface'
 import { useUserStore } from '@/stores/modules/user'
+import { withImageParam } from '@/utils/media'
 
 const userStore = useUserStore()
 const audioStore = useAudioStore()
@@ -85,7 +86,7 @@ watch(() => userStore.isLoggedIn, loadUserPlaylists)
         >
           <div class="relative aspect-square overflow-hidden rounded-2xl border border-white/6 bg-white/4">
             <LazyImage
-              :src="(playlist.cover || '/default-cover.svg') + '?param=240y240'"
+              :src="withImageParam(playlist.cover || '/default-cover.svg', '240y240')"
               :alt="playlist.name"
               imgClass="h-full w-full object-cover transition-transform duration-300 group-active:scale-105"
             />

@@ -13,6 +13,7 @@ import PlaylistDrawerMobile from '@/components/Mobile/PlaylistDrawerMobile.vue'
 import PlaylistCommentsPopup from '@/components/Mobile/PlaylistCommentsPopup.vue'
 import Button from '@/components/Ui/Button.vue'
 import VinylDisc from '@/components/Player/VinylDisc.vue'
+import type { Artist as SongArtist } from '@/stores/interface'
 
 // 国际化文本函数
 const { t } = useI18n()
@@ -111,6 +112,23 @@ const {
   previewLyricTime,
   isCommentsOpen,
 } = toRefs(state)
+
+const playerArtists = computed<SongArtist[]>(() => {
+  const artists = currentSong.value?.artists
+  if (Array.isArray(artists) && artists.length > 0) {
+    return artists.filter(artist => artist?.name)
+  }
+
+  if (currentSong.value?.artistId && currentSong.value?.artist) {
+    return [{ id: currentSong.value.artistId, name: currentSong.value.artist }]
+  }
+
+  return (currentSong.value?.artist || '')
+    .split('/')
+    .map(name => name.trim())
+    .filter(Boolean)
+    .map(name => ({ id: '', name }))
+})
 
 // 切换翻译/罗马音
 const toggleTransBtn = async () => {
@@ -430,12 +448,36 @@ const playModeIcon = computed(() => {
         />
 
         <div class="w-full px-6 text-center">
-          <h2 class="text-primary line-clamp-1 text-xl font-bold">
+          <RouterLink
+            v-if="currentSong?.id"
+            :to="`/song/${currentSong.id}`"
+            class="text-primary line-clamp-1 block text-xl font-bold transition-colors hover:text-pink-300"
+          >
+            {{ currentSong?.name || t('player.unknownSong') }}
+          </RouterLink>
+          <h2 v-else class="text-primary line-clamp-1 text-xl font-bold">
             {{ currentSong?.name || t('player.unknownSong') }}
           </h2>
-          <p class="text-primary/60 mt-2 line-clamp-1 text-base">
-            {{ currentSong?.artist || t('player.unknownArtist') }}
-          </p>
+          <div class="text-primary/60 mt-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-base">
+            <template v-for="(artist, index) in playerArtists" :key="`${artist.id}-${artist.name}-${index}`">
+              <RouterLink
+                v-if="artist.id"
+                :to="`/artist/${artist.id}`"
+                class="transition-colors hover:text-pink-300"
+              >
+                {{ artist.name }}
+              </RouterLink>
+              <span v-else>{{ artist.name }}</span>
+              <span v-if="index < playerArtists.length - 1" class="text-primary/35">/</span>
+            </template>
+          </div>
+          <RouterLink
+            v-if="currentSong?.albumId && currentSong?.album"
+            :to="`/album/${currentSong.albumId}`"
+            class="text-primary/45 mt-1 inline-flex max-w-full truncate text-sm transition-colors hover:text-pink-300"
+          >
+            {{ currentSong.album }}
+          </RouterLink>
         </div>
 
         <!-- 迷你歌词展示 -->
@@ -467,12 +509,39 @@ const playModeIcon = computed(() => {
         class="z-10 w-full shrink-0 py-4 text-center"
         @click="showLyrics = false"
       >
-        <h2 class="text-primary truncate px-4 text-xl font-bold">
+        <RouterLink
+          v-if="currentSong?.id"
+          :to="`/song/${currentSong.id}`"
+          class="text-primary block truncate px-4 text-xl font-bold transition-colors hover:text-pink-300"
+          @click.stop
+        >
+          {{ currentSong?.name || t('player.unknownSong') }}
+        </RouterLink>
+        <h2 v-else class="text-primary truncate px-4 text-xl font-bold">
           {{ currentSong?.name || t('player.unknownSong') }}
         </h2>
-        <p class="text-primary/60 mt-1 truncate px-4 text-sm">
-          {{ currentSong?.artist || t('player.unknownArtist') }}
-        </p>
+        <div class="text-primary/60 mt-1 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 text-sm">
+          <template v-for="(artist, index) in playerArtists" :key="`${artist.id}-${artist.name}-${index}`">
+            <RouterLink
+              v-if="artist.id"
+              :to="`/artist/${artist.id}`"
+              class="truncate transition-colors hover:text-pink-300"
+              @click.stop
+            >
+              {{ artist.name }}
+            </RouterLink>
+            <span v-else>{{ artist.name }}</span>
+            <span v-if="index < playerArtists.length - 1" class="text-primary/35">/</span>
+          </template>
+        </div>
+        <RouterLink
+          v-if="currentSong?.albumId && currentSong?.album"
+          :to="`/album/${currentSong.albumId}`"
+          class="text-primary/45 mt-1 inline-flex max-w-full truncate px-4 text-xs transition-colors hover:text-pink-300"
+          @click.stop
+        >
+          {{ currentSong.album }}
+        </RouterLink>
       </div>
 
       <!-- 歌词区域：拖动预览时间、滚动居中、高亮当前句 -->

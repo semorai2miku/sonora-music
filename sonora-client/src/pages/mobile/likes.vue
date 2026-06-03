@@ -5,6 +5,7 @@ import { useAudio } from '@/composables/useAudio'
 import { useUserStore } from '@/stores/modules/user'
 import type { Song } from '@/stores/interface'
 import { transformSong } from '@/utils/transformers'
+import { withImageParam } from '@/utils/media'
 
 const userStore = useUserStore()
 const { setPlaylist, play } = useAudio()
@@ -57,7 +58,7 @@ watch(() => userStore.isLoggedIn, loadLikedSongs)
         <div class="h-12 w-12 shrink-0 overflow-hidden rounded-lg">
           <LazyImage
             v-if="song.cover"
-            :src="song.cover + '?param=200y200'"
+            :src="withImageParam(song.cover, '200y200')"
             alt="cover"
             imgClass="h-full w-full object-cover"
           />

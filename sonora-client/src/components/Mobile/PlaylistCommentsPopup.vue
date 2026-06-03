@@ -6,6 +6,7 @@ import PageSkeleton from '@/components/PageSkeleton.vue'
 import LazyImage from '@/components/Ui/LazyImage.vue'
 import { formatDate } from '@/utils/time'
 import Pagination from '@/components/Ui/Pagination.vue'
+import { withImageParam } from '@/utils/media'
 
 const { t } = useI18n()
 const props = withDefaults(defineProps<{
@@ -85,7 +86,7 @@ watch(
           <!-- 头像 -->
           <div class="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-white/10">
             <LazyImage
-              :src="comment.user.avatarUrl + '?param=60y60'"
+              :src="withImageParam(comment.user.avatarUrl, '60y60')"
               class="h-full w-full object-cover"
             />
           </div>

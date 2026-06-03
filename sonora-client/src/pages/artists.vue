@@ -2,6 +2,7 @@
 import { artistList } from '@/api'
 import { useI18n } from 'vue-i18n'
 import { transformArtists, type ArtistData } from '@/utils/transformers'
+import { withImageParam } from '@/utils/media'
 
 const { t } = useI18n()
 
@@ -85,25 +86,10 @@ onMounted(() => loadArtists(true))
 <template>
   <div class="flex h-full flex-1 flex-col overflow-hidden">
     <div class="glass-card mx-4 mb-0 shrink-0 p-4">
-      <div class="flex flex-wrap items-center gap-6">
-        <div class="flex items-center gap-2">
-          <span class="text-primary/60 text-sm">{{ t('artists.type') }}:</span>
-          <div class="flex gap-1">
-            <button
-              v-for="opt in typeOptions"
-              :key="opt.key"
-              class="rounded-lg px-3 py-1.5 text-xs transition-all"
-              :class="type === opt.key ? 'bg-pink-500/20 text-pink-400' : 'text-primary/60 hover:bg-white/5'"
-              @click="type = opt.key"
-            >
-              {{ t(opt.labelKey) }}
-            </button>
-          </div>
-        </div>
-
+      <div class="flex flex-col gap-4">
         <div class="flex items-center gap-2">
           <span class="text-primary/60 text-sm">{{ t('artists.area') }}:</span>
-          <div class="flex gap-1">
+          <div class="flex flex-wrap gap-1">
             <button
               v-for="opt in areaOptions"
               :key="opt.key"
@@ -116,17 +102,34 @@ onMounted(() => loadArtists(true))
           </div>
         </div>
 
-        <div class="flex flex-wrap items-center gap-1">
-          <span class="text-primary/60 mr-1 text-sm">{{ t('artists.initial') }}:</span>
-          <button
-            v-for="opt in initialOptions"
-            :key="opt.key"
-            class="rounded px-2 py-1 text-xs transition-all"
-            :class="initial === opt.key ? 'bg-pink-500/20 text-pink-400' : 'text-primary/60 hover:bg-white/5'"
-            @click="initial = opt.key"
-          >
-            {{ opt.key || t(opt.labelKey) }}
-          </button>
+        <div class="flex flex-wrap items-start gap-6">
+          <div class="flex items-center gap-2">
+            <span class="text-primary/60 text-sm">{{ t('artists.type') }}:</span>
+            <div class="flex flex-wrap gap-1">
+              <button
+                v-for="opt in typeOptions"
+                :key="opt.key"
+                class="rounded-lg px-3 py-1.5 text-xs transition-all"
+                :class="type === opt.key ? 'bg-pink-500/20 text-pink-400' : 'text-primary/60 hover:bg-white/5'"
+                @click="type = opt.key"
+              >
+                {{ t(opt.labelKey) }}
+              </button>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-1">
+            <span class="text-primary/60 mr-1 text-sm">{{ t('artists.initial') }}:</span>
+            <button
+              v-for="opt in initialOptions"
+              :key="opt.key"
+              class="rounded px-2 py-1 text-xs transition-all"
+              :class="initial === opt.key ? 'bg-pink-500/20 text-pink-400' : 'text-primary/60 hover:bg-white/5'"
+              @click="initial = opt.key"
+            >
+              {{ opt.key || t(opt.labelKey) }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -142,7 +145,7 @@ onMounted(() => loadArtists(true))
         >
           <div class="relative mb-3 aspect-square overflow-hidden rounded-full">
             <LazyImage
-              :src="artist.picUrl + '?param=300y300'"
+              :src="withImageParam(artist.picUrl, '300y300')"
               :alt="artist.name"
               class="h-full w-full object-cover transition-transform group-hover:scale-105"
             />

@@ -6,6 +6,7 @@ import PlaylistCommentsPopup from '@/components/Mobile/PlaylistCommentsPopup.vue
 import Button from '@/components/Ui/Button.vue'
 import { useI18n } from 'vue-i18n'
 import { formatCount } from '@/utils/time'
+import { withImageParam } from '@/utils/media'
 import {
   transformPlaylistDetail,
   transformSongs,
@@ -97,7 +98,7 @@ const toggleCollect = () => {
         <div class="header-bg absolute inset-0 overflow-hidden">
           <LazyImage
             v-if="state.info.coverImgUrl"
-            :src="state.info.coverImgUrl + '?param=400y400'"
+            :src="withImageParam(state.info.coverImgUrl, '400y400')"
             :alt="$t('components.songList.coverAlt')"
             imgClass="h-full w-full object-cover scale-110"
           />
@@ -109,7 +110,7 @@ const toggleCollect = () => {
             <div class="cover-wrapper relative shrink-0">
               <LazyImage
                 v-if="state.info.coverImgUrl"
-                :src="state.info.coverImgUrl + '?param=300y300'"
+                :src="withImageParam(state.info.coverImgUrl, '300y300')"
                 :alt="$t('components.songList.coverAlt')"
                 imgClass="cover-image h-32 w-32 rounded-2xl object-cover"
               />
@@ -129,7 +130,7 @@ const toggleCollect = () => {
                 <div class="creator-info flex items-center gap-2">
                   <img
                     v-if="state.info.creatorAvatar"
-                    :src="state.info.creatorAvatar + '?param=50y50'"
+                    :src="withImageParam(state.info.creatorAvatar, '50y50')"
                     alt=""
                     class="h-5 w-5 rounded-full"
                   />

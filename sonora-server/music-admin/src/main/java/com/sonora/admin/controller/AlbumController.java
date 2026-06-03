@@ -107,6 +107,9 @@ public class AlbumController {
         if (album.getArtistId() == null) {
             return R.badRequest("歌手是必填项");
         }
+        if (album.getDescription() != null && album.getDescription().length() > 10000) {
+            return R.badRequest("专辑简介不能超过 10000 个字符");
+        }
         normalizeAlbum(album, null);
         album.setStatus(1);
         albumMapper.insert(album);
@@ -125,6 +128,9 @@ public class AlbumController {
         }
         if (album.getArtistId() == null) {
             return R.badRequest("歌手是必填项");
+        }
+        if (album.getDescription() != null && album.getDescription().length() > 10000) {
+            return R.badRequest("专辑简介不能超过 10000 个字符");
         }
         normalizeAlbum(album, existing);
         album.setId(id);

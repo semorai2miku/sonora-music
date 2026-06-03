@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { artistDetail, artistTopSong, artistAlbum } from '@/api'
+import { artistAlbum, artistDetail, artistSongs } from '@/api'
 import { usePlayActions } from '@/composables/usePlayActions'
 import Button from '@/components/Ui/Button.vue'
 import { useI18n } from 'vue-i18n'
-import { formatCount } from '@/utils/time'
+import { withImageParam } from '@/utils/media'
 import {
   transformArtistDetail,
   transformSongs,
@@ -41,12 +41,37 @@ const state = reactive({
 
 const { playAll: playAllAction, shufflePlay: shufflePlayAction } = usePlayActions()
 
+const ARTIST_SONG_PAGE_SIZE = 100
+const MAX_ARTIST_SONG_PAGES = 50
+
+const fetchAllArtistSongs = async (id: number, totalHint = 0) => {
+  const songs: SongData[] = []
+  const expectedPages = totalHint > 0 ? Math.ceil(totalHint / ARTIST_SONG_PAGE_SIZE) : 1
+  const totalPages = Math.min(Math.max(expectedPages, 1), MAX_ARTIST_SONG_PAGES)
+
+  for (let page = 0; page < totalPages; page += 1) {
+    const res = await artistSongs({
+      id,
+      order: 'time',
+      limit: ARTIST_SONG_PAGE_SIZE,
+      offset: page * ARTIST_SONG_PAGE_SIZE,
+    })
+    const batch = transformSongs(res as Record<string, unknown>)
+    if (!batch.length) break
+    songs.push(...batch)
+    if (batch.length < ARTIST_SONG_PAGE_SIZE) break
+  }
+
+  return Array.from(new Map(songs.map(song => [String(song.id), song])).values()).sort(
+    (left, right) => Number(left.id || 0) - Number(right.id || 0)
+  )
+}
+
 const load = async (id: number) => {
   state.loading = true
   try {
-    const [detailRes, songsRes, albumsRes] = await Promise.all([
+    const [detailRes, albumsRes] = await Promise.all([
       artistDetail({ id }),
-      artistTopSong({ id }),
       artistAlbum({ id, limit: 10 }),
     ])
 
@@ -70,7 +95,7 @@ const load = async (id: number) => {
     }
 
     // 歌曲列表
-    state.songs = transformSongs(songsRes as Record<string, unknown>, 50)
+    state.songs = await fetchAllArtistSongs(id, state.info.musicSize)
 
     // 专辑列表
     state.albums = transformAlbums(albumsRes as Record<string, unknown>, 10)
@@ -114,7 +139,7 @@ const tabs = ['artistPage.tabs.hotSongs', 'artistPage.tabs.albums']
         <div class="header-bg absolute inset-0 overflow-hidden">
           <LazyImage
             v-if="state.info.picUrl"
-            :src="state.info.picUrl + '?param=400y400'"
+            :src="withImageParam(state.info.picUrl, '400y400')"
             :alt="$t('components.songList.coverAlt')"
             imgClass="h-full w-full object-cover scale-110"
           />
@@ -126,7 +151,7 @@ const tabs = ['artistPage.tabs.hotSongs', 'artistPage.tabs.albums']
             <div class="avatar-wrapper relative mb-4">
               <LazyImage
                 v-if="state.info.picUrl"
-                :src="state.info.picUrl + '?param=300y300'"
+                :src="withImageParam(state.info.picUrl, '300y300')"
                 :alt="$t('layout.aside.menu.artists')"
                 imgClass="artist-avatar h-28 w-28 rounded-full object-cover"
               />
@@ -137,30 +162,9 @@ const tabs = ['artistPage.tabs.hotSongs', 'artistPage.tabs.albums']
               {{ state.info.alias.join(' / ') }}
             </p>
 
-            <div class="mb-4 flex items-center gap-6 text-center text-xs text-accent/70">
-              <div class="flex flex-col items-center">
-                <span class="text-base font-semibold text-accent">{{ state.info.musicSize }}</span>
-                <span>{{ $t('artistPage.stats.songs') }}</span>
-              </div>
-              <div class="flex flex-col items-center">
-                <span class="text-base font-semibold text-accent">{{ state.info.albumSize }}</span>
-                <span>{{ $t('artistPage.stats.albums') }}</span>
-              </div>
-              <div class="flex flex-col items-center">
-                <span class="text-base font-semibold text-accent">{{ state.info.mvSize }}</span>
-                <span>{{ $t('artistPage.stats.mvs') }}</span>
-              </div>
-              <div v-if="state.info.fansCount" class="flex flex-col items-center">
-                <span class="text-base font-semibold text-accent">{{
-                  formatCount(state.info.fansCount)
-                }}</span>
-                <span>{{ $t('artistPage.stats.fans') }}</span>
-              </div>
-            </div>
-
             <p
               v-if="state.info.briefDesc"
-              class="mb-4 line-clamp-2 max-w-xs text-center text-xs leading-relaxed text-accent/60"
+              class="mb-4 max-w-xs text-center text-xs leading-relaxed text-accent/60"
             >
               {{ state.info.briefDesc }}
             </p>
@@ -233,7 +237,7 @@ const tabs = ['artistPage.tabs.hotSongs', 'artistPage.tabs.albums']
             >
               <div class="relative aspect-square">
                 <LazyImage
-                  :src="album.picUrl + '?param=200y200'"
+                  :src="withImageParam(album.picUrl, '200y200')"
                   :alt="album.name"
                   imgClass="h-full w-full object-cover"
                 />

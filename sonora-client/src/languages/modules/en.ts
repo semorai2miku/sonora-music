@@ -1,6 +1,9 @@
 export default {
   home: {
     recommendPlaylists: 'Recommended Playlists',
+    recommendSongs: 'Recommended Songs',
+    followArtists: 'Featured Artists',
+    latestAlbums: 'Latest Albums',
     hotSongs: 'Hot Tracks',
     playlistFallback: 'Playlist',
   },
@@ -52,11 +55,18 @@ export default {
     resultsFor: 'Search',
     results: 'results',
     enterKeyword: 'Enter keywords to search',
-    hint: 'Search songs, playlists, MVs and more',
+    hint: 'Search songs, artists, and albums',
     title: 'Discover Music',
     recentSearches: 'Recent Searches',
     hotSearches: 'Hot Searches',
     foundResults: 'Found {count} results',
+    showingCount: 'Showing {count} / {total}',
+    searchingHint: 'Only song, artist, and album results are shown here',
+    sections: {
+      songs: 'Songs',
+      artists: 'Artists',
+      albums: 'Albums',
+    },
   },
   charts: {
     types: { all: 'All', mandarin: 'Mandarin', west: 'Western', japan: 'Japan', korea: 'Korea' },
@@ -92,7 +102,12 @@ export default {
       desc: 'Personalize your music experience',
       backgroundType: 'Background Type',
       backgroundTypeDesc: 'Choose background effect',
-      backgroundNames: { aurora: 'Aurora', colorbends: 'ColorBends', ultimate: 'Ultimate', shadowBling: 'Shadow Bling' },
+      backgroundNames: {
+        aurora: 'Aurora',
+        colorbends: 'ColorBends',
+        ultimate: 'Ultimate',
+        shadowBling: 'Shadow Bling',
+      },
       themeMode: 'Theme Mode',
       themeModeDesc: 'Choose interface theme',
       uiLanguage: 'Language',
@@ -365,7 +380,7 @@ export default {
   artistPage: {
     bioTitle: 'Artist Bio',
     playTop: 'Play Top Songs',
-    tabs: { hotSongs: 'Top Songs', albums: 'Albums' },
+    tabs: { hotSongs: 'All Songs', albums: 'Albums' },
     stats: { songs: 'songs', albums: 'albums', mvs: 'MVs', fans: 'fans' },
     albumsEmpty: 'No albums',
   },

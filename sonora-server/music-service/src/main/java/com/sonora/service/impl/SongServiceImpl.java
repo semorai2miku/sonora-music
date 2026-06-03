@@ -7,7 +7,9 @@ import com.sonora.common.constant.Constants;
 import com.sonora.common.enums.ResultCode;
 import com.sonora.common.exception.BusinessException;
 import com.sonora.file.service.MinioService;
+import com.sonora.mapper.AlbumMapper;
 import com.sonora.mapper.SongMapper;
+import com.sonora.model.entity.Album;
 import com.sonora.model.entity.Song;
 import com.sonora.service.SongService;
 import com.sonora.service.SongStreamInfo;
@@ -25,6 +27,7 @@ import java.io.InputStream;
 public class SongServiceImpl extends ServiceImpl<SongMapper, Song> implements SongService {
 
     private final MinioService minioService;
+    private final AlbumMapper albumMapper;
 
     @Override
     public Page<Song> pageSongs(int pageNum, int pageSize, String keyword, Long albumId, Long artistId) {
@@ -52,21 +55,8 @@ public class SongServiceImpl extends ServiceImpl<SongMapper, Song> implements So
             throw new BusinessException(ResultCode.FILE_UPLOAD_FAILED);
         }
 
-        // 2. 上传封面 (如果有)
-        if (coverFile != null && !coverFile.isEmpty()) {
-            try {
-                String coverKey = minioService.upload(coverFile, "cover");
-                song.setCover(minioService.normalizeForStorage(coverKey));
-            } catch (Exception e) {
-                log.error("封面上传失败", e);
-                // 封面上传失败不影响主流程，继续
-            }
-        }
-        if (!StringUtils.hasText(song.getCover())) {
-            song.setCover(Constants.DEFAULT_COVER);
-        } else {
-            song.setCover(minioService.normalizeForStorage(song.getCover()));
-        }
+        // 2. 歌曲封面始终跟随所属专辑，没有专辑则使用默认封面
+        song.setCover(resolveManagedSongCover(song.getAlbumId()));
 
         // 3. 保存歌曲记录
         save(song);
@@ -93,8 +83,9 @@ public class SongServiceImpl extends ServiceImpl<SongMapper, Song> implements So
         updated.setLyrics(song.getLyrics() != null ? song.getLyrics() : existing.getLyrics());
         updated.setPlayCount(song.getPlayCount() != null ? song.getPlayCount() : existing.getPlayCount());
         updated.setStatus(song.getStatus() != null ? song.getStatus() : existing.getStatus());
-        updated.setCover(resolveCoverValue(song.getCover(), existing.getCover()));
+        updated.setCover(resolveManagedSongCover(updated.getAlbumId()));
         updateById(updated);
+        deleteManagedObject(existing.getCover(), updated.getCover());
         return getById(id);
     }
 
@@ -111,7 +102,6 @@ public class SongServiceImpl extends ServiceImpl<SongMapper, Song> implements So
         String previousAudioKey = existing.getFileKey();
         String previousCoverKey = existing.getCover();
         String newAudioKey = null;
-        String newCoverKey = null;
 
         try {
             Song updated = new Song();
@@ -128,27 +118,18 @@ public class SongServiceImpl extends ServiceImpl<SongMapper, Song> implements So
             applyAudioFile(updated, audioFile);
             newAudioKey = updated.getFileKey();
 
-            if (coverFile != null && !coverFile.isEmpty()) {
-                newCoverKey = minioService.upload(coverFile, "cover");
-                updated.setCover(minioService.normalizeForStorage(newCoverKey));
-            } else {
-                updated.setCover(resolveCoverValue(song.getCover(), existing.getCover()));
-            }
+            updated.setCover(resolveManagedSongCover(updated.getAlbumId()));
 
             updateById(updated);
 
             deleteManagedObject(previousAudioKey, updated.getFileKey());
-            if (coverFile != null && !coverFile.isEmpty()) {
-                deleteManagedObject(previousCoverKey, updated.getCover());
-            }
+            deleteManagedObject(previousCoverKey, updated.getCover());
             return getById(id);
         } catch (BusinessException e) {
             cleanupUploadedObject(newAudioKey);
-            cleanupUploadedObject(newCoverKey);
             throw e;
         } catch (Exception e) {
             cleanupUploadedObject(newAudioKey);
-            cleanupUploadedObject(newCoverKey);
             log.error("替换歌曲文件失败: songId={}", id, e);
             throw new BusinessException(ResultCode.FILE_UPLOAD_FAILED.getCode(), "替换歌曲失败");
         }
@@ -205,12 +186,13 @@ public class SongServiceImpl extends ServiceImpl<SongMapper, Song> implements So
         song.setFormat("mp3");
     }
 
-    private String resolveCoverValue(String requestedCover, String existingCover) {
-        if (StringUtils.hasText(requestedCover)) {
-            return minioService.normalizeForStorage(requestedCover);
+    private String resolveManagedSongCover(Long albumId) {
+        if (albumId == null) {
+            return Constants.DEFAULT_COVER;
         }
-        if (StringUtils.hasText(existingCover)) {
-            return minioService.normalizeForStorage(existingCover);
+        Album album = albumMapper.selectById(albumId);
+        if (album != null && StringUtils.hasText(album.getCover())) {
+            return minioService.normalizeForStorage(album.getCover());
         }
         return Constants.DEFAULT_COVER;
     }

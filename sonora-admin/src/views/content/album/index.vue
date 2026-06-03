@@ -56,7 +56,13 @@ function loadData() {
 
 const dialogVisible = ref(false);
 const isEdit = ref(false);
-const form = ref<Partial<AlbumItem>>({ name: "", cover: DEFAULT_COVER, artistId: undefined, type: "album" });
+const form = ref<Partial<AlbumItem>>({
+  name: "",
+  cover: DEFAULT_COVER,
+  artistId: undefined,
+  type: "album",
+  description: ""
+});
 const submitting = ref(false);
 const artistCache = ref<Record<number, ArtistItem>>({});
 const detailDialogVisible = ref(false);
@@ -177,7 +183,14 @@ async function fetchArtistSelectOptions(params: {
 
 function openCreate() {
   isEdit.value = false;
-  form.value = { name: "", cover: DEFAULT_COVER, artistId: undefined, type: "album", status: 1 };
+  form.value = {
+    name: "",
+    cover: DEFAULT_COVER,
+    artistId: undefined,
+    type: "album",
+    description: "",
+    status: 1
+  };
   dialogVisible.value = true;
 }
 function openEdit(row: AlbumItem) {
@@ -456,6 +469,16 @@ onBeforeUnmount(() => {
         <el-form-item label="发行日期">
           <el-date-picker v-model="form.releaseDate" type="date" placeholder="选择日期" style="width: 100%" value-format="YYYY-MM-DD" />
         </el-form-item>
+        <el-form-item label="简介">
+          <el-input
+            v-model="form.description"
+            type="textarea"
+            :rows="6"
+            maxlength="10000"
+            show-word-limit
+            placeholder="填写专辑简介"
+          />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -478,6 +501,9 @@ onBeforeUnmount(() => {
           <div class="album-detail-line">歌手：{{ getArtistName(detailAlbum.artistId) }}</div>
           <div class="album-detail-line">发行日期：{{ detailAlbum.releaseDate || "-" }}</div>
           <div class="album-detail-line">歌曲数量：{{ detailTotal }}</div>
+          <div v-if="detailAlbum.description" class="album-detail-description">
+            {{ detailAlbum.description }}
+          </div>
         </div>
       </div>
 
@@ -559,6 +585,14 @@ onBeforeUnmount(() => {
   margin-bottom: 4px;
   color: var(--el-text-color-secondary);
   font-size: 13px;
+}
+
+.album-detail-description {
+  margin-top: 10px;
+  color: var(--el-text-color-regular);
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
 }
 
 .artist-filter-scroll {

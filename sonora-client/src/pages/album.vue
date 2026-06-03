@@ -5,6 +5,7 @@ import SongList from '@/components/SongList.vue'
 import PageSkeleton from '@/components/PageSkeleton.vue'
 import Button from '@/components/Ui/Button.vue'
 import { usePlayActions } from '@/composables/usePlayActions'
+import { withImageParam } from '@/utils/media'
 import {
   transformAlbumDetail,
   extractArray,
@@ -31,20 +32,26 @@ const load = async () => {
     const songs = extractArray(res as Record<string, unknown>, 'songs', 'data.songs', 'album.songs', 'data.album.songs')
 
     state.info = album
-    state.songs = songs.map((s: any) => ({
-      id: s?.id || 0,
-      name: s?.name || '',
-      artist: Array.isArray(s?.ar)
-        ? s.ar.map((a: any) => a.name).join(' / ')
+    state.songs = songs.map((s: any) => {
+      const artists = Array.isArray(s?.ar)
+        ? s.ar.map((artist: any) => ({ id: artist?.id || 0, name: artist?.name || '' }))
         : Array.isArray(s?.artists)
-          ? s.artists.map((a: any) => a.name).join(' / ')
-          : '',
-      album: s?.al?.name || s?.album?.name || album?.name || '',
-      albumId: s?.al?.id ?? s?.album?.id ?? album?.id,
-      duration: s?.dt ?? s?.duration ?? 0,
-      cover: s?.al?.picUrl || s?.album?.picUrl || album?.picUrl || '',
-      liked: false,
-    }))
+          ? s.artists.map((artist: any) => ({ id: artist?.id || 0, name: artist?.name || '' }))
+          : []
+
+      return {
+        id: s?.id || 0,
+        name: s?.name || '',
+        artist: artists.map((artist: { name: string }) => artist.name).join(' / '),
+        artistId: artists[0]?.id || 0,
+        artists,
+        album: s?.al?.name || s?.album?.name || album?.name || '',
+        albumId: s?.al?.id ?? s?.album?.id ?? album?.id,
+        duration: s?.dt ?? s?.duration ?? 0,
+        cover: s?.al?.picUrl || s?.album?.picUrl || album?.picUrl || '',
+        liked: false,
+      }
+    })
   } finally {
     state.loading = false
   }
@@ -61,7 +68,7 @@ onMounted(() => load())
         <div class="absolute inset-0 overflow-hidden rounded-b-3xl">
           <img
             v-if="state.info?.picUrl"
-            :src="state.info.picUrl + '?param=800y800'"
+            :src="withImageParam(state.info.picUrl, '800y800')"
             class="h-full w-full object-cover opacity-30"
           />
           <div v-else class="h-full w-full bg-linear-to-br from-pink-500/40 to-purple-600/40"></div>
@@ -71,7 +78,7 @@ onMounted(() => load())
             <div class="h-24 w-24 overflow-hidden rounded-xl ring-2 ring-white/20">
               <img
                 v-if="state.info?.picUrl"
-                :src="state.info.picUrl + '?param=300y300'"
+                :src="withImageParam(state.info.picUrl, '300y300')"
                 class="h-full w-full object-cover"
                 :alt="$t('albumPage.alt.cover')"
               />

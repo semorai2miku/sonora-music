@@ -841,9 +841,6 @@ public class ClientUserController {
     }
 
     private String songCoverOf(Song song, Map<Long, Album> albumMap) {
-        if (song != null && StringUtils.hasText(song.getCover())) {
-            return minioService.resolvePreviewUrl(song.getCover());
-        }
         Album album = song == null || song.getAlbumId() == null ? null : albumMap.get(song.getAlbumId());
         if (album != null && StringUtils.hasText(album.getCover())) {
             return minioService.resolvePreviewUrl(album.getCover());

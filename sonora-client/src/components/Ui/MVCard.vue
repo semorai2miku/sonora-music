@@ -2,6 +2,7 @@
 import { gsap } from 'gsap'
 import LazyImage from '@/components/Ui/LazyImage.vue'
 import { formatCount } from '@/utils/time'
+import { withImageParam } from '@/utils/media'
 
 interface Props {
   id: number | string
@@ -202,7 +203,7 @@ const handleClick = async () => {
     <div style="
       position: absolute;
       inset: 0;
-      background-image: url(${props.cover}?param=800y450);
+      background-image: url(${withImageParam(props.cover, '800y450')});
       background-size: cover;
       background-position: center;
     "></div>
@@ -322,7 +323,7 @@ const handleClick = async () => {
   >
     <div class="mv-card-inner relative aspect-video overflow-hidden rounded-2xl shadow-xl">
       <LazyImage
-        :src="cover + '?param=400y225'"
+        :src="withImageParam(cover, '400y225')"
         :alt="name"
         img-class="h-full w-full object-cover transition-all duration-700 group-hover:scale-110 group-hover:brightness-75"
         wrapper-class="h-full w-full"

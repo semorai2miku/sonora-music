@@ -5,6 +5,7 @@ import { useSettingsStore } from '@/stores/modules/settings'
 import { storeToRefs } from 'pinia'
 import MusicProgress from '@/components/Ui/MusicProgress.vue'
 import Button from '@/components/Ui/Button.vue'
+import { withImageParam } from '@/utils/media'
 
 const settingsStore = useSettingsStore()
 
@@ -78,7 +79,7 @@ onUnmounted(() => {
       <div class="w-12 overflow-hidden rounded-lg" @click="$emit('open')">
         <img
           v-if="currentSong.cover"
-          :src="currentSong.cover + '?param=200y200'"
+          :src="withImageParam(currentSong.cover, '200y200')"
           alt="cover"
           class="h-full w-full object-cover"
         />

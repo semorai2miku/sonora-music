@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { gsap } from 'gsap'
+import { withImageParam } from '@/utils/media'
 
 interface Props {
   /** 封面图片URL */
@@ -236,7 +237,7 @@ defineExpose({
         :class="sizeClasses.label"
         :style="{
           backgroundImage: state.displayCover
-            ? `url(${state.displayCover}?param=320x320)`
+            ? `url(${withImageParam(state.displayCover, '320x320')})`
             : 'linear-gradient(135deg, rgba(167,139,250,0.6) 0%, rgba(108,92,231,0.6) 100%)',
           transformStyle: 'preserve-3d',
           backfaceVisibility: 'hidden',

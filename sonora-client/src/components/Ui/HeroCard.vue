@@ -2,6 +2,7 @@
 import { gsap } from 'gsap'
 import LazyImage from '@/components/Ui/LazyImage.vue'
 import { formatCount } from '@/utils/time'
+import { withImageParam } from '@/utils/media'
 
 interface Props {
   id: number | string
@@ -86,7 +87,7 @@ const handleClick = async (_event: MouseEvent) => {
     <div class="hero-clone-bg" style="
       position: absolute;
       inset: 0;
-      background-image: url(${props.coverUrl}?param=400y400);
+      background-image: url(${withImageParam(props.coverUrl, '400y400')});
       background-size: cover;
       background-position: center;
       filter: blur(40px) saturate(1.5);
@@ -104,7 +105,7 @@ const handleClick = async (_event: MouseEvent) => {
       padding: 24px;
       opacity: 0;
     ">
-      <img src="${props.coverUrl}?param=400y400" style="
+      <img src="${withImageParam(props.coverUrl, '400y400')}" style="
         width: 200px;
         height: 200px;
         border-radius: 16px;
@@ -291,7 +292,7 @@ const handleMouseLeave = () => {
       :class="aspectRatio === 'video' ? 'aspect-video' : 'aspect-square'"
     >
       <LazyImage
-        :src="coverUrl + '?param=300y300'"
+        :src="withImageParam(coverUrl, '300y300')"
         :alt="title"
         img-class="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
         wrapper-class="h-full w-full"

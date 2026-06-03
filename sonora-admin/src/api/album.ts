@@ -6,6 +6,7 @@ export type AlbumItem = {
   cover: string;
   artistId: number;
   releaseDate: string;
+  description: string;
   type: string;
   status: number;
 };

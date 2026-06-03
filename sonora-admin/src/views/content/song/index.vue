@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
-import ImageUploadCropper from "@/components/ImageUploadCropper.vue";
 import SimpleAudioPreviewBar from "@/components/SimpleAudioPreviewBar.vue";
 import RemotePagedTagSelect from "@/components/RemotePagedTagSelect.vue";
 import {
@@ -274,7 +273,7 @@ function getReleaseDate(row: SongItem) {
 }
 
 function coverOf(row: SongItem) {
-  return row.cover || getAlbum(row)?.cover || DEFAULT_COVER;
+  return getAlbum(row)?.cover || DEFAULT_COVER;
 }
 
 function buildSongPageParams(page: number, size: number) {
@@ -298,6 +297,7 @@ const isEdit = ref(false);
 const form = ref<Partial<SongItem>>({ name: "", artistIds: "", albumId: undefined, lyrics: "" });
 const selectedArtistIds = ref<number[]>([]);
 const audioFile = ref<File | null>(null);
+const lrcFileName = ref("");
 const uploadPreviewUrl = ref("");
 const detectedDuration = ref<number | null>(null);
 const submitting = ref(false);
@@ -313,6 +313,7 @@ const artistSelectPageNum = ref(1);
 const artistSelectPageSize = 30;
 const artistSelectTotal = ref(0);
 const artistSelectLoading = ref(false);
+const lrcInputRef = ref<HTMLInputElement | null>(null);
 let artistSearchTimer: ReturnType<typeof setTimeout> | null = null;
 let artistSelectRequestSeq = 0;
 const previewRow = ref<SongItem | null>(null);
@@ -443,6 +444,7 @@ function openCreate() {
     status: 1
   };
   audioFile.value = null;
+  lrcFileName.value = "";
   resetUploadPreview();
   detectedDuration.value = null;
   parsedArtistName.value = "";
@@ -456,6 +458,7 @@ function openEdit(row: SongItem) {
   selectedArtistIds.value = parseArtistIds(row.artistIds);
   ensureArtistOptionsByIds(selectedArtistIds.value);
   audioFile.value = null;
+  lrcFileName.value = "";
   resetUploadPreview();
   detectedDuration.value = row.duration || null;
   parsedArtistName.value = "";
@@ -526,6 +529,67 @@ function readAudioDuration(file: File) {
     };
     audio.src = objectUrl;
   });
+}
+
+function readTextFile(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      resolve(typeof reader.result === "string" ? reader.result : "");
+    };
+    reader.onerror = () => {
+      reject(new Error("读取歌词文件失败"));
+    };
+    reader.readAsText(file, "utf-8");
+  });
+}
+
+function normalizeLyricsText(content: string) {
+  return content.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").trim();
+}
+
+function openLrcFilePicker() {
+  lrcInputRef.value?.click();
+}
+
+async function handleLrcFileChange(event: Event) {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0] || null;
+  target.value = "";
+  if (!file) return;
+
+  const lowerName = file.name.toLowerCase();
+  if (!lowerName.endsWith(".lrc")) {
+    ElMessage.warning("请上传 .lrc 格式的歌词文件");
+    return;
+  }
+
+  try {
+    const nextLyrics = normalizeLyricsText(await readTextFile(file));
+    if (!nextLyrics) {
+      ElMessage.warning("歌词文件内容为空");
+      return;
+    }
+
+    const currentLyrics = (form.value.lyrics || "").trim();
+    if (currentLyrics && currentLyrics !== nextLyrics) {
+      try {
+        await ElMessageBox.confirm(
+          "当前歌词框已有内容，导入 LRC 文件后会覆盖现有歌词，是否继续？",
+          "覆盖歌词",
+          { type: "warning" }
+        );
+      } catch (error) {
+        if (error === "cancel" || error === "close") return;
+      }
+    }
+
+    form.value.lyrics = nextLyrics;
+    lrcFileName.value = file.name;
+    ElMessage.success(`已导入歌词文件：${file.name}`);
+  } catch (error: any) {
+    ElMessage.error(getErrorMessage(error, "导入歌词文件失败"));
+  }
 }
 
 function updateUploadPreview(file: File | null) {
@@ -608,6 +672,7 @@ function closePreview() {
 
 function handleDialogClosed() {
   audioFile.value = null;
+  lrcFileName.value = "";
   detectedDuration.value = null;
   parsedArtistName.value = "";
   resetUploadPreview();
@@ -618,6 +683,14 @@ const uploadPreviewArtistText = computed(() => {
     return selectedArtistTags.value.map(item => item.name).join(" / ");
   }
   return parsedArtistName.value || "";
+});
+
+const selectedAlbumCover = computed(() => {
+  const albumId = Number(form.value.albumId);
+  if (!Number.isFinite(albumId) || albumId <= 0) {
+    return DEFAULT_COVER;
+  }
+  return albumCache.value[albumId]?.cover || DEFAULT_COVER;
 });
 
 function handleSubmit() {
@@ -635,7 +708,6 @@ function handleSubmit() {
       if (detectedDuration.value && detectedDuration.value > 0) {
         fd.append("duration", String(detectedDuration.value));
       }
-      if (form.value.cover) fd.append("cover", form.value.cover);
       if (form.value.lyrics) fd.append("lyrics", form.value.lyrics);
       replaceSong(form.value.id!, fd)
         .then(() => {
@@ -654,7 +726,6 @@ function handleSubmit() {
       name: form.value.name,
       artistIds: selectedArtistIds.value.join(","),
       albumId: form.value.albumId,
-      cover: form.value.cover || DEFAULT_COVER,
       lyrics: form.value.lyrics
     })
       .then(() => {
@@ -676,7 +747,6 @@ function handleSubmit() {
     if (detectedDuration.value && detectedDuration.value > 0) {
       fd.append("duration", String(detectedDuration.value));
     }
-    if (form.value.cover) fd.append("cover", form.value.cover);
     if (form.value.lyrics) fd.append("lyrics", form.value.lyrics);
     createSong(fd)
       .then(() => {
@@ -921,27 +991,6 @@ onBeforeUnmount(() => {
           </el-table-column>
         </el-table>
 
-        <div v-if="previewRow && previewSource" class="song-preview-panel">
-          <div class="song-preview-panel__header">
-            <div class="song-preview-panel__title">歌曲预览</div>
-            <el-button
-              class="song-preview-panel__close"
-              circle
-              text
-              :icon="Close"
-              @click="closePreview"
-            />
-          </div>
-          <SimpleAudioPreviewBar
-            :key="`${previewRow.id}-${previewAutoplayToken}`"
-            :source="previewSource"
-            :title="previewRow.name"
-            :subtitle="getArtistNames(previewRow.artistIds)"
-            :cover="coverOf(previewRow)"
-            auto-play
-          />
-        </div>
-
         <!-- 分页 -->
         <div class="flex justify-end mt-4">
           <el-pagination
@@ -953,6 +1002,29 @@ onBeforeUnmount(() => {
           />
         </div>
       </section>
+    </div>
+
+    <div v-if="previewRow && previewSource" class="song-preview-floating">
+      <div class="song-preview-panel">
+        <div class="song-preview-panel__header">
+          <div class="song-preview-panel__title">歌曲预览</div>
+          <el-button
+            class="song-preview-panel__close"
+            circle
+            text
+            :icon="Close"
+            @click="closePreview"
+          />
+        </div>
+        <SimpleAudioPreviewBar
+          :key="`${previewRow.id}-${previewAutoplayToken}`"
+          :source="previewSource"
+          :title="previewRow.name"
+          :subtitle="getArtistNames(previewRow.artistIds)"
+          :cover="coverOf(previewRow)"
+          auto-play
+        />
+      </div>
     </div>
 
     <!-- 新增/编辑对话框 -->
@@ -984,19 +1056,25 @@ onBeforeUnmount(() => {
             :source="uploadPreviewUrl"
             :title="form.name || '未命名歌曲'"
             :subtitle="uploadPreviewArtistText"
-            :cover="form.cover || DEFAULT_COVER"
+            :cover="selectedAlbumCover"
           />
         </el-form-item>
         <el-form-item label="封面">
-          <ImageUploadCropper
-            v-model="form.cover"
-            :fallback-src="DEFAULT_COVER"
-            dir="song-cover"
-            title="修改歌曲封面"
-            mask-text="修改封面"
-            crop-title="裁剪歌曲封面"
-            confirm-text="使用封面"
-          />
+          <div class="song-cover-auto-field">
+            <el-image
+              class="song-cover-auto-field__image"
+              :src="selectedAlbumCover"
+              :preview-src-list="[selectedAlbumCover]"
+              preview-teleported
+              fit="cover"
+            />
+            <div class="song-cover-auto-field__text">
+              <div class="song-cover-auto-field__title">自动使用所属专辑封面</div>
+              <div class="song-cover-auto-field__desc">
+                未选择专辑时，歌曲封面将显示为默认封面。
+              </div>
+            </div>
+          </div>
         </el-form-item>
         <el-form-item label="歌手">
           <RemotePagedTagSelect
@@ -1016,7 +1094,27 @@ onBeforeUnmount(() => {
           />
         </el-form-item>
         <el-form-item label="歌词">
-          <el-input v-model="form.lyrics" type="textarea" :rows="4" placeholder="LRC 格式歌词" />
+          <div class="lyrics-editor">
+            <div class="lyrics-editor__toolbar">
+              <el-button type="primary" plain @click="openLrcFilePicker">导入 LRC 歌词</el-button>
+              <span v-if="lrcFileName" class="lyrics-editor__file-name" :title="lrcFileName">
+                {{ lrcFileName }}
+              </span>
+            </div>
+            <input
+              ref="lrcInputRef"
+              class="lyrics-editor__input"
+              type="file"
+              accept=".lrc"
+              @change="handleLrcFileChange"
+            />
+            <el-input
+              v-model="form.lyrics"
+              type="textarea"
+              :rows="6"
+              placeholder="LRC 格式歌词"
+            />
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -1045,12 +1143,54 @@ onBeforeUnmount(() => {
   cursor: zoom-in;
 }
 
+.song-cover-auto-field {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.song-cover-auto-field__image {
+  width: 72px;
+  height: 72px;
+  overflow: hidden;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 12px;
+  background: var(--el-fill-color-light);
+  cursor: zoom-in;
+}
+
+.song-cover-auto-field__text {
+  min-width: 0;
+}
+
+.song-cover-auto-field__title {
+  color: var(--el-text-color-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.song-cover-auto-field__desc {
+  margin-top: 4px;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
 .song-preview-panel {
-  margin-top: 16px;
   padding: 16px;
   border: 1px solid var(--el-border-color-lighter);
   border-radius: 14px;
   background: var(--el-fill-color-blank);
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.16);
+}
+
+.song-preview-floating {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 2100;
+  width: min(520px, calc(100vw - 48px));
+  max-width: calc(100vw - 48px);
 }
 
 .song-preview-panel__title {
@@ -1068,6 +1208,19 @@ onBeforeUnmount(() => {
 
 .song-preview-panel__close {
   color: var(--el-text-color-secondary);
+}
+
+@media (max-width: 900px) {
+  .song-preview-floating {
+    right: 12px;
+    bottom: 12px;
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+  }
+
+  .song-preview-panel {
+    padding: 12px;
+  }
 }
 
 .artist-filter-scroll {
@@ -1195,5 +1348,30 @@ onBeforeUnmount(() => {
   color: var(--el-text-color-secondary);
   font-size: 12px;
   text-align: center;
+}
+
+.lyrics-editor {
+  width: 100%;
+}
+
+.lyrics-editor__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.lyrics-editor__file-name {
+  max-width: 280px;
+  overflow: hidden;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lyrics-editor__input {
+  display: none;
 }
 </style>

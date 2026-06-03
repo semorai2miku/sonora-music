@@ -6,6 +6,7 @@ import type { Song } from '@/stores/interface'
 import { likedSongIds, likeSong, unlikeSong } from '@/api'
 import { useUserStore } from '@/stores/modules/user'
 import SaveToPlaylistDialog from '@/components/Playlist/SaveToPlaylistDialog.vue'
+import { withImageParam } from '@/utils/media'
 
 type ListVariant = 'compact' | 'card'
 
@@ -111,7 +112,7 @@ watch(
       <div class="song-cover relative h-14 w-14 shrink-0 overflow-hidden rounded-xl">
         <LazyImage
           v-if="song.cover"
-          :src="song.cover + '?param=200y200'"
+          :src="withImageParam(song.cover, '200y200')"
           alt="cover"
           imgClass="h-full w-full object-cover"
         />
@@ -186,7 +187,7 @@ watch(
       <div class="song-cover-small relative h-11 w-11 shrink-0 overflow-hidden rounded-lg">
         <LazyImage
           v-if="song.cover"
-          :src="song.cover + '?param=100y100'"
+          :src="withImageParam(song.cover, '100y100')"
           alt="cover"
           imgClass="h-full w-full object-cover"
         />

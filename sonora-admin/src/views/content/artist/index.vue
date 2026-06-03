@@ -29,6 +29,7 @@ type ArtistPayload = {
 };
 
 const DEFAULT_AVATAR = "/default-avatar.svg";
+const ARTIST_DESCRIPTION_MAX_LENGTH = 10000;
 
 const loading = ref(false);
 const list = ref<ArtistItem[]>([]);
@@ -140,6 +141,10 @@ function validateForm() {
   }
   if ((form.value.region || "").trim().length > 32) {
     ElMessage.warning("国籍不能超过 32 个字符");
+    return false;
+  }
+  if ((form.value.description || "").trim().length > ARTIST_DESCRIPTION_MAX_LENGTH) {
+    ElMessage.warning(`歌手简介不能超过 ${ARTIST_DESCRIPTION_MAX_LENGTH} 个字符`);
     return false;
   }
   return true;
@@ -384,7 +389,7 @@ onMounted(loadData);
             v-model="form.description"
             type="textarea"
             :rows="4"
-            maxlength="1000"
+            :maxlength="ARTIST_DESCRIPTION_MAX_LENGTH"
             show-word-limit
             placeholder="歌手简介"
           />

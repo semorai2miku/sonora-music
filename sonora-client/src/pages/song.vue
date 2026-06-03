@@ -9,9 +9,11 @@ import { useAudio } from '@/composables/useAudio'
 import { useUserStore } from '@/stores/modules/user'
 import { formatDuration } from '@/utils/time'
 import LazyImage from '@/components/Ui/LazyImage.vue'
+import { withImageParam } from '@/utils/media'
 import {
   transformSearchSongs,
   transformSearchPlaylists,
+  transformSongs,
   type SongData,
   type PlaylistData,
 } from '@/utils/transformers'
@@ -46,8 +48,23 @@ const artistName = computed(() => {
     : state.info?.artists?.map((a: any) => a.name).join(' / ')
 })
 
+const artistEntries = computed(() => {
+  const source = Array.isArray(state.info?.artists)
+    ? state.info.artists
+    : Array.isArray(state.info?.ar)
+      ? state.info.ar
+      : []
+
+  return source
+    .filter((artist: any) => artist?.name)
+    .map((artist: any) => ({
+      id: artist.id || '',
+      name: artist.name,
+    }))
+})
+
 const albumName = computed(() => state.info?.al?.name || state.info?.album?.name || '')
-const albumCover = computed(() => state.info?.al?.picUrl || state.info?.album?.picUrl || '')
+const albumCover = computed(() => state.info?.cover || state.info?.al?.picUrl || state.info?.album?.picUrl || '')
 const duration = computed(() => state.info?.dt || state.info?.duration || 0)
 
 const playCurrent = () => {
@@ -56,7 +73,10 @@ const playCurrent = () => {
     id: state.info.id,
     name: state.info.name,
     artist: artistName.value,
+    artistId: artistEntries.value[0]?.id || 0,
+    artists: artistEntries.value,
     album: albumName.value,
+    albumId: state.info?.albumId || state.info?.al?.id || state.info?.album?.id || 0,
     duration: duration.value,
     cover: albumCover.value,
     liked: state.liked,
@@ -73,8 +93,9 @@ const isCurrent = computed(() => {
 const loadInfo = async () => {
   try {
     const res: any = await songDetail({ ids: String(songId.value) })
-    const song = Array.isArray(res?.songs) ? res.songs[0] : res?.songs
-    state.info = song
+    const song = transformSongs(res as Record<string, unknown>, 1)[0]
+    const rawSong = Array.isArray(res?.songs) ? res.songs[0] : res?.songs
+    state.info = rawSong ? { ...rawSong, ...song } : song
     const artistNameVal = Array.isArray(song?.ar)
       ? song.ar.map((a: any) => a.name).join(' / ')
       : song?.artists?.map((a: any) => a.name).join(' / ')
@@ -140,7 +161,7 @@ watch(() => [state.info?.id, userStore.isLoggedIn], refreshLikeState)
         <div v-if="state.info" class="mb-8 flex gap-8">
           <div class="group relative h-72 w-72 shrink-0 overflow-hidden rounded-2xl shadow-2xl">
             <LazyImage
-              :src="albumCover + '?param=300y300'"
+              :src="withImageParam(albumCover, '300y300')"
               alt="封面"
               imgClass="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
               wrapperClass="h-full w-full"
@@ -162,17 +183,22 @@ watch(() => [state.info?.id, userStore.isLoggedIn], refreshLikeState)
             <h1 class="mb-4 text-4xl leading-tight font-bold">{{ state.info.name }}</h1>
 
             <div class="mb-6 flex flex-wrap items-center gap-3">
-              <button
-                class="glass-button inline-flex items-center gap-2 px-4 py-2 text-sm transition-colors hover:bg-white/20"
-                @click="
-                  router.push(
-                    `/artist/${(Array.isArray(state.info?.ar) ? state.info.ar[0]?.id : state.info?.artists?.[0]?.id) || ''}`
-                  )
-                "
+              <div
+                class="glass-button inline-flex flex-wrap items-center gap-2 px-4 py-2 text-sm"
               >
                 <span class="icon-[mdi--account-music] h-5 w-5"></span>
-                {{ artistName }}
-              </button>
+                <template v-for="(artist, index) in artistEntries" :key="`${artist.id}-${artist.name}-${index}`">
+                  <button
+                    type="button"
+                    class="transition-colors hover:text-pink-300"
+                    @click="artist.id && router.push(`/artist/${artist.id}`)"
+                  >
+                    {{ artist.name }}
+                  </button>
+                  <span v-if="index < artistEntries.length - 1" class="text-primary/40">/</span>
+                </template>
+                <span v-if="!artistEntries.length">{{ artistName }}</span>
+              </div>
               <button
                 v-if="state.info?.al?.id || state.info?.album?.id"
                 class="glass-button inline-flex items-center gap-2 px-4 py-2 text-sm transition-colors hover:bg-white/20"
@@ -287,7 +313,7 @@ watch(() => [state.info?.id, userStore.isLoggedIn], refreshLikeState)
                 >
                   <div class="relative aspect-square overflow-hidden rounded-lg">
                     <img
-                      :src="pl.coverImgUrl + '?param=200y200'"
+                      :src="withImageParam(pl.coverImgUrl, '200y200')"
                       class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
                     />
                     <div

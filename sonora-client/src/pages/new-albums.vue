@@ -2,6 +2,7 @@
 import { albumNew } from '@/api'
 import { useI18n } from 'vue-i18n'
 import { transformAlbums, type AlbumData } from '@/utils/transformers'
+import { withImageParam } from '@/utils/media'
 
 const { t } = useI18n()
 
@@ -71,18 +72,23 @@ onMounted(() => loadAlbums(true))
 <template>
   <div class="flex h-full flex-1 flex-col overflow-hidden">
     <div class="glass-card mx-4 mb-0 shrink-0 p-4">
-      <div class="flex items-center gap-4">
-        <h2 class="text-primary text-lg font-bold">{{ t('newAlbums.title') }}</h2>
-        <div class="flex gap-1">
-          <button
-            v-for="opt in areaOptions"
-            :key="opt.key"
-            class="rounded-lg px-3 py-1.5 text-xs transition-all"
-            :class="area === opt.key ? 'bg-pink-500/20 text-pink-400' : 'text-primary/60 hover:bg-white/5'"
-            @click="area = opt.key as any"
-          >
-            {{ t(opt.labelKey) }}
-          </button>
+      <div class="flex flex-col gap-3">
+        <div class="flex items-center gap-2">
+          <span class="text-primary/60 text-sm">{{ t('artists.area') }}:</span>
+          <div class="flex flex-wrap gap-1">
+            <button
+              v-for="opt in areaOptions"
+              :key="opt.key"
+              class="rounded-lg px-3 py-1.5 text-xs transition-all"
+              :class="area === opt.key ? 'bg-pink-500/20 text-pink-400' : 'text-primary/60 hover:bg-white/5'"
+              @click="area = opt.key as any"
+            >
+              {{ t(opt.labelKey) }}
+            </button>
+          </div>
+        </div>
+        <div>
+          <h2 class="text-primary text-lg font-bold">{{ t('newAlbums.title') }}</h2>
         </div>
       </div>
     </div>
@@ -98,7 +104,7 @@ onMounted(() => loadAlbums(true))
         >
           <div class="relative mb-3 aspect-square overflow-hidden rounded-lg">
             <LazyImage
-              :src="album.cover + '?param=300y300'"
+              :src="withImageParam(album.cover, '300y300')"
               :alt="album.name"
               class="h-full w-full object-cover transition-transform group-hover:scale-105"
             />

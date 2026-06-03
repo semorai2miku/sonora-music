@@ -11,6 +11,7 @@ import { likedSongIds, likeSong, unlikeSong } from '@/api'
 import { useUserStore } from '@/stores/modules/user'
 import LoginDialog from '@/components/Auth/LoginDialog.vue'
 import SaveToPlaylistDialog from '@/components/Playlist/SaveToPlaylistDialog.vue'
+import { withImageParam } from '@/utils/media'
 
 interface Props {
   songs: Song[]
@@ -73,7 +74,7 @@ const playSongWithAnimation = async (song: Song, index: number, event?: MouseEve
       setPlaylist(props.songs, index)
 
       // 执行抛物线飞行动画
-      await flyTo(sourceCover, targetCover, song.cover + '?param=128x128', {
+      await flyTo(sourceCover, targetCover, withImageParam(song.cover, '128x128'), {
         duration: 0.55,
         ease: 'power2.out',
         borderRadius: { from: '8px', to: '8px' },
@@ -81,7 +82,7 @@ const playSongWithAnimation = async (song: Song, index: number, event?: MouseEve
         onComplete: () => {
           // 动画完成后播放
           play(props.songs[index], index)
-        }
+        },
       })
     } else {
       // 降级：直接播放
@@ -217,12 +218,11 @@ watch(
       </div>
 
       <!-- Loading 骨架屏 -->
-      <div v-if="loading" class="custom-scrollbar h-full space-y-1 overflow-x-hidden overflow-y-auto pr-2">
-        <div
-          v-for="i in 12"
-          :key="i"
-          class="flex items-center rounded-xl p-2"
-        >
+      <div
+        v-if="loading"
+        class="custom-scrollbar h-full space-y-1 overflow-x-hidden overflow-y-auto pr-2"
+      >
+        <div v-for="i in 12" :key="i" class="flex items-center rounded-xl p-2">
           <div class="flex w-14 shrink-0 items-center justify-center">
             <div class="h-4 w-4 animate-pulse rounded bg-white/10"></div>
           </div>
@@ -261,7 +261,7 @@ watch(
           :key="song.id || index"
           class="song-item group flex cursor-pointer items-center rounded-xl p-2 hover:bg-white/10"
           :class="isCurrent(song) ? 'bg-white/10' : ''"
-          @dblclick="(e) => playSongWithAnimation(song, index, e)"
+          @dblclick="e => playSongWithAnimation(song, index, e)"
         >
           <!-- 序号/播放状态 -->
           <div class="flex w-14 shrink-0 items-center justify-center text-center">
@@ -294,7 +294,7 @@ watch(
                 class="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg shadow-md transition-shadow group-hover:shadow-lg"
               >
                 <LazyImage
-                  :src="(song.cover || '') + '?param=90y90'"
+                  :src="withImageParam(song.cover || '', '90y90')"
                   :alt="t('components.songList.coverAlt')"
                   imgClass="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                   wrapperClass="h-full w-full"
@@ -304,7 +304,17 @@ watch(
                 ></div>
               </div>
               <div class="min-w-0 flex-1">
+                <RouterLink
+                  v-if="song.id"
+                  :to="`/song/${song.id}`"
+                  :title="song.name"
+                  class="text-primary block truncate text-base font-medium transition-colors group-hover:text-pink-300 hover:text-pink-300"
+                  @click.stop
+                >
+                  {{ song.name }}
+                </RouterLink>
                 <h3
+                  v-else
                   :title="song.name"
                   class="text-primary truncate text-base font-medium transition-colors group-hover:text-pink-300"
                 >

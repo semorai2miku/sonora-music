@@ -5,6 +5,7 @@
  */
 import { gsap } from 'gsap'
 import type VinylDisc from '@/components/Player/VinylDisc.vue'
+import { withImageParam } from '@/utils/media'
 
 export interface DrawerTransitionOptions {
   /** 抽屉容器元素 */
@@ -28,7 +29,7 @@ export function useDrawerTransition(options: DrawerTransitionOptions) {
   /** 生成封面背景图 CSS 值 */
   const coverBgImage = () =>
     currentSong.value?.cover
-      ? `url(${currentSong.value.cover}?param=320x320)`
+      ? `url(${withImageParam(currentSong.value.cover, '320x320')})`
       : 'linear-gradient(135deg, #08111c 0%, #1f7cff 100%)'
 
   /** 创建封面克隆 DOM 元素（固定定位，用于飞行动画） */

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { artistDetail, artistTopSong, artistAlbum } from '@/api'
+import { artistAlbum, artistDetail, artistSongs } from '@/api'
 import { usePlayActions } from '@/composables/usePlayActions'
-import { formatCount } from '@/utils/time'
 import TabGroup from '@/components/Ui/TabGroup.vue'
 import Button from '@/components/Ui/Button.vue'
+import { withImageParam } from '@/utils/media'
 import {
   transformArtistDetail,
   transformSongs,
@@ -42,12 +42,37 @@ const { activeTab } = toRefs(state)
 
 const { playAll: playAllAction, shufflePlay: shufflePlayAction } = usePlayActions()
 
+const ARTIST_SONG_PAGE_SIZE = 100
+const MAX_ARTIST_SONG_PAGES = 50
+
+const fetchAllArtistSongs = async (id: number, totalHint = 0) => {
+  const songs: SongData[] = []
+  const expectedPages = totalHint > 0 ? Math.ceil(totalHint / ARTIST_SONG_PAGE_SIZE) : 1
+  const totalPages = Math.min(Math.max(expectedPages, 1), MAX_ARTIST_SONG_PAGES)
+
+  for (let page = 0; page < totalPages; page += 1) {
+    const res = await artistSongs({
+      id,
+      order: 'time',
+      limit: ARTIST_SONG_PAGE_SIZE,
+      offset: page * ARTIST_SONG_PAGE_SIZE,
+    })
+    const batch = transformSongs(res as Record<string, unknown>)
+    if (!batch.length) break
+    songs.push(...batch)
+    if (batch.length < ARTIST_SONG_PAGE_SIZE) break
+  }
+
+  return Array.from(new Map(songs.map(song => [String(song.id), song])).values()).sort(
+    (left, right) => Number(left.id || 0) - Number(right.id || 0)
+  )
+}
+
 const load = async (id: number) => {
   state.loading = true
   try {
-    const [detailRes, songsRes, albumsRes] = await Promise.all([
+    const [detailRes, albumsRes] = await Promise.all([
       artistDetail({ id }),
-      artistTopSong({ id }),
       artistAlbum({ id, limit: 12 }),
     ])
 
@@ -69,7 +94,7 @@ const load = async (id: number) => {
       state.followed = state.info.followed
     }
 
-    state.songs = transformSongs(songsRes as Record<string, unknown>, 50)
+    state.songs = await fetchAllArtistSongs(id, state.info.musicSize)
     state.albums = transformAlbums(albumsRes as Record<string, unknown>, 12)
   } finally {
     state.loading = false
@@ -119,7 +144,7 @@ const tabs = computed(() => [
           <div class="absolute inset-0 overflow-hidden">
             <img
               v-if="state.info.picUrl"
-              :src="state.info.picUrl + '?param=800y800'"
+              :src="withImageParam(state.info.picUrl, '800y800')"
               class="h-full w-full scale-110 object-cover opacity-20 blur-2xl"
             />
             <div
@@ -145,7 +170,7 @@ const tabs = computed(() => [
                   >
                     <img
                       v-if="state.info.picUrl"
-                      :src="state.info.picUrl + '?param=400y400'"
+                      :src="withImageParam(state.info.picUrl, '400y400')"
                       class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                       :alt="$t('layout.aside.menu.artists')"
                     />
@@ -186,48 +211,8 @@ const tabs = computed(() => [
                 </p>
 
                 <div
-                  class="animate-fade-in-up mb-6 flex flex-wrap items-center gap-4"
-                  style="animation-delay: 0.2s"
-                >
-                  <div
-                    class="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 backdrop-blur-sm"
-                  >
-                    <span class="icon-[mdi--music-note] h-5 w-5 text-pink-400"></span>
-                    <span class="text-sm"
-                      >{{ state.info.musicSize }} {{ $t('artistPage.stats.songs') }}</span
-                    >
-                  </div>
-                  <div
-                    class="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 backdrop-blur-sm"
-                  >
-                    <span class="icon-[mdi--album] h-5 w-5 text-purple-400"></span>
-                    <span class="text-sm"
-                      >{{ state.info.albumSize }} {{ $t('artistPage.stats.albums') }}</span
-                    >
-                  </div>
-                  <div
-                    class="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 backdrop-blur-sm"
-                  >
-                    <span class="icon-[mdi--video] h-5 w-5 text-blue-400"></span>
-                    <span class="text-sm"
-                      >{{ state.info.mvSize }} {{ $t('artistPage.stats.mvs') }}</span
-                    >
-                  </div>
-                  <div
-                    v-if="state.info.fansCount"
-                    class="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 backdrop-blur-sm"
-                  >
-                    <span class="icon-[mdi--account-group] h-5 w-5 text-rose-400"></span>
-                    <span class="text-sm"
-                      >{{ formatCount(state.info.fansCount) }}
-                      {{ $t('artistPage.stats.fans') }}</span
-                    >
-                  </div>
-                </div>
-
-                <div
                   class="animate-fade-in-up flex flex-wrap items-center gap-3"
-                  style="animation-delay: 0.3s"
+                  style="animation-delay: 0.2s"
                 >
                   <Button
                     variant="solid"
@@ -237,7 +222,7 @@ const tabs = computed(() => [
                     @click="playAll"
                   >
                     <span class="icon-[mdi--play] h-5 w-5"></span>
-                    {{ $t('artistPage.playTop') }}
+                    {{ $t('actions.playAll') }}
                   </Button>
                   <Button
                     variant="soft"
@@ -275,7 +260,7 @@ const tabs = computed(() => [
               <span class="icon-[mdi--information-outline] h-4 w-4 text-pink-400"></span>
               {{ $t('artistPage.bioTitle') }}
             </h3>
-            <p class="text-primary/70 line-clamp-3 text-sm leading-relaxed">
+            <p class="text-primary/70 text-sm leading-relaxed">
               {{ state.info.briefDesc }}
             </p>
           </div>
@@ -303,7 +288,7 @@ const tabs = computed(() => [
               >
                 <div class="relative mb-3 aspect-square w-full overflow-hidden rounded-xl">
                   <img
-                    :src="al.picUrl + '?param=400y400'"
+                    :src="withImageParam(al.picUrl, '400y400')"
                     class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                   />
                   <div

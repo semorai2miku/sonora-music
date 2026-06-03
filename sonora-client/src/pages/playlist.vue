@@ -19,6 +19,7 @@ import TabGroup from '@/components/Ui/TabGroup.vue'
 import { formatCount } from '@/utils/time'
 import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/stores/modules/user'
+import { withImageParam } from '@/utils/media'
 import {
   transformPlaylistDetail,
   transformSongs,
@@ -384,7 +385,7 @@ const tabsWithCount = computed(() =>
           <!-- 背景模糊图片 -->
           <div class="absolute inset-0 overflow-hidden rounded-3xl">
             <img
-              :src="playlistInfo.coverImgUrl + '?param=100y100'"
+              :src="withImageParam(playlistInfo.coverImgUrl, '100y100')"
               class="h-full w-full scale-150 object-cover opacity-30 blur-3xl"
             />
             <div
@@ -402,7 +403,7 @@ const tabsWithCount = computed(() =>
                     class="aspect-square overflow-hidden rounded-3xl shadow-2xl ring-1 ring-glass"
                   >
                     <LazyImage
-                      :src="playlistInfo.coverImgUrl + '?param=400y400'"
+                      :src="withImageParam(playlistInfo.coverImgUrl, '400y400')"
                       :alt="$t('components.songList.coverAlt')"
                       imgClass="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
                       wrapperClass="h-full w-full"
@@ -435,7 +436,7 @@ const tabsWithCount = computed(() =>
                   <div class="mb-5 flex items-center justify-center gap-3 lg:justify-start">
                     <img
                       v-if="playlistInfo.creatorAvatar"
-                      :src="playlistInfo.creatorAvatar + '?param=80y80'"
+                      :src="withImageParam(playlistInfo.creatorAvatar, '80y80')"
                       class="h-8 w-8 rounded-full ring-2 ring-glass"
                     />
                     <span class="text-primary font-medium">{{ playlistInfo.creator }}</span>
@@ -641,7 +642,7 @@ const tabsWithCount = computed(() =>
                 <div class="flex gap-4">
                   <img
                     v-if="comment.avatarUrl"
-                    :src="comment.avatarUrl + '?param=100y100'"
+                    :src="withImageParam(comment.avatarUrl, '100y100')"
                     class="h-11 w-11 shrink-0 rounded-full ring-2 ring-glass"
                   />
                   <div
@@ -691,7 +692,7 @@ const tabsWithCount = computed(() =>
                       <div v-for="(reply, ri) in comment.replies" :key="ri" class="flex gap-3">
                         <img
                           v-if="reply.avatarUrl"
-                          :src="reply.avatarUrl + '?param=80y80'"
+                          :src="withImageParam(reply.avatarUrl, '80y80')"
                           class="h-8 w-8 shrink-0 rounded-full ring-1 ring-glass"
                         />
                         <div class="min-w-0 flex-1">
@@ -748,7 +749,7 @@ const tabsWithCount = computed(() =>
               >
                 <div class="relative aspect-square overflow-hidden">
                   <LazyImage
-                    :src="pl.coverImgUrl + '?param=300y300'"
+                    :src="withImageParam(pl.coverImgUrl, '300y300')"
                     :alt="pl.name"
                     imgClass="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
                     wrapperClass="h-full w-full"

@@ -48,7 +48,7 @@ public class ClientArtistController {
                         .eq(Song::getStatus, 1)
                         .orderByDesc(Song::getPlayCount)
                         .last("LIMIT 50"));
-        songs.forEach(song -> song.setCover(coverOf(song.getCover())));
+        songs.forEach(song -> song.setCover(coverOf(song.getAlbumId())));
 
         // 歌手的专辑
         List<Album> albums = albumMapper.selectList(
@@ -56,7 +56,7 @@ public class ClientArtistController {
                         .eq(Album::getArtistId, id)
                         .eq(Album::getStatus, 1)
                         .orderByDesc(Album::getCreatedAt));
-        albums.forEach(album -> album.setCover(coverOf(album.getCover())));
+        albums.forEach(album -> album.setCover(coverOfAlbum(album.getCover())));
 
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("id", artist.getId());
@@ -81,7 +81,18 @@ public class ClientArtistController {
         return R.ok(artistMapper.selectList(wrapper));
     }
 
-    private String coverOf(String cover) {
+    private String coverOf(Long albumId) {
+        if (albumId == null) {
+            return Constants.DEFAULT_COVER;
+        }
+        Album album = albumMapper.selectById(albumId);
+        if (album != null && StringUtils.hasText(album.getCover())) {
+            return album.getCover();
+        }
+        return Constants.DEFAULT_COVER;
+    }
+
+    private String coverOfAlbum(String cover) {
         return StringUtils.hasText(cover) ? cover : Constants.DEFAULT_COVER;
     }
 }

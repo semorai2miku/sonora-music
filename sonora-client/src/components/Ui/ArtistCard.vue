@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { gsap } from 'gsap'
 import LazyImage from '@/components/Ui/LazyImage.vue'
+import { withImageParam } from '@/utils/media'
 
 interface Props {
   id: number | string
@@ -37,7 +38,7 @@ const handleClick = async () => {
     left: ${rect.left}px;
     top: ${rect.top}px;
     border-radius: 50%;
-    background-image: url(${props.picUrl}?param=400y400);
+    background-image: url(${withImageParam(props.picUrl, '400y400')});
     background-size: cover;
     background-position: center;
     pointer-events: none;
@@ -168,7 +169,7 @@ const handleMouseLeave = () => {
       class="border-glass relative mb-2.5 aspect-square w-full overflow-hidden rounded-full border-2 shadow-lg transition-all duration-300 group-hover:border-sky-500 group-hover:shadow-sky-500/20"
     >
       <LazyImage
-        :src="picUrl + '?param=150y150'"
+        :src="withImageParam(picUrl, '150y150')"
         :alt="name"
         img-class="h-full w-full object-cover"
       />

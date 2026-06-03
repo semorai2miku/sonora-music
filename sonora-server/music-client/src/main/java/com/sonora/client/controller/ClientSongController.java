@@ -3,7 +3,9 @@ package com.sonora.client.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.sonora.common.constant.Constants;
 import com.sonora.common.result.R;
+import com.sonora.mapper.AlbumMapper;
 import com.sonora.mapper.SongMapper;
+import com.sonora.model.entity.Album;
 import com.sonora.model.entity.Song;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -20,9 +22,11 @@ import org.springframework.util.StringUtils;
 public class ClientSongController {
 
     private final SongMapper songMapper;
+    private final AlbumMapper albumMapper;
 
-    public ClientSongController(SongMapper songMapper) {
+    public ClientSongController(SongMapper songMapper, AlbumMapper albumMapper) {
         this.songMapper = songMapper;
+        this.albumMapper = albumMapper;
     }
 
     @Operation(summary = "歌曲详情")
@@ -39,7 +43,7 @@ public class ClientSongController {
         data.put("artistIds", song.getArtistIds());
         data.put("albumId", song.getAlbumId());
         data.put("duration", song.getDuration());
-        data.put("cover", coverOf(song));
+        data.put("cover", coverOf(song.getAlbumId()));
         data.put("format", song.getFormat());
         data.put("fileSize", song.getFileSize());
         data.put("playCount", song.getPlayCount());
@@ -68,7 +72,7 @@ public class ClientSongController {
                         .eq(Song::getStatus, 1)
                         .orderByDesc(Song::getPlayCount)
                         .last("LIMIT " + limit));
-        songs.forEach(song -> song.setCover(coverOf(song)));
+        songs.forEach(song -> song.setCover(coverOf(song.getAlbumId())));
         return R.ok(songs);
     }
 
@@ -80,11 +84,18 @@ public class ClientSongController {
                         .eq(Song::getStatus, 1)
                         .orderByDesc(Song::getCreatedAt)
                         .last("LIMIT " + limit));
-        songs.forEach(song -> song.setCover(coverOf(song)));
+        songs.forEach(song -> song.setCover(coverOf(song.getAlbumId())));
         return R.ok(songs);
     }
 
-    private String coverOf(Song song) {
-        return StringUtils.hasText(song.getCover()) ? song.getCover() : Constants.DEFAULT_COVER;
+    private String coverOf(Long albumId) {
+        if (albumId == null) {
+            return Constants.DEFAULT_COVER;
+        }
+        Album album = albumMapper.selectById(albumId);
+        if (album != null && StringUtils.hasText(album.getCover())) {
+            return album.getCover();
+        }
+        return Constants.DEFAULT_COVER;
     }
 }

@@ -5,6 +5,7 @@ import LazyImage from '@/components/Ui/LazyImage.vue'
 import MobileSongList from '@/components/Mobile/MobileSongList.vue'
 import Button from '@/components/Ui/Button.vue'
 import { useI18n } from 'vue-i18n'
+import { withImageParam } from '@/utils/media'
 import {
   transformAlbumDetail,
   extractArray,
@@ -59,20 +60,28 @@ const load = async (id: number) => {
     }
 
     if (Array.isArray(songs) && songs.length) {
-      state.songs = songs.map((s: any) => ({
-        id: s?.id || 0,
-        name: s?.name || '',
-        artist: Array.isArray(s?.ar)
-          ? s.ar.map((a: any) => a.name).join(' / ')
+      state.songs = songs.map((s: any) => {
+        const artists = Array.isArray(s?.ar)
+          ? s.ar.map((artist: any) => ({ id: artist?.id || 0, name: artist?.name || '' }))
           : Array.isArray(s?.artists)
-            ? s.artists.map((a: any) => a.name).join(' / ')
+            ? s.artists.map((artist: any) => ({ id: artist?.id || 0, name: artist?.name || '' }))
+            : []
+
+        return {
+          id: s?.id || 0,
+          name: s?.name || '',
+          artist: artists.length
+            ? artists.map((artist: { name: string }) => artist.name).join(' / ')
             : state.info.artist,
-        album: state.info.name,
-        albumId: id,
-        duration: s?.dt ?? s?.duration ?? 0,
-        cover: state.info.coverImgUrl,
-        liked: false,
-      }))
+          artistId: artists[0]?.id || state.info.artistId || 0,
+          artists,
+          album: state.info.name,
+          albumId: id,
+          duration: s?.dt ?? s?.duration ?? 0,
+          cover: state.info.coverImgUrl,
+          liked: false,
+        }
+      })
     }
   } finally {
     state.loading = false
@@ -114,7 +123,7 @@ const goToArtist = () => {
         <div class="header-bg absolute inset-0 overflow-hidden">
           <LazyImage
             v-if="state.info.coverImgUrl"
-            :src="state.info.coverImgUrl + '?param=400y400'"
+            :src="withImageParam(state.info.coverImgUrl, '400y400')"
             :alt="$t('components.songList.coverAlt')"
             imgClass="h-full w-full object-cover scale-110"
           />
@@ -126,7 +135,7 @@ const goToArtist = () => {
             <div class="cover-wrapper relative shrink-0">
               <LazyImage
                 v-if="state.info.coverImgUrl"
-                :src="state.info.coverImgUrl + '?param=300y300'"
+                :src="withImageParam(state.info.coverImgUrl, '300y300')"
                 :alt="$t('components.songList.coverAlt')"
                 imgClass="cover-image h-32 w-32 rounded-2xl object-cover"
               />

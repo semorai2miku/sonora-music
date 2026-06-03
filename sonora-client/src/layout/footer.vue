@@ -14,6 +14,7 @@ import { useI18n } from 'vue-i18n'
 import { getColorPalette } from '@/utils/colorExtractor'
 import { adaptColorsForTheme } from '@/utils/colorThemeAdapter'
 import { gsap } from 'gsap'
+import { withImageParam } from '@/utils/media'
 
 const { t } = useI18n()
 const audioStore = useAudioStore()
@@ -95,7 +96,7 @@ const visualizerGradient = computed(() => {
 const extractCoverColors = async (coverUrl?: string) => {
   if (!coverUrl) return
   try {
-    const palette = await getColorPalette(coverUrl + '?param=128x128')
+    const palette = await getColorPalette(withImageParam(coverUrl, '128x128'))
     state.footerGradient = palette.gradient
   } catch (error) {
     console.error('Failed to extract footer colors:', error)
@@ -247,7 +248,7 @@ const emit = defineEmits(['show'])
             class="cover-inner flex h-12 w-12 cursor-pointer items-center justify-center rounded-lg bg-cover transition-shadow duration-300"
             :style="{
               backgroundImage: state.displayCover
-                ? `url(${state.displayCover + '?param=128x128'})`
+                ? `url(${withImageParam(state.displayCover, '128x128')})`
                 : 'none',
               backgroundColor: state.displayCover ? undefined : 'var(--glass-interactive-bg)',
             }"

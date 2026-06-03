@@ -450,9 +450,6 @@ public class NeteaseCompatController {
     }
 
     private String coverOf(Song song, Map<Long, Album> albumMap) {
-        if (song != null && StringUtils.hasText(song.getCover())) {
-            return previewUrl(song.getCover());
-        }
         Album album = song == null || song.getAlbumId() == null ? null : albumMap.get(song.getAlbumId());
         if (album != null && StringUtils.hasText(album.getCover())) {
             return previewUrl(album.getCover());

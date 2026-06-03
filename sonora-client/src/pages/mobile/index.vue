@@ -1,40 +1,81 @@
 <script setup lang="ts">
-import { banner, topPlaylist, recommendSongs } from '@/api'
+import { albumNew, artistList, banner, topPlaylist, recommendSongs } from '@/api'
 import { useI18n } from 'vue-i18n'
 import { Swiper, SwiperSlide } from 'swiper/vue'
 import { Autoplay, Pagination } from 'swiper/modules'
 import 'swiper/css'
 import 'swiper/css/pagination'
 import {
+  transformAlbums,
+  transformArtists,
   transformBanners,
   transformPlaylists,
   transformSongs,
+  type AlbumData,
+  type ArtistData,
   type BannerData,
   type PlaylistData,
   type SongData,
 } from '@/utils/transformers'
 
 const { t } = useI18n()
+const PLAYLIST_SOURCE_LIMIT = 12
+const SONG_SOURCE_LIMIT = 12
+const ARTIST_SOURCE_LIMIT = 10
+const ALBUM_SOURCE_LIMIT = 8
+const MAX_VISIBLE_RECOMMEND_SONGS = 6
+
+type HomeArtistArea = -1 | 7 | 96 | 8 | 16 | 0
+type HomeAlbumArea = 'ALL' | 'ZH' | 'EA' | 'JP' | 'KR'
+
+const artistAreaOptions: Array<{ key: HomeArtistArea; labelKey: string }> = [
+  { key: -1, labelKey: 'artists.areas.all' },
+  { key: 7, labelKey: 'artists.areas.zh' },
+  { key: 96, labelKey: 'artists.areas.ea' },
+  { key: 8, labelKey: 'artists.areas.jp' },
+  { key: 16, labelKey: 'artists.areas.kr' },
+  { key: 0, labelKey: 'artists.areas.other' },
+]
+
+const albumAreaOptions: Array<{ key: HomeAlbumArea; labelKey: string }> = [
+  { key: 'ALL', labelKey: 'newAlbums.areas.all' },
+  { key: 'ZH', labelKey: 'newAlbums.areas.zh' },
+  { key: 'EA', labelKey: 'newAlbums.areas.ea' },
+  { key: 'JP', labelKey: 'newAlbums.areas.jp' },
+  { key: 'KR', labelKey: 'newAlbums.areas.kr' },
+]
 
 interface HomeState {
   banners: BannerData[]
   playlistPool: PlaylistData[]
   songPool: SongData[]
+  artists: ArtistData[]
+  albums: AlbumData[]
   playlists: PlaylistData[]
   songs: SongData[]
   isLoading: boolean
+  artistLoading: boolean
+  albumLoading: boolean
+  artistArea: HomeArtistArea
+  albumArea: HomeAlbumArea
 }
 
 const state = reactive<HomeState>({
   banners: [],
   playlistPool: [],
   songPool: [],
+  artists: [],
+  albums: [],
   playlists: [],
   songs: [],
   isLoading: true,
+  artistLoading: false,
+  albumLoading: false,
+  artistArea: -1,
+  albumArea: 'ALL',
 })
 
-const { banners, playlists, songs, isLoading } = toRefs(state)
+const { banners, playlists, songs, artists, albums, isLoading } = toRefs(state)
 
 const shuffleList = <T,>(items: T[]) => {
   const list = [...items]
@@ -46,30 +87,74 @@ const shuffleList = <T,>(items: T[]) => {
 }
 
 const refreshPlaylists = () => {
-  state.playlists = shuffleList(state.playlistPool).slice(0, 6)
+  state.playlists = shuffleList(state.playlistPool).slice(0, MAX_VISIBLE_RECOMMEND_SONGS)
 }
 
 const refreshSongs = () => {
-  state.songs = shuffleList(state.songPool).slice(0, 6)
+  state.songs = shuffleList(state.songPool).slice(0, MAX_VISIBLE_RECOMMEND_SONGS)
+}
+
+const loadArtists = async () => {
+  try {
+    state.artistLoading = true
+    const res = await artistList({
+      limit: ARTIST_SOURCE_LIMIT,
+      offset: 0,
+      ...(state.artistArea !== -1 ? { area: state.artistArea } : {}),
+    })
+    state.artists = transformArtists(res as Record<string, unknown>, ARTIST_SOURCE_LIMIT)
+  } finally {
+    state.artistLoading = false
+  }
+}
+
+const loadAlbums = async () => {
+  try {
+    state.albumLoading = true
+    const res = await albumNew({
+      area: state.albumArea,
+      limit: ALBUM_SOURCE_LIMIT,
+      offset: 0,
+    })
+    state.albums = transformAlbums(res as Record<string, unknown>, ALBUM_SOURCE_LIMIT)
+  } finally {
+    state.albumLoading = false
+  }
 }
 
 const loadHomeData = async () => {
   state.isLoading = true
   try {
-    const [b, p, s] = await Promise.allSettled([
+    const [b, p, s, artistRes, albumRes] = await Promise.allSettled([
       banner({ type: 2 }),
-      topPlaylist({ order: 'hot', limit: 12 }),
+      topPlaylist({ order: 'hot', limit: PLAYLIST_SOURCE_LIMIT }),
       recommendSongs(),
+      artistList({ limit: ARTIST_SOURCE_LIMIT, offset: 0 }),
+      albumNew({ area: state.albumArea, limit: ALBUM_SOURCE_LIMIT, offset: 0 }),
     ])
 
     state.banners =
       b.status === 'fulfilled' ? transformBanners(b.value as Record<string, unknown>, 5) : []
     state.playlistPool =
       p.status === 'fulfilled'
-        ? transformPlaylists(p.value as Record<string, unknown>, 12, t('home.playlistFallback'))
+        ? transformPlaylists(
+            p.value as Record<string, unknown>,
+            PLAYLIST_SOURCE_LIMIT,
+            t('home.playlistFallback')
+          )
         : []
     state.songPool =
-      s.status === 'fulfilled' ? transformSongs(s.value as Record<string, unknown>, 12) : []
+      s.status === 'fulfilled'
+        ? transformSongs(s.value as Record<string, unknown>, SONG_SOURCE_LIMIT)
+        : []
+    state.artists =
+      artistRes.status === 'fulfilled'
+        ? transformArtists(artistRes.value as Record<string, unknown>, ARTIST_SOURCE_LIMIT)
+        : []
+    state.albums =
+      albumRes.status === 'fulfilled'
+        ? transformAlbums(albumRes.value as Record<string, unknown>, ALBUM_SOURCE_LIMIT)
+        : []
     refreshPlaylists()
     refreshSongs()
   } finally {
@@ -80,6 +165,24 @@ const loadHomeData = async () => {
 onMounted(loadHomeData)
 
 const swiperModules = [Autoplay, Pagination]
+
+watch(
+  () => state.artistArea,
+  () => {
+    if (!state.isLoading) {
+      loadArtists()
+    }
+  }
+)
+
+watch(
+  () => state.albumArea,
+  () => {
+    if (!state.isLoading) {
+      loadAlbums()
+    }
+  }
+)
 </script>
 
 <template>
@@ -129,7 +232,109 @@ const swiperModules = [Autoplay, Pagination]
           <div class="mb-4 flex items-center justify-between">
             <h2 class="section-title">
               <span class="mobile-section-icon">
-                <span class="icon-[mdi--playlist-star] text-primary h-4 w-4"></span>
+                <span class="icon-[mdi--account-star-outline] h-4 w-4"></span>
+              </span>
+              {{ t('home.followArtists') }}
+            </h2>
+            <router-link to="/artists" class="mobile-action-button">
+              <span class="icon-[mdi--dots-horizontal-circle-outline] h-3.5 w-3.5"></span>
+              {{ t('common.more') }}
+            </router-link>
+          </div>
+          <div class="mobile-filter-row mb-3">
+            <button
+              v-for="option in artistAreaOptions"
+              :key="option.key"
+              type="button"
+              class="mobile-filter-chip"
+              :class="{ 'mobile-filter-chip--active': state.artistArea === option.key }"
+              @click="state.artistArea = option.key"
+            >
+              {{ t(option.labelKey) }}
+            </button>
+          </div>
+          <div class="mobile-artist-strip">
+            <router-link
+              v-for="artist in artists"
+              :key="artist.id"
+              :to="`/artist/${artist.id}`"
+              class="mobile-artist-card"
+            >
+              <div class="mobile-artist-card__avatar">
+                <LazyImage
+                  :src="artist.picUrl"
+                  :alt="artist.name"
+                  imgClass="h-full w-full object-cover"
+                />
+              </div>
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-sm font-medium text-[var(--glass-text-primary)]">
+                  {{ artist.name }}
+                </p>
+                <p class="mt-1 text-[11px] text-[var(--glass-text-muted)]">
+                  {{ artist.musicSize || 0 }} {{ t('artistPage.stats.songs') }}
+                </p>
+              </div>
+            </router-link>
+          </div>
+        </section>
+
+        <section class="mb-6 px-4">
+          <div class="mb-4 flex items-center justify-between">
+            <h2 class="section-title">
+              <span class="mobile-section-icon">
+                <span class="icon-[mdi--album] h-4 w-4"></span>
+              </span>
+              {{ t('home.latestAlbums') }}
+            </h2>
+            <router-link to="/new-albums" class="mobile-action-button">
+              <span class="icon-[mdi--dots-horizontal-circle-outline] h-3.5 w-3.5"></span>
+              {{ t('common.more') }}
+            </router-link>
+          </div>
+          <div class="mobile-filter-row mb-3">
+            <button
+              v-for="option in albumAreaOptions"
+              :key="option.key"
+              type="button"
+              class="mobile-filter-chip"
+              :class="{ 'mobile-filter-chip--active': state.albumArea === option.key }"
+              @click="state.albumArea = option.key"
+            >
+              {{ t(option.labelKey) }}
+            </button>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <router-link
+              v-for="album in albums"
+              :key="album.id"
+              :to="`/album/${album.id}`"
+              class="mobile-album-card"
+            >
+              <div class="mobile-album-card__cover">
+                <LazyImage
+                  :src="album.picUrl"
+                  :alt="album.name"
+                  imgClass="h-full w-full object-cover"
+                />
+              </div>
+              <div class="px-1 pt-2">
+                <p class="truncate text-xs font-medium text-[var(--glass-text-primary)]">
+                  {{ album.name }}
+                </p>
+                <p class="mt-1 truncate text-[11px] text-[var(--glass-text-muted)]">
+                  {{ album.artist || t('player.unknownArtist') }}
+                </p>
+              </div>
+            </router-link>
+          </div>
+        </section>
+
+        <section class="mb-6 px-4">
+          <div class="mb-4 flex items-center justify-between">
+            <h2 class="section-title">
+              <span class="mobile-section-icon">
+                <span class="icon-[mdi--playlist-star] h-4 w-4"></span>
               </span>
               {{ t('home.recommendPlaylists') }}
             </h2>
@@ -167,7 +372,7 @@ const swiperModules = [Autoplay, Pagination]
           <div class="mb-4 flex items-center justify-between">
             <h2 class="section-title">
               <span class="mobile-section-icon">
-                <span class="icon-[mdi--music-note-plus] text-primary h-4 w-4"></span>
+                <span class="icon-[mdi--music-note-plus] h-4 w-4"></span>
               </span>
               {{ t('home.recommendSongs') }}
             </h2>
@@ -190,7 +395,11 @@ const swiperModules = [Autoplay, Pagination]
               class="mobile-song-row"
             >
               <div class="mobile-song-row__cover">
-                <LazyImage :src="song.cover" :alt="song.name" imgClass="h-full w-full object-cover" />
+                <LazyImage
+                  :src="song.cover"
+                  :alt="song.name"
+                  imgClass="h-full w-full object-cover"
+                />
               </div>
               <div class="min-w-0 flex-1">
                 <p class="truncate text-sm font-medium text-[var(--glass-text-primary)]">
@@ -205,10 +414,12 @@ const swiperModules = [Autoplay, Pagination]
         </section>
 
         <section
-          v-if="!banners.length && !playlists.length && !songs.length"
+          v-if="!banners.length && !artists.length && !albums.length && !playlists.length && !songs.length"
           class="mx-4 rounded-2xl border border-[var(--glass-border-default)] bg-[var(--glass-bg-card)] px-5 py-8 text-center"
         >
-          <div class="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--glass-interactive-bg)]">
+          <div
+            class="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--glass-interactive-bg)]"
+          >
             <span class="icon-[mdi--music-note-outline] h-5 w-5 text-[var(--sonora-blue)]" />
           </div>
           <p class="text-sm font-semibold text-[var(--glass-text-primary)]">首页内容暂时为空</p>
@@ -256,9 +467,13 @@ const swiperModules = [Autoplay, Pagination]
   align-items: center;
   justify-content: center;
   border-radius: 0.65rem;
-  background: var(--glass-interactive-bg);
+  background: var(--glass-bg-subtle);
   border: 1px solid var(--glass-border-default);
   box-shadow: none;
+}
+
+.mobile-section-icon :deep(span) {
+  color: var(--glass-text-primary);
 }
 
 .view-more-link {
@@ -286,6 +501,70 @@ const swiperModules = [Autoplay, Pagination]
   padding: 0.4rem 0.625rem;
   font-size: 0.6875rem;
   font-weight: 500;
+}
+
+.mobile-filter-row {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.125rem;
+}
+
+.mobile-filter-row::-webkit-scrollbar {
+  display: none;
+}
+
+.mobile-filter-chip {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem 0.75rem;
+  border-radius: 9999px;
+  border: 1px solid var(--glass-border-default);
+  background: var(--glass-bg-card);
+  color: var(--glass-text-secondary);
+  font-size: 0.6875rem;
+  font-weight: 500;
+}
+
+.mobile-filter-chip--active {
+  color: var(--glass-text-primary);
+  border-color: rgba(31, 124, 255, 0.3);
+  background: rgba(31, 124, 255, 0.12);
+}
+
+.mobile-artist-strip {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.mobile-artist-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid var(--glass-border-default);
+  border-radius: 1rem;
+  background: var(--glass-bg-card);
+  padding: 0.75rem;
+}
+
+.mobile-artist-card__avatar {
+  width: 3.5rem;
+  height: 3.5rem;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 9999px;
+  border: 1px solid var(--glass-border-subtle);
+  background: var(--glass-bg-subtle);
+}
+
+.mobile-album-card__cover {
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 0.95rem;
+  border: 1px solid var(--glass-border-subtle);
+  background: var(--glass-bg-subtle);
 }
 
 .playlist-cover {

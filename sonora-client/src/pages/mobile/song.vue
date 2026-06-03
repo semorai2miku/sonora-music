@@ -4,17 +4,23 @@ import SaveToPlaylistDialog from '@/components/Playlist/SaveToPlaylistDialog.vue
 import { likedSongIds, likeSong, lyric, songDetail, unlikeSong } from '@/api'
 import { useAudio } from '@/composables/useAudio'
 import { useUserStore } from '@/stores/modules/user'
+import { withImageParam } from '@/utils/media'
+import { transformSongs } from '@/utils/transformers'
 
 const route = useRoute()
 const userStore = useUserStore()
 const showLogin = ref(false)
 const showSaveToPlaylist = ref(false)
+const router = useRouter()
 
 const state = reactive({
   id: String(route.params.id || ''),
+  info: null as Record<string, any> | null,
   name: '',
   artist: '',
   album: '',
+  artistId: 0 as number | string,
+  albumId: 0 as number | string,
   duration: 0,
   cover: '',
   lrc: [] as Array<{ time: number; text: string }>,
@@ -22,7 +28,22 @@ const state = reactive({
   liked: false,
 })
 
-const { play, togglePlay } = useAudio()
+const { play } = useAudio()
+
+const artistEntries = computed(() => {
+  const artists = Array.isArray(state.info?.artists)
+    ? state.info.artists
+    : Array.isArray((state.info as any)?.ar)
+      ? (state.info as any).ar
+      : []
+
+  return artists
+    .filter((artist: any) => artist?.name)
+    .map((artist: any) => ({
+      id: artist.id || '',
+      name: artist.name,
+    }))
+})
 
 const parseLrc = (raw: string) => {
   const lines = raw.split(/\r?\n/)
@@ -42,20 +63,20 @@ const parseLrc = (raw: string) => {
 const load = async (id: string) => {
   try {
     const [detailRes, lrcRes] = await Promise.all([songDetail({ ids: id }), lyric({ id })])
-    const song =
+    const song = transformSongs(detailRes as Record<string, unknown>, 1)[0]
+    const rawSong =
       (detailRes as any)?.songs?.[0] ||
       (detailRes as any)?.data?.songs?.[0] ||
       (detailRes as any)?.data?.[0]
     if (song) {
-      state.name = song?.name || ''
-      state.artist = Array.isArray(song?.ar)
-        ? song.ar.map((a: any) => a.name).join(' / ')
-        : Array.isArray(song?.artists)
-          ? song.artists.map((a: any) => a.name).join(' / ')
-          : ''
-      state.album = song?.al?.name || song?.album?.name || ''
-      state.duration = song?.dt ?? song?.duration ?? 0
-      state.cover = song?.al?.picUrl || song?.album?.picUrl || ''
+      state.info = rawSong ? { ...rawSong, ...song } : song
+      state.name = song.name || ''
+      state.artist = song.artist || ''
+      state.album = song.album || ''
+      state.artistId = song.artistId || song.artists?.[0]?.id || 0
+      state.albumId = song.albumId || 0
+      state.duration = song.duration ?? 0
+      state.cover = song.cover || ''
     }
     const raw = (lrcRes as any)?.lrc?.lyric || (lrcRes as any)?.lyric || ''
     state.lrc = raw ? parseLrc(raw) : []
@@ -78,7 +99,10 @@ const playCurrent = () => {
     name: state.name,
     artist: state.artist,
     album: state.album,
-    duration: Math.floor((state.duration || 0) / 1000),
+    duration: state.duration || 0,
+    artistId: state.artistId,
+    artists: artistEntries.value,
+    albumId: state.albumId,
     cover: state.cover,
     liked: state.liked,
   }
@@ -134,7 +158,7 @@ watch(() => userStore.isLoggedIn, refreshLikeState)
           <div class="h-16 w-16 shrink-0 overflow-hidden rounded-xl">
             <img
               v-if="state.cover"
-              :src="state.cover + '?param=300y300'"
+              :src="withImageParam(state.cover, '300y300')"
               alt="cover"
               class="h-full w-full object-cover"
             />
@@ -147,8 +171,26 @@ watch(() => userStore.isLoggedIn, refreshLikeState)
           </div>
           <div class="min-w-0 flex-1">
             <h1 class="text-primary truncate text-lg font-bold">{{ state.name }}</h1>
-            <p class="truncate text-xs text-purple-300">{{ state.artist }}</p>
-            <p class="truncate text-[11px] text-purple-400">{{ state.album }}</p>
+            <div class="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-purple-300">
+              <template v-for="(artist, index) in artistEntries" :key="`${artist.id}-${artist.name}-${index}`">
+                <button
+                  type="button"
+                  class="truncate transition-colors hover:text-pink-300"
+                  @click="artist.id && router.push(`/artist/${artist.id}`)"
+                >
+                  {{ artist.name }}
+                </button>
+                <span v-if="index < artistEntries.length - 1" class="text-purple-400">/</span>
+              </template>
+              <span v-if="!artistEntries.length" class="truncate">{{ state.artist }}</span>
+            </div>
+            <button
+              type="button"
+              class="truncate text-[11px] text-purple-400 transition-colors hover:text-pink-300"
+              @click="state.albumId && router.push(`/album/${state.albumId}`)"
+            >
+              {{ state.album }}
+            </button>
           </div>
           <div class="flex items-center gap-2">
             <button

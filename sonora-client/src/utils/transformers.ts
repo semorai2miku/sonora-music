@@ -87,10 +87,7 @@ type ApiResponse = Record<string, unknown>
 /**
  * 从 API 响应中提取数据，支持多种响应格式
  */
-export function extractData<T>(
-  response: ApiResponse,
-  ...paths: string[]
-): T | undefined {
+export function extractData<T>(response: ApiResponse, ...paths: string[]): T | undefined {
   for (const path of paths) {
     const keys = path.split('.')
     let result: unknown = response
@@ -110,12 +107,14 @@ export function extractData<T>(
 /**
  * 提取数组数据
  */
-export function extractArray<T = unknown>(
-  response: ApiResponse,
-  ...paths: string[]
-): T[] {
+export function extractArray<T = unknown>(response: ApiResponse, ...paths: string[]): T[] {
   const data = extractData<T[]>(response, ...paths)
   return Array.isArray(data) ? data : []
+}
+
+function limitSourceItems<T>(items: T[], limit?: number): T[] {
+  if (!Array.isArray(items)) return []
+  return typeof limit === 'number' ? items.slice(0, limit) : items
 }
 
 // ============ 转换器 ============
@@ -135,13 +134,9 @@ export function transformBanner(item: Record<string, unknown>): BannerData {
 /**
  * 批量转换 Banner
  */
-export function transformBanners(
-  response: ApiResponse,
-  limit?: number
-): BannerData[] {
+export function transformBanners(response: ApiResponse, limit?: number): BannerData[] {
   const list = extractArray(response, 'data.banners', 'banners')
-  const result = list.map(item => transformBanner(item as Record<string, unknown>))
-  return limit ? result.slice(0, limit) : result
+  return limitSourceItems(list, limit).map(item => transformBanner(item as Record<string, unknown>))
 }
 
 /**
@@ -154,9 +149,7 @@ export function transformPlaylist(
   return {
     id: (item?.id as number | string) || 0,
     name: (item?.name as string) || fallbackName,
-    coverImgUrl: resolveMediaUrl(
-      (item?.picUrl as string) || (item?.coverImgUrl as string) || ''
-    ),
+    coverImgUrl: resolveMediaUrl((item?.picUrl as string) || (item?.coverImgUrl as string) || ''),
     playCount: (item?.playCount as number) || 0,
     trackCount: (item?.trackCount as number) || 0,
   }
@@ -171,10 +164,9 @@ export function transformPlaylists(
   fallbackName = '未知歌单'
 ): PlaylistData[] {
   const list = extractArray(response, 'result', 'data.result', 'playlists', 'data.playlists')
-  const result = list.map(item =>
+  return limitSourceItems(list, limit).map(item =>
     transformPlaylist(item as Record<string, unknown>, fallbackName)
   )
-  return limit ? result.slice(0, limit) : result
 }
 
 /**
@@ -231,9 +223,9 @@ export function transformSong(item: Record<string, unknown>): SongData {
     albumId: (albumData?.id as number | string) || 0,
     cover: resolveMediaUrl(
       (albumData?.picUrl as string) ||
-      (item?.cover as string) ||
-      (item?.picUrl as string) ||
-      DEFAULT_COVER
+        (item?.cover as string) ||
+        (item?.picUrl as string) ||
+        DEFAULT_COVER
     ),
     duration: (item?.dt as number) ?? (item?.duration as number) ?? (song?.duration as number) ?? 0,
     liked: false,
@@ -244,10 +236,7 @@ export function transformSong(item: Record<string, unknown>): SongData {
 /**
  * 批量转换歌曲
  */
-export function transformSongs(
-  response: ApiResponse,
-  limit?: number
-): SongData[] {
+export function transformSongs(response: ApiResponse, limit?: number): SongData[] {
   const list = extractArray(
     response,
     'data.dailySongs',
@@ -257,8 +246,7 @@ export function transformSongs(
     'data.result',
     'result.songs'
   )
-  const result = list.map(item => transformSong(item as Record<string, unknown>))
-  return limit ? result.slice(0, limit) : result
+  return limitSourceItems(list, limit).map(item => transformSong(item as Record<string, unknown>))
 }
 
 /**
@@ -270,10 +258,10 @@ export function transformArtist(item: Record<string, unknown>): ArtistData {
     name: (item?.name as string) || '',
     picUrl: resolveMediaUrl(
       (item?.picUrl as string) ||
-      (item?.img1v1Url as string) ||
-      (item?.cover as string) ||
-      (item?.avatar as string) ||
-      ''
+        (item?.img1v1Url as string) ||
+        (item?.cover as string) ||
+        (item?.avatar as string) ||
+        ''
     ),
     alias: (item?.alias as string[]) || [],
     albumSize: (item?.albumSize as number) || 0,
@@ -285,13 +273,9 @@ export function transformArtist(item: Record<string, unknown>): ArtistData {
 /**
  * 批量转换歌手
  */
-export function transformArtists(
-  response: ApiResponse,
-  limit?: number
-): ArtistData[] {
+export function transformArtists(response: ApiResponse, limit?: number): ArtistData[] {
   const list = extractArray(response, 'artists', 'data.artists', 'result.artists')
-  const result = list.map(item => transformArtist(item as Record<string, unknown>))
-  return limit ? result.slice(0, limit) : result
+  return limitSourceItems(list, limit).map(item => transformArtist(item as Record<string, unknown>))
 }
 
 /**
@@ -302,10 +286,7 @@ export function transformMV(item: Record<string, unknown>): MVData {
     id: (item?.id as number | string) || 0,
     name: (item?.name as string) || '',
     cover: resolveMediaUrl(
-      (item?.cover as string) ||
-      (item?.picUrl as string) ||
-      (item?.imgurl as string) ||
-      ''
+      (item?.cover as string) || (item?.picUrl as string) || (item?.imgurl as string) || ''
     ),
     artist: (item?.artistName as string) || '',
     playCount: (item?.playCount as number) || 0,
@@ -316,13 +297,9 @@ export function transformMV(item: Record<string, unknown>): MVData {
 /**
  * 批量转换 MV
  */
-export function transformMVs(
-  response: ApiResponse,
-  limit?: number
-): MVData[] {
+export function transformMVs(response: ApiResponse, limit?: number): MVData[] {
   const list = extractArray(response, 'result', 'data.result', 'mvs', 'data.mvs', 'result.mvs')
-  const result = list.map(item => transformMV(item as Record<string, unknown>))
-  return limit ? result.slice(0, limit) : result
+  return limitSourceItems(list, limit).map(item => transformMV(item as Record<string, unknown>))
 }
 
 /**
@@ -339,9 +316,7 @@ export function transformAlbum(item: Record<string, unknown>): AlbumData {
     ),
     artist: (artist?.name as string) || (item?.artistName as string) || '',
     artistId: (artist?.id as number | string) || 0,
-    publishTime: item?.publishTime
-      ? new Date(item.publishTime as number).toLocaleDateString()
-      : '',
+    publishTime: item?.publishTime ? new Date(item.publishTime as number).toLocaleDateString() : '',
     size: (item?.size as number) || 0,
     description: (item?.description as string) || '',
   }
@@ -350,10 +325,7 @@ export function transformAlbum(item: Record<string, unknown>): AlbumData {
 /**
  * 批量转换专辑
  */
-export function transformAlbums(
-  response: ApiResponse,
-  limit?: number
-): AlbumData[] {
+export function transformAlbums(response: ApiResponse, limit?: number): AlbumData[] {
   const list = extractArray(
     response,
     'albums',
@@ -362,8 +334,7 @@ export function transformAlbums(
     'data.hotAlbums',
     'result.albums'
   )
-  const result = list.map(item => transformAlbum(item as Record<string, unknown>))
-  return limit ? result.slice(0, limit) : result
+  return limitSourceItems(list, limit).map(item => transformAlbum(item as Record<string, unknown>))
 }
 
 /**
@@ -373,12 +344,7 @@ export function transformPlaylistDetail(
   response: ApiResponse,
   fallbackCategory = '歌单'
 ): PlaylistDetailData | null {
-  const detail = extractData<Record<string, unknown>>(
-    response,
-    'playlist',
-    'data.playlist',
-    'data'
-  )
+  const detail = extractData<Record<string, unknown>>(response, 'playlist', 'data.playlist', 'data')
 
   if (!detail) return null
 
@@ -404,14 +370,8 @@ export function transformPlaylistDetail(
 /**
  * 转换歌手详情
  */
-export function transformArtistDetail(
-  response: ApiResponse
-): ArtistData | null {
-  const artist = extractData<Record<string, unknown>>(
-    response,
-    'data.artist',
-    'artist'
-  )
+export function transformArtistDetail(response: ApiResponse): ArtistData | null {
+  const artist = extractData<Record<string, unknown>>(response, 'data.artist', 'artist')
 
   if (!artist) return null
 
@@ -419,10 +379,7 @@ export function transformArtistDetail(
     id: (artist?.id as number | string) || 0,
     name: (artist?.name as string) || '',
     picUrl: resolveMediaUrl(
-      (artist?.cover as string) ||
-      (artist?.picUrl as string) ||
-      (artist?.avatar as string) ||
-      ''
+      (artist?.cover as string) || (artist?.picUrl as string) || (artist?.avatar as string) || ''
     ),
     alias: (artist?.alias as string[]) || [],
     albumSize: (artist?.albumSize as number) || 0,
@@ -434,14 +391,8 @@ export function transformArtistDetail(
 /**
  * 转换专辑详情
  */
-export function transformAlbumDetail(
-  response: ApiResponse
-): AlbumData | null {
-  const album = extractData<Record<string, unknown>>(
-    response,
-    'album',
-    'data.album'
-  )
+export function transformAlbumDetail(response: ApiResponse): AlbumData | null {
+  const album = extractData<Record<string, unknown>>(response, 'album', 'data.album')
 
   if (!album) return null
 
@@ -458,10 +409,12 @@ export function transformSearchSongs(
   limit?: number
 ): { songs: SongData[]; total: number } {
   const songs = extractArray(response, 'result.songs', 'data.result.songs')
-  const total = extractData<number>(response, 'result.songCount', 'data.result.songCount') || songs.length
-  const result = songs.map(item => transformSong(item as Record<string, unknown>))
+  const total =
+    extractData<number>(response, 'result.songCount', 'data.result.songCount') || songs.length
   return {
-    songs: limit ? result.slice(0, limit) : result,
+    songs: limitSourceItems(songs, limit).map(item =>
+      transformSong(item as Record<string, unknown>)
+    ),
     total,
   }
 }
@@ -474,10 +427,43 @@ export function transformSearchPlaylists(
   limit?: number
 ): { playlists: PlaylistData[]; total: number } {
   const playlists = extractArray(response, 'result.playlists', 'data.result.playlists')
-  const total = extractData<number>(response, 'result.playlistCount', 'data.result.playlistCount') || playlists.length
-  const result = playlists.map(item => transformPlaylist(item as Record<string, unknown>))
+  const total =
+    extractData<number>(response, 'result.playlistCount', 'data.result.playlistCount') ||
+    playlists.length
   return {
-    playlists: limit ? result.slice(0, limit) : result,
+    playlists: limitSourceItems(playlists, limit).map(item =>
+      transformPlaylist(item as Record<string, unknown>)
+    ),
+    total,
+  }
+}
+
+export function transformSearchArtists(
+  response: ApiResponse,
+  limit?: number
+): { artists: ArtistData[]; total: number } {
+  const artists = extractArray(response, 'result.artists', 'data.result.artists')
+  const total =
+    extractData<number>(response, 'result.artistCount', 'data.result.artistCount') || artists.length
+  return {
+    artists: limitSourceItems(artists, limit).map(item =>
+      transformArtist(item as Record<string, unknown>)
+    ),
+    total,
+  }
+}
+
+export function transformSearchAlbums(
+  response: ApiResponse,
+  limit?: number
+): { albums: AlbumData[]; total: number } {
+  const albums = extractArray(response, 'result.albums', 'data.result.albums')
+  const total =
+    extractData<number>(response, 'result.albumCount', 'data.result.albumCount') || albums.length
+  return {
+    albums: limitSourceItems(albums, limit).map(item =>
+      transformAlbum(item as Record<string, unknown>)
+    ),
     total,
   }
 }
@@ -491,9 +477,8 @@ export function transformSearchMVs(
 ): { mvs: MVData[]; total: number } {
   const mvs = extractArray(response, 'result.mvs', 'data.result.mvs')
   const total = extractData<number>(response, 'result.mvCount', 'data.result.mvCount') || mvs.length
-  const result = mvs.map(item => transformMV(item as Record<string, unknown>))
   return {
-    mvs: limit ? result.slice(0, limit) : result,
+    mvs: limitSourceItems(mvs, limit).map(item => transformMV(item as Record<string, unknown>)),
     total,
   }
 }
@@ -504,30 +489,17 @@ export function transformSearchMVs(
  * 转换新歌榜数据 (topSong API)
  * 复用 transformSong 避免重复映射逻辑
  */
-export function transformTopSongs(
-  response: ApiResponse,
-  limit?: number
-): SongData[] {
-  const list = extractArray(
-    response,
-    'data.data',
-    'data.songs',
-    'songs',
-    'data'
-  )
-  const result = list.map(item => transformSong(item as Record<string, unknown>))
-  return limit ? result.slice(0, limit) : result
+export function transformTopSongs(response: ApiResponse, limit?: number): SongData[] {
+  const list = extractArray(response, 'data.data', 'data.songs', 'songs', 'data')
+  return limitSourceItems(list, limit).map(item => transformSong(item as Record<string, unknown>))
 }
 
 /**
  * 转换 MV 列表 (mvAll API)
  */
-export function transformMVList(
-  response: ApiResponse,
-  limit?: number
-): MVData[] {
+export function transformMVList(response: ApiResponse, limit?: number): MVData[] {
   const list = extractArray(response, 'data', 'mvs', 'result')
-  const result = list.map((item: unknown) => {
+  return limitSourceItems(list, limit).map((item: unknown) => {
     const m = item as Record<string, unknown>
     return {
       id: (m?.id as number | string) || (m?.vid as string) || 0,
@@ -538,5 +510,4 @@ export function transformMVList(
       duration: (m?.duration as number) || 0,
     }
   })
-  return limit ? result.slice(0, limit) : result
 }

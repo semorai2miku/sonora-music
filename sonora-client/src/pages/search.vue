@@ -1,124 +1,162 @@
 <script setup lang="ts">
-// 搜索页脚本：关键词输入、云搜索类型切换、分页与历史记录
-import SearchSongs from '@/components/Search/SearchSongs.vue'
-import SearchPlaylists from '@/components/Search/SearchPlaylists.vue'
-import SearchMVs from '@/components/Search/SearchMVs.vue'
+import SongList from '@/components/SongList.vue'
 import PageSkeleton from '@/components/PageSkeleton.vue'
-import TabGroup from '@/components/Ui/TabGroup.vue'
 import Button from '@/components/Ui/Button.vue'
-import { searchDefault } from '@/api'
+import { cloudSearch, searchDefault } from '@/api'
+import { useAudio } from '@/composables/useAudio'
 import { useGlobalStore } from '@/stores/modules/global'
 import { storeToRefs } from 'pinia'
+import { withImageParam } from '@/utils/media'
+import {
+  transformSearchAlbums,
+  transformSearchArtists,
+  transformSearchSongs,
+  type AlbumData,
+  type ArtistData,
+  type SongData,
+} from '@/utils/transformers'
 
-// 路由实例：读取/更新查询参数
 const route = useRoute()
 const router = useRouter()
 const globalStore = useGlobalStore()
 const { searchHistory } = storeToRefs(globalStore)
+const { setPlaylist, play } = useAudio()
 
-// 当前搜索关键词（来自路由查询参数）
 const q = computed(() => String(route.query.q || '').trim())
 
-// 页面本地状态
+const SONG_LIMIT = 20
+const ARTIST_LIMIT = 12
+const ALBUM_LIMIT = 12
+
 const state = reactive({
-  activeType: 1 as 1 | 1000 | 1004,
-  page: 1,
-  lastLoadedCount: 0,
-  total: 0,
+  songs: [] as SongData[],
+  artists: [] as ArtistData[],
+  albums: [] as AlbumData[],
+  songTotal: 0,
+  artistTotal: 0,
+  albumTotal: 0,
   isLoading: false,
 })
-const { activeType, page, total, isLoading } = toRefs(state)
 
-const songsRef = ref<InstanceType<typeof SearchSongs> | null>(null)
+const totalResults = computed(() => state.songTotal + state.artistTotal + state.albumTotal)
+const hasAnyResults = computed(
+  () => state.songs.length > 0 || state.artists.length > 0 || state.albums.length > 0
+)
 
-// 搜索输入框相关
 const searchInput = ref('')
 const inputRef = ref<HTMLInputElement | null>(null)
 const inputFocused = ref(false)
 const placeholder = ref('')
 
-const playAllSongs = () => {
-  songsRef.value?.playAll()
+const resetResults = () => {
+  state.songs = []
+  state.artists = []
+  state.albums = []
+  state.songTotal = 0
+  state.artistTotal = 0
+  state.albumTotal = 0
 }
 
-const tabs = [
-  {
-    key: 1 as const,
-    labelKey: 'search.tabs.song',
-    component: SearchSongs,
-    icon: 'icon-[mdi--music-circle]',
-  },
-  {
-    key: 1000 as const,
-    labelKey: 'search.tabs.playlist',
-    component: SearchPlaylists,
-    icon: 'icon-[mdi--playlist-music]',
-  },
-  {
-    key: 1004 as const,
-    labelKey: 'search.tabs.mv',
-    component: SearchMVs,
-    icon: 'icon-[mdi--movie-open-play]',
-  },
-]
+const fetchResults = async () => {
+  const keyword = q.value
+  if (!keyword) {
+    resetResults()
+    return
+  }
 
-// 当前激活类型对应的组件（动态组件）
-const activeComp = computed(() => tabs.find(t => t.key === activeType.value)?.component)
+  state.isLoading = true
+  try {
+    const [songsRes, artistsRes, albumsRes] = await Promise.allSettled([
+      cloudSearch({ keywords: keyword, type: 1, limit: SONG_LIMIT, offset: 0 }),
+      cloudSearch({ keywords: keyword, type: 100, limit: ARTIST_LIMIT, offset: 0 }),
+      cloudSearch({ keywords: keyword, type: 10, limit: ALBUM_LIMIT, offset: 0 }),
+    ])
 
-// 每页数量按类型自适应
-const pageSize = computed(() => (activeType.value === 1 ? 40 : activeType.value === 1000 ? 30 : 24))
+    if (songsRes.status === 'fulfilled') {
+      const { songs, total } = transformSearchSongs(
+        songsRes.value as Record<string, unknown>,
+        SONG_LIMIT
+      )
+      state.songs = songs
+      state.songTotal = total
+    } else {
+      state.songs = []
+      state.songTotal = 0
+    }
 
-// 子组件回调：记录当前页加载数量
-const onLoaded = (count: number) => {
-  state.lastLoadedCount = count
-  state.isLoading = false
+    if (artistsRes.status === 'fulfilled') {
+      const { artists, total } = transformSearchArtists(
+        artistsRes.value as Record<string, unknown>,
+        ARTIST_LIMIT
+      )
+      state.artists = artists
+      state.artistTotal = total
+    } else {
+      state.artists = []
+      state.artistTotal = 0
+    }
+
+    if (albumsRes.status === 'fulfilled') {
+      const { albums, total } = transformSearchAlbums(
+        albumsRes.value as Record<string, unknown>,
+        ALBUM_LIMIT
+      )
+      state.albums = albums
+      state.albumTotal = total
+    } else {
+      state.albums = []
+      state.albumTotal = 0
+    }
+  } finally {
+    state.isLoading = false
+  }
 }
-// 子组件回调：记录总条数
-const onTotal = (n: number) => {
-  state.total = n
-}
 
-// 切换类型或关键词时重置分页与总数
-watch([activeType, q], () => {
-  state.page = 1
-  state.lastLoadedCount = 0
-  state.total = 0
-  state.isLoading = activeType.value !== 1 && !!q.value
-})
-
-watch(page, () => {
-  state.isLoading = activeType.value !== 1 && !!q.value
-})
-
-// 搜索关键词
 const doSearch = (keyword: string) => {
-  if (!keyword.trim()) return
-  globalStore.addSearchHistory(keyword.trim())
+  const trimmed = keyword.trim()
+  if (!trimmed) return
+  globalStore.addSearchHistory(trimmed)
   searchInput.value = ''
   inputRef.value?.blur()
-  router.push({ path: '/search', query: { q: keyword.trim() } })
+  router.push({ path: '/search', query: { q: trimmed } })
 }
 
-// 提交搜索（从输入框回车或点击按钮）
 const handleSubmit = () => {
   const keyword = searchInput.value.trim() || placeholder.value
   if (keyword) doSearch(keyword)
 }
 
-// 清除搜索历史
 const clearHistory = () => {
   globalStore.clearSearchHistory()
 }
 
-// 获取默认搜索词作为 placeholder
 const fetchPlaceholder = async () => {
   try {
     const res: any = await searchDefault()
     placeholder.value = res?.data?.showKeyword || res?.data?.realkeyword || ''
   } catch {
-    // 忽略
+    placeholder.value = ''
   }
 }
+
+const playAllSongs = () => {
+  if (!state.songs.length) return
+  setPlaylist(state.songs, 0)
+  play(state.songs[0], 0)
+}
+
+watch(
+  q,
+  keyword => {
+    if (!keyword) {
+      resetResults()
+      fetchPlaceholder()
+      return
+    }
+    fetchResults()
+  },
+  { immediate: true }
+)
 
 onMounted(() => {
   if (!q.value) {
@@ -129,125 +167,199 @@ onMounted(() => {
 
 <template>
   <div class="flex h-full flex-1 flex-col overflow-hidden px-4">
-    <!-- 有搜索结果时的布局 -->
     <template v-if="q">
-      <!-- 顶部操作栏 -->
       <div class="mb-5 shrink-0">
-        <!-- 搜索结果标题 -->
         <div class="mb-4 flex items-center gap-3">
-          <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 shadow-lg shadow-pink-500/20">
-            <span class="icon-[mdi--magnify] h-5 w-5 text-white"></span>
+          <div class="search-result-icon flex h-10 w-10 items-center justify-center rounded-xl">
+            <span class="icon-[mdi--magnify] h-5 w-5"></span>
           </div>
           <div>
             <h1 class="text-primary text-xl font-bold">
               {{ $t('search.resultsFor') }}
-              <span class="bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">"{{ q }}"</span>
+              <span class="search-keyword">"{{ q }}"</span>
             </h1>
-            <p v-if="total > 0" class="text-primary/50 text-sm">
-              {{ $t('search.foundResults', { count: total }) }}
+            <p class="text-primary/50 text-sm">
+              {{ $t('search.foundResults', { count: totalResults }) }}
             </p>
           </div>
         </div>
 
-        <!-- Tab + 控制栏 -->
         <div class="glass-card flex flex-wrap items-center justify-between gap-4 p-3">
-          <!-- Tab 导航 -->
-          <TabGroup
-            v-model="activeType"
-            :tabs="tabs"
-            variant="gradient"
-            size="sm"
-            :show-count="false"
-            @click="(val) => activeType = val"
-          />
-
-          <!-- 右侧控制 -->
-          <div class="flex items-center gap-3">
-            <!-- 播放全部按钮（仅歌曲 Tab 显示） -->
-            <Button
-              v-if="activeType === 1 && total > 0"
-              variant="gradient"
-              size="sm"
-              @click="playAllSongs"
-            >
-              <span class="icon-[mdi--play] mr-1.5 h-4 w-4" />
-              {{ $t('actions.playAll') }}
-            </Button>
-
-            <!-- 分页 -->
-            <div v-if="total > 0" class="flex items-center gap-2">
-              <div class="flex items-center gap-1 rounded-xl bg-white/5 p-1">
-                <button
-                  class="flex h-8 w-8 items-center justify-center rounded-lg transition-all"
-                  :class="
-                    page > 1 ? 'text-primary hover:bg-white/10' : 'text-primary/30 cursor-not-allowed'
-                  "
-                  :disabled="page <= 1"
-                  @click="page > 1 && page--"
-                >
-                  <span class="icon-[mdi--chevron-left] h-5 w-5" />
-                </button>
-                <span class="text-primary/80 min-w-[60px] text-center text-sm font-medium">
-                  {{ page }} / {{ Math.ceil(total / pageSize) || 1 }}
-                </span>
-                <button
-                  class="flex h-8 w-8 items-center justify-center rounded-lg transition-all"
-                  :class="
-                    page < Math.ceil(total / pageSize)
-                      ? 'text-primary hover:bg-white/10'
-                      : 'text-primary/30 cursor-not-allowed'
-                  "
-                  :disabled="page >= Math.ceil(total / pageSize)"
-                  @click="page < Math.ceil(total / pageSize) && page++"
-                >
-                  <span class="icon-[mdi--chevron-right] h-5 w-5" />
-                </button>
-              </div>
-            </div>
+          <div class="result-summary flex flex-wrap items-center gap-2">
+            <span class="result-chip">
+              <span class="icon-[mdi--music-note] h-3.5 w-3.5"></span>
+              {{ $t('search.sections.songs') }} {{ state.songTotal }}
+            </span>
+            <span class="result-chip">
+              <span class="icon-[mdi--account-music] h-3.5 w-3.5"></span>
+              {{ $t('search.sections.artists') }} {{ state.artistTotal }}
+            </span>
+            <span class="result-chip">
+              <span class="icon-[mdi--album] h-3.5 w-3.5"></span>
+              {{ $t('search.sections.albums') }} {{ state.albumTotal }}
+            </span>
           </div>
+
+          <Button v-if="state.songs.length > 0" variant="gradient" size="sm" @click="playAllSongs">
+            <span class="icon-[mdi--play] mr-1.5 h-4 w-4" />
+            {{ $t('actions.playAll') }}
+          </Button>
         </div>
       </div>
 
-      <!-- 结果区 -->
-      <div class="relative min-h-0 flex-1 overflow-hidden">
-        <component
-          :is="activeComp"
-          :ref="
-            (el: any) => {
-              if (activeType === 1) songsRef = el
-            }
-          "
-          :keywords="q"
-          :limit="pageSize"
-          :offset="(page - 1) * pageSize"
-          @loaded="onLoaded"
-          @total="onTotal"
+      <div class="custom-scrollbar min-h-0 flex-1 overflow-y-auto pb-6">
+        <PageSkeleton
+          v-if="state.isLoading"
+          :sections="['list', 'grid', 'grid']"
+          :list-count="8"
+          :grid-count="6"
         />
-        <div v-if="isLoading && activeType !== 1" class="absolute inset-0 z-10">
-          <PageSkeleton
-            :sections="activeType === 1000 ? ['grid'] : ['list']"
-            :grid-count="12"
-            :list-count="8"
-          />
-        </div>
+
+        <template v-else>
+          <div v-if="hasAnyResults" class="space-y-6">
+            <section class="glass-card overflow-hidden p-3" v-if="state.songs.length > 0">
+              <div class="section-header">
+                <div>
+                  <h2 class="section-title">{{ $t('search.sections.songs') }}</h2>
+                  <p class="section-meta">
+                    {{
+                      $t('search.showingCount', {
+                        count: state.songs.length,
+                        total: state.songTotal,
+                      })
+                    }}
+                  </p>
+                </div>
+              </div>
+              <SongList
+                :songs="state.songs"
+                :show-header="true"
+                :show-controls="true"
+                :empty-message="$t('search.empty')"
+              />
+            </section>
+
+            <section class="glass-card p-5" v-if="state.artists.length > 0">
+              <div class="section-header">
+                <div>
+                  <h2 class="section-title">{{ $t('search.sections.artists') }}</h2>
+                  <p class="section-meta">
+                    {{
+                      $t('search.showingCount', {
+                        count: state.artists.length,
+                        total: state.artistTotal,
+                      })
+                    }}
+                  </p>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
+                <router-link
+                  v-for="artist in state.artists"
+                  :key="artist.id"
+                  :to="`/artist/${artist.id}`"
+                  class="artist-card group"
+                >
+                  <div class="artist-card__avatar">
+                    <LazyImage
+                      :src="artist.picUrl ? withImageParam(artist.picUrl, '300y300') : '/default-cover.svg'"
+                      :alt="artist.name"
+                      img-class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.04]"
+                    />
+                  </div>
+                  <div class="min-w-0 text-center">
+                    <p class="truncate text-sm font-semibold text-[var(--glass-text-primary)]">
+                      {{ artist.name }}
+                    </p>
+                    <p class="mt-1 truncate text-xs text-[var(--glass-text-muted)]">
+                      {{ $t('commonUnits.songsShort', artist.musicSize || 0) }}
+                      <span class="mx-1">·</span>
+                      {{ artist.mvSize || 0 }} MV
+                    </p>
+                  </div>
+                </router-link>
+              </div>
+            </section>
+
+            <section class="glass-card p-5" v-if="state.albums.length > 0">
+              <div class="section-header">
+                <div>
+                  <h2 class="section-title">{{ $t('search.sections.albums') }}</h2>
+                  <p class="section-meta">
+                    {{
+                      $t('search.showingCount', {
+                        count: state.albums.length,
+                        total: state.albumTotal,
+                      })
+                    }}
+                  </p>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
+                <router-link
+                  v-for="album in state.albums"
+                  :key="album.id"
+                  :to="`/album/${album.id}`"
+                  class="album-card group"
+                >
+                  <div class="album-card__cover">
+                    <LazyImage
+                      :src="album.picUrl ? withImageParam(album.picUrl, '300y300') : '/default-cover.svg'"
+                      :alt="album.name"
+                      img-class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.04]"
+                    />
+                  </div>
+                  <div class="min-w-0">
+                    <p class="truncate text-sm font-semibold text-[var(--glass-text-primary)]">
+                      {{ album.name }}
+                    </p>
+                    <div
+                      class="mt-1 flex items-center gap-1.5 text-xs text-[var(--glass-text-muted)]"
+                    >
+                      <router-link
+                        v-if="album.artistId"
+                        :to="`/artist/${album.artistId}`"
+                        class="truncate transition-colors hover:text-[var(--glass-text-primary)]"
+                        @click.stop
+                      >
+                        {{ album.artist || $t('player.unknownArtist') }}
+                      </router-link>
+                      <span v-else class="truncate">{{
+                        album.artist || $t('player.unknownArtist')
+                      }}</span>
+                    </div>
+                  </div>
+                </router-link>
+              </div>
+            </section>
+          </div>
+
+          <div
+            v-else
+            class="glass-card flex flex-col items-center justify-center rounded-2xl px-5 py-12 text-center"
+          >
+            <div class="empty-icon mb-4 flex h-14 w-14 items-center justify-center rounded-2xl">
+              <span class="icon-[mdi--magnify-close] h-6 w-6"></span>
+            </div>
+            <p class="text-primary text-sm font-semibold">{{ $t('search.empty') }}</p>
+            <p class="text-primary/45 mt-2 text-xs">{{ $t('search.searchingHint') }}</p>
+          </div>
+        </template>
       </div>
     </template>
 
-    <!-- ═══════════════════════════════════════════════ -->
-    <!-- 空状态：没有搜索关键词时                         -->
-    <!-- ═══════════════════════════════════════════════ -->
     <template v-else>
       <div class="custom-scrollbar relative flex h-full flex-col overflow-y-auto">
-
-        <!-- 背景氛围光 -->
         <div class="pointer-events-none absolute inset-0 overflow-hidden">
-          <div class="ambient-a absolute -top-20 left-1/3 h-[420px] w-[420px] -translate-x-1/2 rounded-full" />
-          <div class="ambient-b absolute -bottom-32 right-1/4 h-[350px] w-[350px] rounded-full" />
+          <div
+            class="ambient-a absolute -top-20 left-1/3 h-[420px] w-[420px] -translate-x-1/2 rounded-full"
+          />
+          <div class="ambient-b absolute right-1/4 -bottom-32 h-[350px] w-[350px] rounded-full" />
         </div>
 
-        <!-- 顶部搜索区 -->
         <div class="relative z-10 shrink-0 pt-8 pb-6">
-          <!-- 搜索输入框 -->
           <div
             class="search-box mx-auto w-full max-w-xl transition-all duration-500"
             :class="inputFocused ? 'scale-[1.02]' : ''"
@@ -257,7 +369,7 @@ onMounted(() => {
               :class="[
                 inputFocused
                   ? 'border-pink-500/30 bg-white/[0.07] shadow-[0_0_30px_rgba(31,124,255,0.08),0_8px_32px_rgba(0,0,0,0.12)]'
-                  : 'border-white/[0.06] bg-white/[0.035] shadow-[0_2px_12px_rgba(0,0,0,0.08)]'
+                  : 'border-white/[0.06] bg-white/[0.035] shadow-[0_2px_12px_rgba(0,0,0,0.08)]',
               ]"
             >
               <span
@@ -269,22 +381,20 @@ onMounted(() => {
                 v-model="searchInput"
                 type="text"
                 :placeholder="placeholder || $t('common.search.placeholder')"
-                class="min-w-0 flex-1 bg-transparent text-sm text-primary outline-none placeholder:text-primary/30"
+                class="text-primary placeholder:text-primary/30 min-w-0 flex-1 bg-transparent text-sm outline-none"
                 @focus="inputFocused = true"
                 @blur="inputFocused = false"
                 @keyup.enter="handleSubmit"
               />
-              <!-- 清除按钮 -->
               <Transition name="fade-scale">
                 <button
                   v-if="searchInput"
-                  class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-primary/30 transition-colors hover:bg-white/10 hover:text-primary/60"
+                  class="text-primary/30 hover:text-primary/60 flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-white/10"
                   @click="searchInput = ''"
                 >
                   <span class="icon-[mdi--close] h-3.5 w-3.5" />
                 </button>
               </Transition>
-              <!-- 搜索按钮 -->
               <button
                 class="search-btn flex h-8 shrink-0 items-center gap-1.5 rounded-xl px-4 text-xs font-medium text-white transition-all duration-300 active:scale-95"
                 @click="handleSubmit"
@@ -296,12 +406,13 @@ onMounted(() => {
           </div>
         </div>
 
-        <!-- 搜索历史 -->
         <div v-if="searchHistory.length > 0" class="relative z-10 mb-6 shrink-0">
           <div class="mb-2.5 flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <span class="icon-[mdi--history] h-4 w-4 text-primary/25" />
-              <span class="text-primary/40 text-xs font-medium">{{ $t('search.recentSearches') }}</span>
+              <span class="icon-[mdi--history] text-primary/25 h-4 w-4" />
+              <span class="text-primary/40 text-xs font-medium">{{
+                $t('search.recentSearches')
+              }}</span>
             </div>
             <button
               class="text-primary/25 hover:text-primary/50 text-xs transition-colors"
@@ -318,9 +429,11 @@ onMounted(() => {
               :style="{ animationDelay: `${ki * 35}ms` }"
               @click="doSearch(keyword)"
             >
-              <span class="text-primary/55 group-hover:text-primary/85 transition-colors">{{ keyword }}</span>
+              <span class="text-primary/55 group-hover:text-primary/85 transition-colors">{{
+                keyword
+              }}</span>
               <span
-                class="icon-[mdi--close] h-3 w-3 shrink-0 text-transparent transition-all group-hover:text-primary/30 hover:text-pink-400!"
+                class="icon-[mdi--close] group-hover:text-primary/30 h-3 w-3 shrink-0 text-transparent transition-all hover:text-pink-400!"
                 @click.stop="globalStore.removeSearchHistory(keyword)"
               />
             </button>
@@ -328,9 +441,13 @@ onMounted(() => {
         </div>
 
         <div class="relative z-10 min-h-0 flex-1 pb-6">
-          <div class="rounded-2xl border border-white/[0.05] bg-white/[0.025] px-5 py-8 text-center">
-            <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.04]">
-              <span class="icon-[mdi--magnify] h-6 w-6 text-primary/35" />
+          <div
+            class="rounded-2xl border border-white/[0.05] bg-white/[0.025] px-5 py-8 text-center"
+          >
+            <div
+              class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.04]"
+            >
+              <span class="icon-[mdi--magnify] text-primary/35 h-6 w-6" />
             </div>
             <p class="text-primary/80 text-sm font-medium">{{ $t('search.enterKeyword') }}</p>
             <p class="text-primary/40 mt-2 text-xs">{{ $t('search.hint') }}</p>
@@ -342,45 +459,148 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* ═══ 背景氛围光 ═══ */
 .ambient-a {
   background: radial-gradient(circle, rgba(31, 124, 255, 0.07) 0%, transparent 65%);
   animation: ambient-float 12s ease-in-out infinite;
 }
+
 .ambient-b {
   background: radial-gradient(circle, rgba(77, 163, 255, 0.05) 0%, transparent 65%);
   animation: ambient-float 15s ease-in-out infinite reverse;
 }
+
 @keyframes ambient-float {
-  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.6; }
-  33% { transform: translate(20px, -15px) scale(1.05); opacity: 0.8; }
-  66% { transform: translate(-15px, 10px) scale(0.97); opacity: 0.5; }
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.6;
+  }
+  33% {
+    transform: translate(20px, -15px) scale(1.05);
+    opacity: 0.8;
+  }
+  66% {
+    transform: translate(-15px, 10px) scale(0.97);
+    opacity: 0.5;
+  }
 }
 
-/* ═══ 搜索按钮渐变 ═══ */
+.search-result-icon,
+.empty-icon {
+  background: linear-gradient(135deg, rgba(31, 124, 255, 0.16), rgba(77, 163, 255, 0.1));
+  color: var(--sonora-blue);
+}
+
+.search-keyword {
+  background: linear-gradient(90deg, var(--sonora-blue), var(--sonora-blue-soft));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.result-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 9999px;
+  border: 1px solid var(--glass-border-default);
+  background: var(--glass-bg-subtle);
+  color: var(--glass-text-secondary);
+  padding: 0.45rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.section-header {
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.section-title {
+  color: var(--glass-text-primary);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.section-meta {
+  margin-top: 0.25rem;
+  color: var(--glass-text-muted);
+  font-size: 0.75rem;
+}
+
+.artist-card,
+.album-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  border-radius: 1rem;
+  border: 1px solid var(--glass-border-default);
+  background: var(--glass-bg-card);
+  padding: 0.875rem;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.artist-card:hover,
+.album-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--glass-border-strong);
+  background: var(--glass-bg-elevated);
+}
+
+.artist-card__avatar {
+  margin-inline: auto;
+  aspect-ratio: 1 / 1;
+  width: min(100%, 9rem);
+  overflow: hidden;
+  border-radius: 9999px;
+  border: 1px solid var(--glass-border-subtle);
+  background: var(--glass-bg-subtle);
+}
+
+.album-card__cover {
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 0.95rem;
+  border: 1px solid var(--glass-border-subtle);
+  background: var(--glass-bg-subtle);
+}
+
 .search-btn {
   background: linear-gradient(135deg, #1f7cff, #4da3ff);
   box-shadow: 0 4px 16px rgba(31, 124, 255, 0.25);
 }
+
 .search-btn:hover {
   box-shadow: 0 6px 24px rgba(31, 124, 255, 0.35);
   filter: brightness(1.1);
 }
 
-/* ═══ 搜索历史标签入场 ═══ */
 .history-chip {
   animation: chip-in 0.35s var(--glass-ease-out) both;
 }
+
 @keyframes chip-in {
-  from { opacity: 0; transform: translateY(4px) scale(0.97); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
-/* ═══ 淡入缩放过渡（清除按钮） ═══ */
 .fade-scale-enter-active,
 .fade-scale-leave-active {
   transition: all 0.2s ease;
 }
+
 .fade-scale-enter-from,
 .fade-scale-leave-to {
   opacity: 0;

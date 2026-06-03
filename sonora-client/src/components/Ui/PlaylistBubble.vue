@@ -2,6 +2,7 @@
 import { useAudio } from '@/composables/useAudio'
 import { formatDuration } from '@/utils/time'
 import Button from '@/components/Ui/Button.vue'
+import { withImageParam } from '@/utils/media'
 
 const props = withDefaults(
   defineProps<{
@@ -293,7 +294,7 @@ const totalDuration = computed(() => {
                   <div class="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl">
                     <img
                       v-if="s.cover"
-                      :src="s.cover + '?param=100y100'"
+                      :src="withImageParam(s.cover, '100y100')"
                       alt=""
                       class="h-full w-full object-cover"
                     />

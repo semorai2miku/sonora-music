@@ -27,6 +27,7 @@ import java.util.Objects;
 @RestController
 @RequestMapping("/api/admin/artists")
 public class ArtistController {
+    private static final int MAX_DESCRIPTION_LENGTH = 10_000;
 
     private final ArtistMapper artistMapper;
     private final SongMapper songMapper;
@@ -136,6 +137,9 @@ public class ArtistController {
         if (!StringUtils.hasText(artist.getName())) {
             return R.badRequest("请输入歌手名称");
         }
+        if (artist.getDescription() != null && artist.getDescription().length() > MAX_DESCRIPTION_LENGTH) {
+            return R.badRequest("歌手简介不能超过 10000 个字符");
+        }
         artistMapper.insert(artist);
         return R.ok(artistOf(artistMapper.selectById(artist.getId()), allSongs(), allAlbums()));
     }
@@ -152,6 +156,9 @@ public class ArtistController {
         normalizeArtist(artist);
         if (!StringUtils.hasText(artist.getName())) {
             return R.badRequest("请输入歌手名称");
+        }
+        if (artist.getDescription() != null && artist.getDescription().length() > MAX_DESCRIPTION_LENGTH) {
+            return R.badRequest("歌手简介不能超过 10000 个字符");
         }
         artist.setId(id);
         artistMapper.updateById(artist);

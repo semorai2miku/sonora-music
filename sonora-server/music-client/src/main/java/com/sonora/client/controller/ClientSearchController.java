@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Tag(name = "客户端-搜索", description = "全局搜索")
 @RestController
@@ -59,7 +61,8 @@ public class ClientSearchController {
                             .eq(Song::getStatus, 1)
                             .orderByDesc(Song::getPlayCount)
                             .last("LIMIT " + pageSize));
-            songs.forEach(song -> song.setCover(coverOf(song.getCover())));
+            Map<Long, Album> albumMap = albumMapFromSongs(songs);
+            songs.forEach(song -> song.setCover(coverOf(song.getAlbumId(), albumMap)));
             data.put("songs", songs);
         }
 
@@ -69,7 +72,7 @@ public class ClientSearchController {
                             .like(Album::getName, keyword)
                             .eq(Album::getStatus, 1)
                             .last("LIMIT " + pageSize));
-            albums.forEach(album -> album.setCover(coverOf(album.getCover())));
+            albums.forEach(album -> album.setCover(coverOfAlbum(album.getCover())));
             data.put("albums", albums);
         }
 
@@ -105,7 +108,31 @@ public class ClientSearchController {
         return R.ok(songs.stream().map(Song::getName).toList());
     }
 
-    private String coverOf(String cover) {
+    private Map<Long, Album> albumMapFromSongs(List<Song> songs) {
+        List<Long> albumIds = songs.stream()
+                .map(Song::getAlbumId)
+                .filter(id -> id != null && id > 0)
+                .distinct()
+                .toList();
+        if (albumIds.isEmpty()) {
+            return Map.of();
+        }
+        return albumMapper.selectBatchIds(albumIds).stream()
+                .collect(Collectors.toMap(Album::getId, Function.identity(), (left, right) -> left));
+    }
+
+    private String coverOf(Long albumId, Map<Long, Album> albumMap) {
+        if (albumId == null) {
+            return Constants.DEFAULT_COVER;
+        }
+        Album album = albumMap.get(albumId);
+        if (album != null && StringUtils.hasText(album.getCover())) {
+            return album.getCover();
+        }
+        return Constants.DEFAULT_COVER;
+    }
+
+    private String coverOfAlbum(String cover) {
         return StringUtils.hasText(cover) ? cover : Constants.DEFAULT_COVER;
     }
 }
