@@ -1,9 +1,9 @@
 export default {
   home: {
-    recommendPlaylists: 'おすすめプレイリスト',
-    recommendSongs: 'おすすめ楽曲',
-    followArtists: '注目アーティスト',
-    latestAlbums: '注目アルバム',
+    recommendPlaylists: 'プレイリストおすすめ',
+    recommendSongs: '楽曲おすすめ',
+    followArtists: 'アーティストおすすめ',
+    latestAlbums: 'アルバムおすすめ',
     hotSongs: '人気曲',
     playlistFallback: 'プレイリスト',
   },

@@ -1,9 +1,9 @@
 export default {
   home: {
-    recommendPlaylists: 'Recommended Playlists',
-    recommendSongs: 'Recommended Songs',
-    followArtists: 'Featured Artists',
-    latestAlbums: 'Latest Albums',
+    recommendPlaylists: 'Playlist Recommendations',
+    recommendSongs: 'Song Recommendations',
+    followArtists: 'Artist Recommendations',
+    latestAlbums: 'Album Recommendations',
     hotSongs: 'Hot Tracks',
     playlistFallback: 'Playlist',
   },

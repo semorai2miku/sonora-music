@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { artistAlbum, artistDetail, artistSongs } from '@/api'
+import { clientArtistDetail } from '@/api'
 import { usePlayActions } from '@/composables/usePlayActions'
 import Button from '@/components/Ui/Button.vue'
 import { useI18n } from 'vue-i18n'
 import { withImageParam } from '@/utils/media'
 import {
-  transformArtistDetail,
   transformSongs,
   transformAlbums,
   type SongData,
@@ -20,14 +19,12 @@ const artistId = computed(() => Number(route.params.id))
 type ArtistInfo = {
   id: number
   name: string
-  alias: string[]
   picUrl: string
-  briefDesc: string
+  description: string
+  region: string
   albumSize: number
   musicSize: number
-  mvSize: number
   followed: boolean
-  fansCount: number
 }
 
 const state = reactive({
@@ -41,64 +38,25 @@ const state = reactive({
 
 const { playAll: playAllAction, shufflePlay: shufflePlayAction } = usePlayActions()
 
-const ARTIST_SONG_PAGE_SIZE = 100
-const MAX_ARTIST_SONG_PAGES = 50
-
-const fetchAllArtistSongs = async (id: number, totalHint = 0) => {
-  const songs: SongData[] = []
-  const expectedPages = totalHint > 0 ? Math.ceil(totalHint / ARTIST_SONG_PAGE_SIZE) : 1
-  const totalPages = Math.min(Math.max(expectedPages, 1), MAX_ARTIST_SONG_PAGES)
-
-  for (let page = 0; page < totalPages; page += 1) {
-    const res = await artistSongs({
-      id,
-      order: 'time',
-      limit: ARTIST_SONG_PAGE_SIZE,
-      offset: page * ARTIST_SONG_PAGE_SIZE,
-    })
-    const batch = transformSongs(res as Record<string, unknown>)
-    if (!batch.length) break
-    songs.push(...batch)
-    if (batch.length < ARTIST_SONG_PAGE_SIZE) break
-  }
-
-  return Array.from(new Map(songs.map(song => [String(song.id), song])).values()).sort(
-    (left, right) => Number(left.id || 0) - Number(right.id || 0)
-  )
-}
-
 const load = async (id: number) => {
   state.loading = true
   try {
-    const [detailRes, albumsRes] = await Promise.all([
-      artistDetail({ id }),
-      artistAlbum({ id, limit: 10 }),
-    ])
+    const res = await clientArtistDetail(id)
+    const data = (res?.data || {}) as Record<string, unknown>
 
-    // 歌手详情
-    const artist = transformArtistDetail(detailRes as Record<string, unknown>)
-    if (artist) {
-      const raw = (detailRes as any)?.data?.artist || (detailRes as any)?.artist || {}
-      state.info = {
-        id: artist.id as number,
-        name: artist.name,
-        alias: artist.alias || [],
-        picUrl: artist.picUrl,
-        briefDesc: raw?.briefDesc || '',
-        albumSize: artist.albumSize || 0,
-        musicSize: artist.musicSize || 0,
-        mvSize: artist.mvSize || 0,
-        followed: raw?.followed || false,
-        fansCount: raw?.fansCnt || 0,
-      }
-      state.followed = state.info.followed
+    state.info = {
+      id,
+      name: String(data.name || ''),
+      picUrl: String(data.avatar || ''),
+      description: String(data.description || ''),
+      region: String(data.region || ''),
+      albumSize: Number(data.albumCount || 0),
+      musicSize: Number(data.songCount || 0),
+      followed: false,
     }
-
-    // 歌曲列表
-    state.songs = await fetchAllArtistSongs(id, state.info.musicSize)
-
-    // 专辑列表
-    state.albums = transformAlbums(albumsRes as Record<string, unknown>, 10)
+    state.followed = state.info.followed
+    state.songs = transformSongs({ songs: (data.songs as Record<string, unknown>[]) || [] })
+    state.albums = transformAlbums({ albums: (data.albums as Record<string, unknown>[]) || [] })
   } finally {
     state.loading = false
   }
@@ -158,15 +116,27 @@ const tabs = ['artistPage.tabs.hotSongs', 'artistPage.tabs.albums']
             </div>
 
             <h1 class="mb-1 text-xl font-bold text-accent">{{ state.info.name }}</h1>
-            <p v-if="state.info.alias?.length" class="mb-3 text-xs text-accent/60">
-              {{ state.info.alias.join(' / ') }}
-            </p>
+
+            <div class="mb-4 flex flex-wrap items-center justify-center gap-2">
+              <span v-if="state.info.region" class="artist-meta-pill">
+                <span class="icon-[mdi--map-marker-radius-outline] h-3.5 w-3.5"></span>
+                {{ state.info.region }}
+              </span>
+              <span class="artist-meta-pill">
+                <span class="icon-[mdi--music-note-outline] h-3.5 w-3.5"></span>
+                {{ state.info.musicSize }}
+              </span>
+              <span class="artist-meta-pill">
+                <span class="icon-[mdi--album] h-3.5 w-3.5"></span>
+                {{ state.info.albumSize }}
+              </span>
+            </div>
 
             <p
-              v-if="state.info.briefDesc"
+              v-if="state.info.description"
               class="mb-4 max-w-xs text-center text-xs leading-relaxed text-accent/60"
             >
-              {{ state.info.briefDesc }}
+              {{ state.info.description }}
             </p>
           </div>
         </div>
@@ -283,6 +253,19 @@ const tabs = ['artistPage.tabs.hotSongs', 'artistPage.tabs.albums']
 .artist-avatar {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   border: 3px solid rgba(255, 255, 255, 0.2);
+}
+
+.artist-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.4rem 0.65rem;
+  font-size: 0.6875rem;
+  color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
 }
 
 .play-all-btn {

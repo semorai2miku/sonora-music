@@ -1,9 +1,9 @@
 export default {
   home: {
-    recommendPlaylists: '推荐歌单',
-    recommendSongs: '推荐歌曲',
-    followArtists: '歌手关注',
-    latestAlbums: '新碟推荐',
+    recommendPlaylists: '歌单推荐',
+    recommendSongs: '歌曲推荐',
+    followArtists: '歌手推荐',
+    latestAlbums: '专辑推荐',
     hotSongs: '热门单曲',
     playlistFallback: '歌单',
   },

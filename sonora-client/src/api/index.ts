@@ -120,6 +120,28 @@ export const likeSong = (songId: number | string) =>
 export const unlikeSong = (songId: number | string) =>
   httpDelete<SonoraResult<null>>(`/api/client/me/likes/songs/${songId}`)
 
+export const clientBanners = () => httpGet<SonoraResult<Array<Record<string, unknown>>>>('/api/client/banners')
+
+export const clientSongs = (params?: {
+  limit?: number
+  sort?: 'id_asc' | 'id_desc' | 'created_desc' | 'play_desc'
+}) => httpGet<SonoraResult<Array<Record<string, unknown>>>>('/api/client/songs', params)
+
+export const clientSongDetail = (id: number | string) =>
+  httpGet<SonoraResult<Record<string, unknown>>>(`/api/client/songs/${id}`)
+
+export const clientSongLyric = (id: number | string) =>
+  httpGet<SonoraResult<Record<string, unknown>>>(`/api/client/songs/${id}/lyric`)
+
+export const clientArtists = (params?: { region?: string; limit?: number }) =>
+  httpGet<SonoraResult<Array<Record<string, unknown>>>>('/api/client/artists', params)
+
+export const clientArtistDetail = (id: number | string) =>
+  httpGet<SonoraResult<Record<string, unknown>>>(`/api/client/artists/${id}`)
+
+export const clientAlbums = (params?: { region?: string; limit?: number }) =>
+  httpGet<SonoraResult<Array<Record<string, unknown>>>>('/api/client/albums', params)
+
 // ═══════ 搜索 ═══════
 
 /** 搜索（type: 1 歌曲, 10 专辑, 100 歌手, 1000 歌单, 1004 MV, ...） */

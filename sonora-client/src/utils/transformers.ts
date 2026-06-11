@@ -45,6 +45,8 @@ export interface ArtistData {
   albumSize?: number
   musicSize?: number
   mvSize?: number
+  region?: string
+  description?: string
 }
 
 export interface MVData {
@@ -65,6 +67,7 @@ export interface AlbumData {
   publishTime?: string
   size?: number
   description?: string
+  region?: string
 }
 
 export interface PlaylistDetailData {
@@ -267,6 +270,8 @@ export function transformArtist(item: Record<string, unknown>): ArtistData {
     albumSize: (item?.albumSize as number) || 0,
     musicSize: (item?.musicSize as number) || 0,
     mvSize: (item?.mvSize as number) || 0,
+    region: (item?.region as string) || '',
+    description: (item?.description as string) || '',
   }
 }
 
@@ -307,18 +312,34 @@ export function transformMVs(response: ApiResponse, limit?: number): MVData[] {
  */
 export function transformAlbum(item: Record<string, unknown>): AlbumData {
   const artist = item?.artist as Record<string, unknown> | undefined
+  const artistName =
+    typeof item?.artist === 'string'
+      ? (item.artist as string)
+      : (artist?.name as string) || (item?.artistName as string) || ''
+  const artistId =
+    typeof item?.artist === 'string'
+      ? ((item?.artistId as number | string) || 0)
+      : ((artist?.id as number | string) || (item?.artistId as number | string) || 0)
+  const publishTime =
+    typeof item?.publishTime === 'number'
+      ? new Date(item.publishTime as number).toLocaleDateString()
+      : ((item?.publishTime as string) || (item?.releaseDate as string) || '')
 
   return {
     id: (item?.id as number | string) || 0,
     name: (item?.name as string) || '',
     picUrl: resolveMediaUrl(
-      (item?.picUrl as string) || (item?.blurPicUrl as string) || DEFAULT_COVER
+      (item?.picUrl as string) ||
+        (item?.cover as string) ||
+        (item?.blurPicUrl as string) ||
+        DEFAULT_COVER
     ),
-    artist: (artist?.name as string) || (item?.artistName as string) || '',
-    artistId: (artist?.id as number | string) || 0,
-    publishTime: item?.publishTime ? new Date(item.publishTime as number).toLocaleDateString() : '',
+    artist: artistName,
+    artistId,
+    publishTime,
     size: (item?.size as number) || 0,
     description: (item?.description as string) || '',
+    region: (item?.region as string) || '',
   }
 }
 

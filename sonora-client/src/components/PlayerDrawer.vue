@@ -19,6 +19,7 @@ import { withImageParam } from '@/utils/media'
 import type { Artist as SongArtist } from '@/stores/interface'
 
 const { t } = useI18n()
+const router = useRouter()
 const globalStore = useGlobalStore()
 const audioStore = useAudioStore()
 const settingsStore = useSettingsStore()
@@ -339,6 +340,18 @@ const handleAlbumCoverClick = () => {
   }
 }
 
+const collapsePlayerAndNavigate = (path: string) => {
+  state.showMobileLyrics = false
+  isOpen.value = false
+  router.push(path)
+}
+
+const handleLyricsPreviewClick = () => {
+  if (state.wheelPreviewVisible && !lyricsDragging.value) {
+    applyWheelPreview()
+  }
+}
+
 const scrollLyricsToIndex = (index: number, instant = false) => {
   if (!lyricsRef.value || !lyricsContainerRef.value || index < 0) return
   const lyricsContainer = lyricsRef.value
@@ -380,7 +393,7 @@ const scheduleWheelPreviewReset = () => {
   }
   wheelPreviewTimer = setTimeout(() => {
     resetWheelPreview(true)
-  }, 2400)
+  }, 5000)
 }
 
 const handleLyricsWheel = (event: WheelEvent) => {
@@ -540,7 +553,7 @@ onUnmounted(() => {
           :bar-gap="1"
           :gradient-colors="visualizerGradient"
           :height="180"
-          class="h-full"
+          class="h-full w-full"
         />
       </div>
     </div>
@@ -748,42 +761,57 @@ onUnmounted(() => {
 
       <!-- 歌曲信息（两种模式共享） -->
       <div class="song-info mb-4 text-center lg:mb-6">
-        <RouterLink
+        <button
           v-if="currentSong?.id"
-          :to="`/song/${currentSong.id}`"
-          class="song-title text-primary mb-1 block line-clamp-1 text-xl font-bold transition-colors hover:text-pink-300 sm:text-2xl lg:text-3xl"
+          type="button"
+          class="player-title-link text-primary mb-1 block cursor-pointer border-none bg-transparent p-0 line-clamp-1 text-xl font-bold sm:text-2xl lg:text-3xl"
+          @click="collapsePlayerAndNavigate(`/song/${currentSong.id}`)"
         >
           {{ currentSong?.name || t('player.unknownSong') }}
-        </RouterLink>
+        </button>
         <h2
           v-else
           class="song-title text-primary mb-1 line-clamp-1 text-xl font-bold sm:text-2xl lg:text-3xl"
         >
           {{ currentSong?.name || t('player.unknownSong') }}
         </h2>
-        <div class="mt-1 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-sm sm:text-base lg:text-lg">
-          <template v-for="(artist, index) in playerArtists" :key="`${artist.id}-${artist.name}-${index}`">
-            <RouterLink
-              v-if="artist.id"
-              :to="`/artist/${artist.id}`"
-              class="text-primary/60 transition-colors hover:text-pink-300"
+        <div class="player-meta-group mt-2 space-y-1.5">
+          <div class="player-meta-row text-sm sm:text-base lg:text-lg">
+            <span class="player-meta-icon icon-[mdi--account-music-outline]" aria-hidden="true"></span>
+            <div class="flex min-w-0 flex-wrap items-center justify-center gap-x-2 gap-y-1">
+              <template
+                v-for="(artist, index) in playerArtists"
+                :key="`${artist.id}-${artist.name}-${index}`"
+              >
+                <button
+                  v-if="artist.id"
+                  type="button"
+                  class="player-meta-link"
+                  @click="collapsePlayerAndNavigate(`/artist/${artist.id}`)"
+                >
+                  {{ artist.name }}
+                </button>
+                <span v-else class="player-meta-text">{{ artist.name }}</span>
+                <span v-if="index < playerArtists.length - 1" class="text-primary/35">/</span>
+              </template>
+            </div>
+          </div>
+
+          <div v-if="currentSong?.album" class="player-meta-row text-xs sm:text-sm">
+            <span class="player-meta-icon icon-[mdi--album]" aria-hidden="true"></span>
+            <button
+              v-if="currentSong?.albumId"
+              type="button"
+              class="player-meta-link"
+              @click="collapsePlayerAndNavigate(`/album/${currentSong.albumId}`)"
             >
-              {{ artist.name }}
-            </RouterLink>
-            <span v-else class="text-primary/60">{{ artist.name }}</span>
-            <span v-if="index < playerArtists.length - 1" class="text-primary/35">/</span>
-          </template>
+              {{ currentSong.album }}
+            </button>
+            <p v-else class="player-meta-text truncate">
+              {{ currentSong.album }}
+            </p>
+          </div>
         </div>
-        <RouterLink
-          v-if="currentSong?.albumId && currentSong?.album"
-          :to="`/album/${currentSong.albumId}`"
-          class="text-primary/35 mt-0.5 inline-block text-xs transition-colors hover:text-pink-300 sm:text-sm"
-        >
-          {{ currentSong.album }}
-        </RouterLink>
-        <p v-else-if="currentSong?.album" class="text-primary/35 mt-0.5 text-xs sm:text-sm">
-          {{ currentSong.album }}
-        </p>
       </div>
 
       <div v-if="currentSong" class="mb-5 w-full max-w-xl px-4">
@@ -890,6 +918,7 @@ onUnmounted(() => {
         ref="lyricsContainerRef"
         class="lyrics-container relative h-full flex-1 overflow-hidden"
         :class="{ 'cursor-grabbing': lyricsDragging, 'cursor-grab': !lyricsDragging }"
+        @click="handleLyricsPreviewClick"
         @wheel.prevent="handleLyricsWheel"
       >
         <div
@@ -988,6 +1017,72 @@ onUnmounted(() => {
   box-shadow:
     0 1px 3px rgba(0, 0, 0, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.player-title-link,
+.player-meta-link {
+  position: relative;
+  display: inline-block;
+  border: none;
+  background: transparent;
+  padding: 0;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font: inherit;
+  line-height: inherit;
+  transition: color 0.2s ease;
+}
+
+.player-title-link:hover,
+.player-meta-link:hover {
+  color: rgb(249 168 212 / 1);
+}
+
+.player-title-link::after,
+.player-meta-link::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -0.16em;
+  width: 100%;
+  height: 2px;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, rgba(248, 113, 113, 0.18), rgba(244, 114, 182, 0.9));
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.18s ease;
+}
+
+.player-title-link:hover::after,
+.player-meta-link:hover::after {
+  transform: scaleX(1);
+}
+
+.player-meta-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.player-meta-row {
+  display: inline-flex;
+  max-width: min(100%, 42rem);
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.player-meta-icon {
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  color: rgba(255, 255, 255, 0.38);
+}
+
+.player-meta-text {
+  min-width: 0;
+  color: rgba(255, 255, 255, 0.45);
 }
 
 /* 控制按钮 hover 效果 */

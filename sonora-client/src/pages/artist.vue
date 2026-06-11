@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { artistAlbum, artistDetail, artistSongs } from '@/api'
+import { clientArtistDetail } from '@/api'
 import { usePlayActions } from '@/composables/usePlayActions'
 import TabGroup from '@/components/Ui/TabGroup.vue'
 import Button from '@/components/Ui/Button.vue'
 import { withImageParam } from '@/utils/media'
 import {
-  transformArtistDetail,
   transformSongs,
   transformAlbums,
   type SongData,
@@ -19,14 +18,12 @@ const artistId = computed(() => Number(route.params.id))
 type ArtistInfo = {
   id: number
   name: string
-  alias: string[]
   picUrl: string
-  briefDesc: string
+  description: string
+  region: string
   albumSize: number
   musicSize: number
-  mvSize: number
   followed: boolean
-  fansCount: number
 }
 
 const state = reactive({
@@ -42,60 +39,25 @@ const { activeTab } = toRefs(state)
 
 const { playAll: playAllAction, shufflePlay: shufflePlayAction } = usePlayActions()
 
-const ARTIST_SONG_PAGE_SIZE = 100
-const MAX_ARTIST_SONG_PAGES = 50
-
-const fetchAllArtistSongs = async (id: number, totalHint = 0) => {
-  const songs: SongData[] = []
-  const expectedPages = totalHint > 0 ? Math.ceil(totalHint / ARTIST_SONG_PAGE_SIZE) : 1
-  const totalPages = Math.min(Math.max(expectedPages, 1), MAX_ARTIST_SONG_PAGES)
-
-  for (let page = 0; page < totalPages; page += 1) {
-    const res = await artistSongs({
-      id,
-      order: 'time',
-      limit: ARTIST_SONG_PAGE_SIZE,
-      offset: page * ARTIST_SONG_PAGE_SIZE,
-    })
-    const batch = transformSongs(res as Record<string, unknown>)
-    if (!batch.length) break
-    songs.push(...batch)
-    if (batch.length < ARTIST_SONG_PAGE_SIZE) break
-  }
-
-  return Array.from(new Map(songs.map(song => [String(song.id), song])).values()).sort(
-    (left, right) => Number(left.id || 0) - Number(right.id || 0)
-  )
-}
-
 const load = async (id: number) => {
   state.loading = true
   try {
-    const [detailRes, albumsRes] = await Promise.all([
-      artistDetail({ id }),
-      artistAlbum({ id, limit: 12 }),
-    ])
+    const res = await clientArtistDetail(id)
+    const data = (res?.data || {}) as Record<string, unknown>
 
-    const artist = transformArtistDetail(detailRes as Record<string, unknown>)
-    if (artist) {
-      const raw = (detailRes as any)?.data?.artist || (detailRes as any)?.artist || {}
-      state.info = {
-        id: artist.id as number,
-        name: artist.name,
-        alias: artist.alias || [],
-        picUrl: artist.picUrl,
-        briefDesc: raw?.briefDesc || '',
-        albumSize: artist.albumSize || 0,
-        musicSize: artist.musicSize || 0,
-        mvSize: artist.mvSize || 0,
-        followed: raw?.followed || false,
-        fansCount: raw?.fansCnt || 0,
-      }
-      state.followed = state.info.followed
+    state.info = {
+      id,
+      name: String(data.name || ''),
+      picUrl: String(data.avatar || ''),
+      description: String(data.description || ''),
+      region: String(data.region || ''),
+      albumSize: Number(data.albumCount || 0),
+      musicSize: Number(data.songCount || 0),
+      followed: false,
     }
-
-    state.songs = await fetchAllArtistSongs(id, state.info.musicSize)
-    state.albums = transformAlbums(albumsRes as Record<string, unknown>, 12)
+    state.followed = state.info.followed
+    state.songs = transformSongs({ songs: (data.songs as Record<string, unknown>[]) || [] })
+    state.albums = transformAlbums({ albums: (data.albums as Record<string, unknown>[]) || [] })
   } finally {
     state.loading = false
   }
@@ -202,17 +164,10 @@ const tabs = computed(() => [
                 <h1 class="animate-fade-in-up mb-2 text-4xl font-bold lg:text-5xl">
                   {{ state.info.name }}
                 </h1>
-                <p
-                  v-if="state.info.alias?.length"
-                  class="animate-fade-in-up text-primary/60 mb-4 text-lg"
-                  style="animation-delay: 0.1s"
-                >
-                  {{ state.info.alias.join(' / ') }}
-                </p>
 
                 <div
                   class="animate-fade-in-up flex flex-wrap items-center gap-3"
-                  style="animation-delay: 0.2s"
+                  style="animation-delay: 0.1s"
                 >
                   <Button
                     variant="solid"
@@ -249,19 +204,37 @@ const tabs = computed(() => [
                     {{ state.followed ? $t('common.followed') : $t('common.follow') }}
                   </Button>
                 </div>
+
+                <div
+                  class="animate-fade-in-up mt-4 flex flex-wrap items-center gap-2.5"
+                  style="animation-delay: 0.18s"
+                >
+                  <span v-if="state.info.region" class="artist-stat-chip">
+                    <span class="icon-[mdi--map-marker-radius-outline] h-4 w-4"></span>
+                    {{ state.info.region }}
+                  </span>
+                  <span class="artist-stat-chip">
+                    <span class="icon-[mdi--music-note-outline] h-4 w-4"></span>
+                    {{ state.info.musicSize }} {{ $t('artistPage.stats.songs') }}
+                  </span>
+                  <span class="artist-stat-chip">
+                    <span class="icon-[mdi--album] h-4 w-4"></span>
+                    {{ state.info.albumSize }} {{ $t('artistPage.tabs.albums') }}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
         </section>
 
         <div class="pb-8">
-          <div v-if="state.info.briefDesc" class="glass-card mb-6 p-5">
+          <div v-if="state.info.description" class="glass-card mb-6 p-5">
             <h3 class="mb-2 flex items-center gap-2 text-sm font-semibold">
               <span class="icon-[mdi--information-outline] h-4 w-4 text-pink-400"></span>
               {{ $t('artistPage.bioTitle') }}
             </h3>
             <p class="text-primary/70 text-sm leading-relaxed">
-              {{ state.info.briefDesc }}
+              {{ state.info.description }}
             </p>
           </div>
 
@@ -345,6 +318,19 @@ const tabs = computed(() => [
 
 .animate-fade-in {
   animation: fadeInUp 0.3s ease-out;
+}
+
+.artist-stat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.55rem 0.85rem;
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(12px);
 }
 
 .floating-notes {

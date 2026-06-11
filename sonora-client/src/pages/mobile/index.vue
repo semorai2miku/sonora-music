@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { albumNew, artistList, banner, topPlaylist, recommendSongs } from '@/api'
+import { banner, clientAlbums, clientArtists, clientSongs, topPlaylist } from '@/api'
 import { useI18n } from 'vue-i18n'
 import { Swiper, SwiperSlide } from 'swiper/vue'
 import { Autoplay, Pagination } from 'swiper/modules'
@@ -20,59 +20,37 @@ import {
 
 const { t } = useI18n()
 const PLAYLIST_SOURCE_LIMIT = 12
-const SONG_SOURCE_LIMIT = 12
+const SONG_POOL_LIMIT = 60
+const ARTIST_POOL_LIMIT = 120
+const ALBUM_POOL_LIMIT = 120
 const ARTIST_SOURCE_LIMIT = 10
 const ALBUM_SOURCE_LIMIT = 8
 const MAX_VISIBLE_RECOMMEND_SONGS = 6
-
-type HomeArtistArea = -1 | 7 | 96 | 8 | 16 | 0
-type HomeAlbumArea = 'ALL' | 'ZH' | 'EA' | 'JP' | 'KR'
-
-const artistAreaOptions: Array<{ key: HomeArtistArea; labelKey: string }> = [
-  { key: -1, labelKey: 'artists.areas.all' },
-  { key: 7, labelKey: 'artists.areas.zh' },
-  { key: 96, labelKey: 'artists.areas.ea' },
-  { key: 8, labelKey: 'artists.areas.jp' },
-  { key: 16, labelKey: 'artists.areas.kr' },
-  { key: 0, labelKey: 'artists.areas.other' },
-]
-
-const albumAreaOptions: Array<{ key: HomeAlbumArea; labelKey: string }> = [
-  { key: 'ALL', labelKey: 'newAlbums.areas.all' },
-  { key: 'ZH', labelKey: 'newAlbums.areas.zh' },
-  { key: 'EA', labelKey: 'newAlbums.areas.ea' },
-  { key: 'JP', labelKey: 'newAlbums.areas.jp' },
-  { key: 'KR', labelKey: 'newAlbums.areas.kr' },
-]
 
 interface HomeState {
   banners: BannerData[]
   playlistPool: PlaylistData[]
   songPool: SongData[]
+  artistPool: ArtistData[]
+  albumPool: AlbumData[]
   artists: ArtistData[]
   albums: AlbumData[]
   playlists: PlaylistData[]
   songs: SongData[]
   isLoading: boolean
-  artistLoading: boolean
-  albumLoading: boolean
-  artistArea: HomeArtistArea
-  albumArea: HomeAlbumArea
 }
 
 const state = reactive<HomeState>({
   banners: [],
   playlistPool: [],
   songPool: [],
+  artistPool: [],
+  albumPool: [],
   artists: [],
   albums: [],
   playlists: [],
   songs: [],
   isLoading: true,
-  artistLoading: false,
-  albumLoading: false,
-  artistArea: -1,
-  albumArea: 'ALL',
 })
 
 const { banners, playlists, songs, artists, albums, isLoading } = toRefs(state)
@@ -94,32 +72,20 @@ const refreshSongs = () => {
   state.songs = shuffleList(state.songPool).slice(0, MAX_VISIBLE_RECOMMEND_SONGS)
 }
 
-const loadArtists = async () => {
-  try {
-    state.artistLoading = true
-    const res = await artistList({
-      limit: ARTIST_SOURCE_LIMIT,
-      offset: 0,
-      ...(state.artistArea !== -1 ? { area: state.artistArea } : {}),
-    })
-    state.artists = transformArtists(res as Record<string, unknown>, ARTIST_SOURCE_LIMIT)
-  } finally {
-    state.artistLoading = false
-  }
+const refreshArtists = () => {
+  state.artists = shuffleList(state.artistPool).slice(0, ARTIST_SOURCE_LIMIT)
 }
 
-const loadAlbums = async () => {
-  try {
-    state.albumLoading = true
-    const res = await albumNew({
-      area: state.albumArea,
-      limit: ALBUM_SOURCE_LIMIT,
-      offset: 0,
-    })
-    state.albums = transformAlbums(res as Record<string, unknown>, ALBUM_SOURCE_LIMIT)
-  } finally {
-    state.albumLoading = false
-  }
+const refreshAlbums = () => {
+  state.albums = shuffleList(state.albumPool).slice(0, ALBUM_SOURCE_LIMIT)
+}
+
+const applyArtists = () => {
+  refreshArtists()
+}
+
+const applyAlbums = () => {
+  refreshAlbums()
 }
 
 const loadHomeData = async () => {
@@ -128,9 +94,9 @@ const loadHomeData = async () => {
     const [b, p, s, artistRes, albumRes] = await Promise.allSettled([
       banner({ type: 2 }),
       topPlaylist({ order: 'hot', limit: PLAYLIST_SOURCE_LIMIT }),
-      recommendSongs(),
-      artistList({ limit: ARTIST_SOURCE_LIMIT, offset: 0 }),
-      albumNew({ area: state.albumArea, limit: ALBUM_SOURCE_LIMIT, offset: 0 }),
+      clientSongs({ limit: SONG_POOL_LIMIT, sort: 'id_desc' }),
+      clientArtists({ limit: ARTIST_POOL_LIMIT }),
+      clientAlbums({ limit: ALBUM_POOL_LIMIT }),
     ])
 
     state.banners =
@@ -145,18 +111,20 @@ const loadHomeData = async () => {
         : []
     state.songPool =
       s.status === 'fulfilled'
-        ? transformSongs(s.value as Record<string, unknown>, SONG_SOURCE_LIMIT)
+        ? transformSongs({ songs: s.value?.data || [] } as Record<string, unknown>, SONG_POOL_LIMIT)
         : []
-    state.artists =
+    state.artistPool =
       artistRes.status === 'fulfilled'
-        ? transformArtists(artistRes.value as Record<string, unknown>, ARTIST_SOURCE_LIMIT)
+        ? transformArtists({ artists: artistRes.value?.data || [] } as Record<string, unknown>)
         : []
-    state.albums =
+    state.albumPool =
       albumRes.status === 'fulfilled'
-        ? transformAlbums(albumRes.value as Record<string, unknown>, ALBUM_SOURCE_LIMIT)
+        ? transformAlbums({ albums: albumRes.value?.data || [] } as Record<string, unknown>)
         : []
     refreshPlaylists()
     refreshSongs()
+    applyArtists()
+    applyAlbums()
   } finally {
     state.isLoading = false
   }
@@ -166,23 +134,6 @@ onMounted(loadHomeData)
 
 const swiperModules = [Autoplay, Pagination]
 
-watch(
-  () => state.artistArea,
-  () => {
-    if (!state.isLoading) {
-      loadArtists()
-    }
-  }
-)
-
-watch(
-  () => state.albumArea,
-  () => {
-    if (!state.isLoading) {
-      loadAlbums()
-    }
-  }
-)
 </script>
 
 <template>
@@ -232,26 +183,58 @@ watch(
           <div class="mb-4 flex items-center justify-between">
             <h2 class="section-title">
               <span class="mobile-section-icon">
+                <span class="icon-[mdi--playlist-star] h-4 w-4"></span>
+              </span>
+              {{ t('home.recommendPlaylists') }}
+            </h2>
+            <div class="flex items-center gap-2">
+              <button class="mobile-action-button" type="button" @click="refreshPlaylists">
+                <span class="icon-[mdi--refresh] h-3.5 w-3.5"></span>
+                {{ t('common.refresh') }}
+              </button>
+              <router-link to="/playlists" class="mobile-action-button">
+                <span class="icon-[mdi--dots-horizontal-circle-outline] h-3.5 w-3.5"></span>
+                {{ t('common.more') }}
+              </router-link>
+            </div>
+          </div>
+          <div class="grid grid-cols-3 gap-3">
+            <router-link
+              v-for="pl in playlists"
+              :key="pl.id"
+              :to="`/playlist/${pl.id}`"
+              class="group"
+            >
+              <div class="playlist-cover relative mb-2 aspect-square overflow-hidden rounded-xl">
+                <LazyImage
+                  :src="pl.coverImgUrl"
+                  :alt="pl.name"
+                  imgClass="h-full w-full object-cover transition-transform duration-300 group-active:scale-105"
+                />
+              </div>
+              <p class="playlist-name line-clamp-2 text-xs leading-tight">{{ pl.name }}</p>
+            </router-link>
+          </div>
+        </section>
+
+        <section class="mb-6 px-4">
+          <div class="mb-4 flex items-center justify-between">
+            <h2 class="section-title">
+              <span class="mobile-section-icon">
                 <span class="icon-[mdi--account-star-outline] h-4 w-4"></span>
               </span>
               {{ t('home.followArtists') }}
             </h2>
-            <router-link to="/artists" class="mobile-action-button">
-              <span class="icon-[mdi--dots-horizontal-circle-outline] h-3.5 w-3.5"></span>
-              {{ t('common.more') }}
-            </router-link>
-          </div>
-          <div class="mobile-filter-row mb-3">
-            <button
-              v-for="option in artistAreaOptions"
-              :key="option.key"
-              type="button"
-              class="mobile-filter-chip"
-              :class="{ 'mobile-filter-chip--active': state.artistArea === option.key }"
-              @click="state.artistArea = option.key"
-            >
-              {{ t(option.labelKey) }}
-            </button>
+            <div class="flex items-center gap-2">
+              <button class="mobile-action-button" type="button" @click="refreshArtists">
+                <span class="icon-[mdi--refresh] h-3.5 w-3.5"></span>
+                {{ t('common.refresh') }}
+              </button>
+              <router-link to="/artists" class="mobile-action-button">
+                <span class="icon-[mdi--dots-horizontal-circle-outline] h-3.5 w-3.5"></span>
+                {{ t('common.more') }}
+              </router-link>
+            </div>
           </div>
           <div class="mobile-artist-strip">
             <router-link
@@ -287,22 +270,16 @@ watch(
               </span>
               {{ t('home.latestAlbums') }}
             </h2>
-            <router-link to="/new-albums" class="mobile-action-button">
-              <span class="icon-[mdi--dots-horizontal-circle-outline] h-3.5 w-3.5"></span>
-              {{ t('common.more') }}
-            </router-link>
-          </div>
-          <div class="mobile-filter-row mb-3">
-            <button
-              v-for="option in albumAreaOptions"
-              :key="option.key"
-              type="button"
-              class="mobile-filter-chip"
-              :class="{ 'mobile-filter-chip--active': state.albumArea === option.key }"
-              @click="state.albumArea = option.key"
-            >
-              {{ t(option.labelKey) }}
-            </button>
+            <div class="flex items-center gap-2">
+              <button class="mobile-action-button" type="button" @click="refreshAlbums">
+                <span class="icon-[mdi--refresh] h-3.5 w-3.5"></span>
+                {{ t('common.refresh') }}
+              </button>
+              <router-link to="/new-albums" class="mobile-action-button">
+                <span class="icon-[mdi--dots-horizontal-circle-outline] h-3.5 w-3.5"></span>
+                {{ t('common.more') }}
+              </router-link>
+            </div>
           </div>
           <div class="grid grid-cols-2 gap-3">
             <router-link
@@ -326,44 +303,6 @@ watch(
                   {{ album.artist || t('player.unknownArtist') }}
                 </p>
               </div>
-            </router-link>
-          </div>
-        </section>
-
-        <section class="mb-6 px-4">
-          <div class="mb-4 flex items-center justify-between">
-            <h2 class="section-title">
-              <span class="mobile-section-icon">
-                <span class="icon-[mdi--playlist-star] h-4 w-4"></span>
-              </span>
-              {{ t('home.recommendPlaylists') }}
-            </h2>
-            <div class="flex items-center gap-2">
-              <button class="mobile-action-button" type="button" @click="refreshPlaylists">
-                <span class="icon-[mdi--refresh] h-3.5 w-3.5"></span>
-                {{ t('common.refresh') }}
-              </button>
-              <router-link to="/playlists" class="mobile-action-button">
-                <span class="icon-[mdi--dots-horizontal-circle-outline] h-3.5 w-3.5"></span>
-                {{ t('common.more') }}
-              </router-link>
-            </div>
-          </div>
-          <div class="grid grid-cols-3 gap-3">
-            <router-link
-              v-for="pl in playlists"
-              :key="pl.id"
-              :to="`/playlist/${pl.id}`"
-              class="group"
-            >
-              <div class="playlist-cover relative mb-2 aspect-square overflow-hidden rounded-xl">
-                <LazyImage
-                  :src="pl.coverImgUrl"
-                  :alt="pl.name"
-                  imgClass="h-full w-full object-cover transition-transform duration-300 group-active:scale-105"
-                />
-              </div>
-              <p class="playlist-name line-clamp-2 text-xs leading-tight">{{ pl.name }}</p>
             </router-link>
           </div>
         </section>
@@ -501,37 +440,6 @@ watch(
   padding: 0.4rem 0.625rem;
   font-size: 0.6875rem;
   font-weight: 500;
-}
-
-.mobile-filter-row {
-  display: flex;
-  gap: 0.5rem;
-  overflow-x: auto;
-  padding-bottom: 0.125rem;
-}
-
-.mobile-filter-row::-webkit-scrollbar {
-  display: none;
-}
-
-.mobile-filter-chip {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.4rem 0.75rem;
-  border-radius: 9999px;
-  border: 1px solid var(--glass-border-default);
-  background: var(--glass-bg-card);
-  color: var(--glass-text-secondary);
-  font-size: 0.6875rem;
-  font-weight: 500;
-}
-
-.mobile-filter-chip--active {
-  color: var(--glass-text-primary);
-  border-color: rgba(31, 124, 255, 0.3);
-  background: rgba(31, 124, 255, 0.12);
 }
 
 .mobile-artist-strip {

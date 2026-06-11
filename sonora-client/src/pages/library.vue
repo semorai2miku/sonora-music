@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { topSong } from '@/api'
+import { clientSongs } from '@/api'
 import SongList from '@/components/SongList.vue'
 import Button from '@/components/Ui/Button.vue'
 import { useAudio } from '@/composables/useAudio'
 import type { Song as StoreSong } from '@/stores/interface'
-import { transformTopSongs, type SongData } from '@/utils/transformers'
+import { transformSongs, type SongData } from '@/utils/transformers'
 
 const state = reactive({
   songs: [] as SongData[],
@@ -16,8 +16,8 @@ const { setPlaylist, play } = useAudio()
 const loadSongs = async () => {
   state.isLoading = true
   try {
-    const res = await topSong({ type: 0 })
-    state.songs = transformTopSongs(res as Record<string, unknown>)
+    const res = await clientSongs({ sort: 'id_asc', limit: 500 })
+    state.songs = transformSongs({ songs: res?.data || [] } as Record<string, unknown>)
   } finally {
     state.isLoading = false
   }

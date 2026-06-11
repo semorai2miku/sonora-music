@@ -237,7 +237,9 @@ const render = () => {
   const ctx = canvas.getContext('2d')
   if (!ctx) return
 
-  const { width, height } = canvas
+  const pixelRatio = window.devicePixelRatio || 1
+  const width = canvas.width / pixelRatio
+  const height = canvas.height / pixelRatio
 
   // 清空画布
   ctx.clearRect(0, 0, width, height)
@@ -274,15 +276,15 @@ const updateCanvasSize = () => {
   const canvas = canvasRef.value
   if (!canvas) return
 
-  // 使用 CSS 尺寸作为实际尺寸
   const rect = canvas.getBoundingClientRect()
-  canvas.width = rect.width * window.devicePixelRatio
-  canvas.height = rect.height * window.devicePixelRatio
+  const pixelRatio = window.devicePixelRatio || 1
 
-  // 缩放上下文以匹配设备像素比
+  canvas.width = Math.max(1, Math.round(rect.width * pixelRatio))
+  canvas.height = Math.max(1, Math.round(rect.height * pixelRatio))
+
   const ctx = canvas.getContext('2d')
   if (ctx) {
-    ctx.scale(window.devicePixelRatio, window.devicePixelRatio)
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0)
   }
 }
 
