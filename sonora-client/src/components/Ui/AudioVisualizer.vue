@@ -25,6 +25,7 @@ const props = withDefaults(defineProps<AudioVisualizerProps>(), {
 
 const canvasRef = ref<HTMLCanvasElement>()
 let animationId: number | null = null
+let resizeObserver: ResizeObserver | null = null
 
 // 检测是否有音频活动
 const hasAudioActivity = (data: Uint8Array, threshold = 10) => {
@@ -55,17 +56,22 @@ const drawBars = (ctx: CanvasRenderingContext2D, width: number, height: number) 
   const totalBarWidth = barWidth + barGap
 
   // 让柱子占满整个宽度
-  const actualBarCount = Math.floor(width / totalBarWidth)
+  const actualBarCount = Math.max(1, Math.floor(width / totalBarWidth))
   const startX = (width - totalBarWidth * actualBarCount) / 2
 
-  // 只使用频谱数据的前半部分（低频到中频），因为高频通常能量很小
-  // 使用对数分布来映射频率，使得低频有更多柱子，高频较少
-  const usableDataLength = Math.floor(frequencyData.length * 0.6) // 只用前60%的数据
+  // 使用更宽的频段并对高频做轻微补偿，避免视觉上只在左侧低频区域活动
+  const usableDataLength = Math.max(1, Math.floor(frequencyData.length * 0.9))
+  const maxBarIndex = Math.max(1, actualBarCount - 1)
+  const minBarHeight = Math.max(2, height * 0.055)
 
   for (let i = 0; i < actualBarCount; i++) {
-    // 使用对数分布来采样数据，让低频区域有更密集的采样
-    const logIndex = Math.log(i + 1) / Math.log(actualBarCount + 1)
-    const dataIndex = Math.floor(logIndex * usableDataLength)
+    // 低频仍然更明显，但把更多中高频信息摊到整条底边上
+    const normalizedIndex = i / maxBarIndex
+    const distributedIndex = Math.pow(normalizedIndex, 0.78)
+    const dataIndex = Math.min(
+      usableDataLength - 1,
+      Math.floor(distributedIndex * (usableDataLength - 1))
+    )
 
     // 获取该位置的频率值，并对相邻数据做平滑
     let sum = 0
@@ -79,10 +85,10 @@ const drawBars = (ctx: CanvasRenderingContext2D, width: number, height: number) 
     const average = sum / count
 
     // 使用非线性映射增强可视化效果
-    // 对低音量进行放大，使得小幅度的变化也能看得清楚
     const normalized = average / 255
-    const enhanced = Math.pow(normalized, 0.7) // 使用0.7的幂次，放大小值
-    const barHeight = enhanced * height
+    const weighted = Math.min(1, normalized * (1 + normalizedIndex * 0.9))
+    const enhanced = Math.pow(weighted, 0.62)
+    const barHeight = Math.max(minBarHeight, enhanced * height * 0.96)
 
     const x = startX + i * totalBarWidth
 
@@ -290,6 +296,20 @@ const updateCanvasSize = () => {
 
 onMounted(() => {
   updateCanvasSize()
+  nextTick(() => {
+    requestAnimationFrame(() => {
+      updateCanvasSize()
+    })
+  })
+
+  const container = canvasRef.value?.parentElement
+  if (container) {
+    resizeObserver = new ResizeObserver(() => {
+      updateCanvasSize()
+    })
+    resizeObserver.observe(container)
+  }
+
   window.addEventListener('resize', updateCanvasSize)
   render()
 })
@@ -298,6 +318,8 @@ onUnmounted(() => {
   if (animationId !== null) {
     cancelAnimationFrame(animationId)
   }
+  resizeObserver?.disconnect()
+  resizeObserver = null
   window.removeEventListener('resize', updateCanvasSize)
 })
 </script>
@@ -313,6 +335,7 @@ onUnmounted(() => {
 <style scoped>
 .audio-visualizer {
   width: 100%;
+  max-width: 100%;
   display: block;
 }
 </style>

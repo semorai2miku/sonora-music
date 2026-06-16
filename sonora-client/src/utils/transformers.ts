@@ -21,6 +21,8 @@ export interface PlaylistData {
   coverImgUrl: string
   playCount: number
   trackCount?: number
+  creator?: string
+  description?: string
 }
 
 export interface SongData {
@@ -81,6 +83,12 @@ export interface PlaylistDetailData {
   likes: string | number
   category: string
   coverImgUrl: string
+}
+
+export interface ClientPlaylistDetailData extends PlaylistDetailData {
+  status?: number
+  type?: string
+  pinned?: number
 }
 
 // ============ 数据提取器 ============
@@ -149,12 +157,24 @@ export function transformPlaylist(
   item: Record<string, unknown>,
   fallbackName = '未知歌单'
 ): PlaylistData {
+  const creator = item?.creator as Record<string, unknown> | undefined
   return {
     id: (item?.id as number | string) || 0,
     name: (item?.name as string) || fallbackName,
-    coverImgUrl: resolveMediaUrl((item?.picUrl as string) || (item?.coverImgUrl as string) || ''),
+    coverImgUrl: resolveMediaUrl(
+      (item?.picUrl as string) ||
+        (item?.coverImgUrl as string) ||
+        (item?.cover as string) ||
+        DEFAULT_COVER
+    ),
     playCount: (item?.playCount as number) || 0,
-    trackCount: (item?.trackCount as number) || 0,
+    trackCount: (item?.trackCount as number) || (item?.songCount as number) || 0,
+    creator:
+      (creator?.nickname as string) ||
+      (item?.creatorName as string) ||
+      (item?.artist as string) ||
+      '',
+    description: (item?.description as string) || '',
   }
 }
 
@@ -166,7 +186,16 @@ export function transformPlaylists(
   limit?: number,
   fallbackName = '未知歌单'
 ): PlaylistData[] {
-  const list = extractArray(response, 'result', 'data.result', 'playlists', 'data.playlists')
+  const list = extractArray(
+    response,
+    'result',
+    'data.result',
+    'playlists',
+    'data.playlists',
+    'data.list',
+    'list',
+    'data'
+  )
   return limitSourceItems(list, limit).map(item =>
     transformPlaylist(item as Record<string, unknown>, fallbackName)
   )
@@ -388,6 +417,34 @@ export function transformPlaylistDetail(
   }
 }
 
+export function transformClientPlaylistDetail(
+  response: ApiResponse,
+  fallbackCategory = '歌单'
+): ClientPlaylistDetailData | null {
+  const detail = extractData<Record<string, unknown>>(response, 'data', 'playlist', 'data.playlist')
+  if (!detail) return null
+
+  const creator = detail?.creator as Record<string, unknown> | undefined
+
+  return {
+    name: (detail?.name as string) || '',
+    description: (detail?.description as string) || '',
+    creator: (creator?.nickname as string) || '',
+    creatorAvatar: resolveMediaUrl((creator?.avatarUrl as string) || ''),
+    createTime: (detail?.createdAt as string)
+      ? new Date(detail.createdAt as string).toLocaleDateString()
+      : '',
+    songCount: (detail?.songCount as number) || 0,
+    playCount: (detail?.playCount as string | number) || 0,
+    likes: (detail?.collectCount as string | number) || 0,
+    category: fallbackCategory,
+    coverImgUrl: resolveMediaUrl((detail?.cover as string) || DEFAULT_COVER),
+    status: (detail?.status as number) || 0,
+    type: (detail?.type as string) || '',
+    pinned: (detail?.pinned as number) || 0,
+  }
+}
+
 /**
  * 转换歌手详情
  */
@@ -418,6 +475,44 @@ export function transformAlbumDetail(response: ApiResponse): AlbumData | null {
   if (!album) return null
 
   return transformAlbum(album)
+}
+
+/**
+ * 转换专辑详情中的歌曲列表
+ */
+export function transformAlbumSongs(
+  response: ApiResponse,
+  fallbackAlbum?: Partial<AlbumData>
+): SongData[] {
+  const songs = extractArray(
+    response,
+    'songs',
+    'data.songs',
+    'album.songs',
+    'data.album.songs'
+  )
+
+  return songs.map(item => {
+    const raw = item as Record<string, unknown>
+    const song = transformSong(raw)
+    const rawAlbum =
+      (raw?.al as Record<string, unknown> | undefined) ||
+      (raw?.album as Record<string, unknown> | undefined)
+
+    const hasExplicitCover = Boolean(
+      (rawAlbum?.picUrl as string) || (raw?.cover as string) || (raw?.picUrl as string)
+    )
+
+    return {
+      ...song,
+      album: song.album || String(fallbackAlbum?.name || ''),
+      albumId: song.albumId || fallbackAlbum?.id || 0,
+      cover:
+        hasExplicitCover || !fallbackAlbum?.picUrl
+          ? song.cover
+          : resolveMediaUrl(String(fallbackAlbum.picUrl)),
+    }
+  })
 }
 
 // ============ 搜索结果转换器 ============

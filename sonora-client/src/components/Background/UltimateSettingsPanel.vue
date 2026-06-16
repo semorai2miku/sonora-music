@@ -31,24 +31,24 @@ const {
   blending,
 } = toRefs(state)
 
-const blendingOptions = [
-  { label: 'normal', value: 'normal' },
-  { label: 'multiply', value: 'multiply' },
-  { label: 'screen', value: 'screen' },
-  { label: 'overlay', value: 'overlay' },
-  { label: 'darken', value: 'darken' },
-  { label: 'lighten', value: 'lighten' },
-  { label: 'color-dodge', value: 'color-dodge' },
-  { label: 'color-burn', value: 'color-burn' },
-  { label: 'hard-light', value: 'hard-light' },
-  { label: 'soft-light', value: 'soft-light' },
-  { label: 'difference', value: 'difference' },
-  { label: 'exclusion', value: 'exclusion' },
-  { label: 'hue', value: 'hue' },
-  { label: 'saturation', value: 'saturation' },
-  { label: 'color', value: 'color' },
-  { label: 'luminosity', value: 'luminosity' },
-]
+const blendingOptions = computed(() => [
+  { label: t('components.background.common.blendModes.normal'), value: 'normal' },
+  { label: t('components.background.common.blendModes.multiply'), value: 'multiply' },
+  { label: t('components.background.common.blendModes.screen'), value: 'screen' },
+  { label: t('components.background.common.blendModes.overlay'), value: 'overlay' },
+  { label: t('components.background.common.blendModes.darken'), value: 'darken' },
+  { label: t('components.background.common.blendModes.lighten'), value: 'lighten' },
+  { label: t('components.background.common.blendModes.colorDodge'), value: 'color-dodge' },
+  { label: t('components.background.common.blendModes.colorBurn'), value: 'color-burn' },
+  { label: t('components.background.common.blendModes.hardLight'), value: 'hard-light' },
+  { label: t('components.background.common.blendModes.softLight'), value: 'soft-light' },
+  { label: t('components.background.common.blendModes.difference'), value: 'difference' },
+  { label: t('components.background.common.blendModes.exclusion'), value: 'exclusion' },
+  { label: t('components.background.common.blendModes.hue'), value: 'hue' },
+  { label: t('components.background.common.blendModes.saturation'), value: 'saturation' },
+  { label: t('components.background.common.blendModes.color'), value: 'color' },
+  { label: t('components.background.common.blendModes.luminosity'), value: 'luminosity' },
+])
 
 watch(
   () => [

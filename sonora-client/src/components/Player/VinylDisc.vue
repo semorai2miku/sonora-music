@@ -44,7 +44,6 @@ const sizeClasses = computed(() => {
         wrapper: 'w-[50vw] max-w-[200px]',
         disc: 'w-full',
         label: 'h-[60%] w-[60%]',
-        spindle: 'h-4 w-4',
         tonearm: '-top-6 -right-3',
         pivot: 'h-6 w-6',
         shaft: 'h-20 w-1.5',
@@ -58,7 +57,6 @@ const sizeClasses = computed(() => {
         wrapper: 'w-[65vw] max-w-[280px]',
         disc: 'w-full',
         label: 'h-[65%] w-[65%]',
-        spindle: 'h-6 w-6',
         tonearm: '-top-8 -right-4',
         pivot: 'h-8 w-8',
         shaft: 'h-28 w-2',
@@ -73,7 +71,6 @@ const sizeClasses = computed(() => {
         wrapper: 'h-96 w-96',
         disc: 'h-full w-full',
         label: 'h-1/2 w-1/2',
-        spindle: 'h-6 w-6',
         tonearm: '-top-16 -right-20',
         pivot: 'h-14 w-14',
         shaft: 'h-44 w-3',
@@ -243,11 +240,6 @@ defineExpose({
           backfaceVisibility: 'hidden',
         }"
       ></div>
-      <!-- 中心轴 -->
-      <div
-        class="spindle absolute top-1/2 left-1/2 -translate-1/2 rounded-full"
-        :class="sizeClasses.spindle"
-      ></div>
     </div>
 
     <!-- 唱臂 -->
@@ -322,11 +314,6 @@ defineExpose({
   box-shadow:
     inset 0 2px 20px rgba(0, 0, 0, 0.3),
     0 0 40px rgba(31, 124, 255, 0.6);
-}
-
-.spindle {
-  background: radial-gradient(circle at 30% 30%, #d0d0d0, #808080 60%, #505050);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .tonearm {

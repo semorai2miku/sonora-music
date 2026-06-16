@@ -12,6 +12,18 @@ const goSearch = () => router.push('/search')
 // 登录入口：沿用 PC 逻辑，显示登录弹窗（若全局自动注册，可直接触发）
 const state = reactive({ showLogin: false })
 const { showLogin } = toRefs(state)
+
+const onAuthExpired = () => {
+  state.showLogin = true
+}
+
+onMounted(() => {
+  window.addEventListener('sonora:auth-expired', onAuthExpired)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('sonora:auth-expired', onAuthExpired)
+})
 </script>
 
 <template>
@@ -36,7 +48,7 @@ const { showLogin } = toRefs(state)
         <span class="icon-[mdi--magnify] h-5 w-5"></span>
       </button>
       <router-link
-        v-if="userStore.isLoggedIn"
+        v-if="userStore.isAuthenticated"
         to="/profile"
         class="hover:bg-hover-glass rounded-md p-1.5"
       >

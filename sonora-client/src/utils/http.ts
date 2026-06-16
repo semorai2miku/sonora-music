@@ -8,6 +8,24 @@ import axios, {
     InternalAxiosRequestConfig,
 } from 'axios'
 import NProgress from '@/config/nprogress'
+import pinia from '@/stores'
+import { useUserStore } from '@/stores/modules/user'
+
+const parseExpiresTime = (expires?: string) => {
+    if (!expires) return Number.POSITIVE_INFINITY
+    const time = Date.parse(expires.replace(/-/g, '/'))
+    return Number.isFinite(time) ? time : Number.POSITIVE_INFINITY
+}
+
+const isProtectedClientUrl = (url?: string) => {
+    const value = String(url || '')
+    return (
+        value.startsWith('/api/client/me/') ||
+        value === '/api/client/auth/me' ||
+        value === '/api/client/auth/avatar' ||
+        value === '/api/client/auth/password'
+    )
+}
 
 /** 创建 axios 实例 */
 const instance: AxiosInstance = axios.create({
@@ -21,15 +39,33 @@ instance.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
         // 开启进度条
         NProgress.start()
-        const rawUser = localStorage.getItem('user')
-        if (rawUser) {
-            try {
-                const userState = JSON.parse(rawUser)
-                const token = userState?.accessToken
-                if (token) {
-                    config.headers.Authorization = `Bearer ${token}`
-                }
-            } catch {}
+        let token = ''
+        try {
+            const userStore = useUserStore(pinia)
+            if (userStore.isAuthenticated) {
+                token = userStore.accessToken || ''
+            } else if (userStore.isLoggedIn) {
+                userStore.logout()
+            }
+        } catch {}
+
+        if (!token) {
+            const rawUser = localStorage.getItem('user')
+            if (rawUser) {
+                try {
+                    const userState = JSON.parse(rawUser)
+                    const expiresTime = parseExpiresTime(userState?.expires)
+                    if (userState?.accessToken && expiresTime > Date.now()) {
+                        token = userState.accessToken
+                    } else if (userState?.accessToken) {
+                        localStorage.removeItem('user')
+                    }
+                } catch {}
+            }
+        }
+
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`
         }
         if (config.params === undefined) {
             config.params = {}
@@ -56,6 +92,17 @@ instance.interceptors.response.use(
     (error) => {
         // 响应错误时也结束进度条
         NProgress.done()
+        const status = error?.response?.status
+        if ((status === 401 || status === 403) && isProtectedClientUrl(error?.config?.url)) {
+            try {
+                const userStore = useUserStore(pinia)
+                userStore.logout()
+            } catch {}
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('sonora:auth-expired'))
+            }
+            error.message = status === 403 ? '登录已过期或无权限，请重新登录' : '请先登录'
+        }
         return Promise.reject(error)
     }
 )

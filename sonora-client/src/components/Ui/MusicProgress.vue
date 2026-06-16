@@ -210,7 +210,7 @@ const previewPositionPercent = computed(() => {
 }
 
 .progress-fill {
-  transition: width 0.05s linear;
+  will-change: width;
 }
 
 .progress-thumb {

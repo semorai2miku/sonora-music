@@ -18,6 +18,7 @@ interface Props {
   currentPlayingIndex?: number
   showHeader?: boolean
   showControls?: boolean
+  showSaveToPlaylist?: boolean
   emptyMessage?: string
   loading?: boolean
   allowRemove?: boolean
@@ -30,7 +31,6 @@ interface Emits {
   (e: 'sort'): void
   (e: 'filter'): void
   (e: 'mv', song: Song, index: number): void
-  (e: 'download', song: Song, index: number): void
   (e: 'remove', song: Song, index: number): void
 }
 
@@ -38,6 +38,7 @@ const props = withDefaults(defineProps<Props>(), {
   currentPlayingIndex: -1,
   showHeader: true,
   showControls: true,
+  showSaveToPlaylist: true,
   emptyMessage: '',
   loading: false,
   allowRemove: false,
@@ -52,6 +53,30 @@ const userStore = useUserStore()
 const showLogin = ref(false)
 const showSaveToPlaylist = ref(false)
 const playlistTargetSong = ref<Song | null>(null)
+const likedState = reactive<Record<string, boolean>>({})
+const likedUpdating = reactive<Record<string, boolean>>({})
+const likedActionAt = reactive<Record<string, number>>({})
+
+const songKey = (song: Song) => String(song.id ?? '')
+
+const isSongLiked = (song: Song) => {
+  const key = songKey(song)
+  if (key && key in likedState) return likedState[key]
+  return Boolean(song.liked)
+}
+
+const setSongLiked = (song: Song, liked: boolean) => {
+  const key = songKey(song)
+  if (key) likedState[key] = liked
+  song.liked = liked
+}
+
+const ensureAuthenticated = () => {
+  if (userStore.isAuthenticated) return true
+  if (userStore.isLoggedIn) userStore.logout()
+  showLogin.value = true
+  return false
+}
 
 // 歌曲封面飞行动画
 const playSongWithAnimation = async (song: Song, index: number, event?: MouseEvent) => {
@@ -116,33 +141,41 @@ const openMV = (song: Song, index: number) => {
   }
 }
 
-const downloadSong = (song: Song, index: number) => {
-  emit('download', song, index)
-}
-
 const removeSong = (song: Song, index: number) => {
   emit('remove', song, index)
 }
 
 const refreshLikedStates = async () => {
-  if (!userStore.isLoggedIn || !props.songs?.length) return
+  if (!props.songs?.length) return
+  if (!userStore.isAuthenticated) {
+    if (userStore.isLoggedIn) userStore.logout()
+    props.songs.forEach(song => setSongLiked(song, false))
+    return
+  }
   try {
     const res = await likedSongIds()
+    if (res?.code === 401) {
+      showLogin.value = true
+      return
+    }
     const ids = new Set((res?.data || []).map(id => String(id)))
     props.songs.forEach(song => {
-      song.liked = ids.has(String(song.id))
+      setSongLiked(song, ids.has(String(song.id)))
     })
   } catch {}
 }
 
 const toggleLike = async (song: Song, index: number) => {
-  if (!userStore.isLoggedIn) {
-    showLogin.value = true
-    return
-  }
+  if (!ensureAuthenticated()) return
   if (!song.id) return
-  const nextLiked = !song.liked
-  song.liked = nextLiked
+  const key = songKey(song)
+  const now = Date.now()
+  if (key && now - (likedActionAt[key] || 0) < 350) return
+  if (key) likedActionAt[key] = now
+  if (key && likedUpdating[key]) return
+  if (key) likedUpdating[key] = true
+  const nextLiked = !isSongLiked(song)
+  setSongLiked(song, nextLiked)
   try {
     let res
     if (nextLiked) {
@@ -150,25 +183,33 @@ const toggleLike = async (song: Song, index: number) => {
     } else {
       res = await unlikeSong(song.id)
     }
+    if (res?.code === 401) {
+      showLogin.value = true
+      throw new Error(res?.message || '请先登录')
+    }
     if (res?.code !== 200) throw new Error(res?.message || '操作失败')
+    window.dispatchEvent(new CustomEvent('sonora:playlists-updated'))
     emit('like', song, index)
-  } catch {
-    song.liked = !nextLiked
+  } catch (error: any) {
+    setSongLiked(song, !nextLiked)
+    if (error?.response?.status === 401) {
+      showLogin.value = true
+    }
+    console.error('Failed to toggle like state in SongList:', error)
+  } finally {
+    if (key) likedUpdating[key] = false
   }
 }
 
 const openSaveToPlaylist = (song: Song) => {
-  if (!userStore.isLoggedIn) {
-    showLogin.value = true
-    return
-  }
+  if (!ensureAuthenticated()) return
   if (!song.id) return
   playlistTargetSong.value = song
   showSaveToPlaylist.value = true
 }
 
 watch(
-  () => [props.songs?.map(song => song.id).join(','), userStore.isLoggedIn],
+  () => [props.songs?.map(song => song.id).join(','), userStore.isAuthenticated],
   refreshLikedStates,
   { immediate: true }
 )
@@ -375,74 +416,57 @@ watch(
             </div>
             <!-- 操控按钮 -->
             <div
-              class="col-span-2 flex items-center justify-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+              class="col-span-2 flex items-center justify-center gap-1 opacity-80 transition-opacity duration-200 group-hover:opacity-100"
             >
-              <Button
+              <button
                 v-if="song.id"
-                variant="ghost"
-                size="icon-md"
-                rounded="full"
-                class="h-9 w-9"
-                :class="song.liked ? 'text-pink-400' : ''"
-                :icon="song.liked ? 'icon-[mdi--heart]' : 'icon-[mdi--heart-outline]'"
-                iconClass="h-5 w-5"
-                :title="song.liked ? '取消喜欢' : '喜欢'"
-                @click.stop="toggleLike(song, index)"
-              />
-              <Button
+                type="button"
+                class="text-primary/70 hover:text-primary inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent transition-all duration-300 hover:bg-hover-glass"
+                :class="isSongLiked(song) ? 'text-pink-400' : ''"
+                :title="isSongLiked(song) ? '取消喜欢' : '喜欢'"
+                @click.stop.prevent="toggleLike(song, index)"
+              >
+                <span
+                  class="h-5 w-5"
+                  :class="isSongLiked(song) ? 'icon-[mdi--heart]' : 'icon-[mdi--heart-outline]'"
+                ></span>
+              </button>
+              <button
                 v-if="song.id"
-                variant="ghost"
-                size="icon-md"
-                rounded="full"
-                class="h-9 w-9"
-                icon="icon-[mdi--playlist-plus]"
-                iconClass="h-5 w-5"
+                type="button"
+                class="text-primary/70 hover:text-primary inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent transition-all duration-300 hover:bg-hover-glass"
                 title="收藏到歌单"
-                @click.stop="openSaveToPlaylist(song)"
-              />
-              <Button
+                @click.stop.prevent="openSaveToPlaylist(song)"
+              >
+                <span class="icon-[mdi--playlist-plus] h-5 w-5"></span>
+              </button>
+              <button
                 v-if="allowRemove && song.id"
-                variant="ghost"
-                size="icon-md"
-                rounded="full"
-                class="h-9 w-9 text-red-300"
-                icon="icon-[mdi--playlist-remove]"
-                iconClass="h-5 w-5"
+                type="button"
+                class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-red-300 transition-all duration-300 hover:bg-hover-glass"
                 title="从歌单移除"
-                @click.stop="removeSong(song, index)"
-              />
-              <Button
+                @click.stop.prevent="removeSong(song, index)"
+              >
+                <span class="icon-[mdi--playlist-remove] h-5 w-5"></span>
+              </button>
+              <button
                 v-if="song.mvId"
-                variant="ghost"
-                size="icon-md"
-                rounded="full"
-                class="h-9 w-9"
-                icon="icon-[mdi--movie-open-play]"
-                iconClass="h-5 w-5"
+                type="button"
+                class="text-primary/70 hover:text-primary inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent transition-all duration-300 hover:bg-hover-glass"
                 :title="t('common.playMV')"
-                @click.stop="openMV(song, index)"
-              />
-              <Button
+                @click.stop.prevent="openMV(song, index)"
+              >
+                <span class="icon-[mdi--movie-open-play] h-5 w-5"></span>
+              </button>
+              <button
                 v-if="song.id"
-                variant="ghost"
-                size="icon-md"
-                rounded="full"
-                class="h-9 w-9"
-                icon="icon-[mdi--information-outline]"
-                iconClass="h-5 w-5"
+                type="button"
+                class="text-primary/70 hover:text-primary inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent transition-all duration-300 hover:bg-hover-glass"
                 :title="t('common.detail')"
-                @click.stop="router.push(`/song/${song.id}`)"
-              />
-              <Button
-                variant="ghost"
-                size="icon-md"
-                rounded="full"
-                class="h-9 w-9"
-                icon="icon-[mdi--tray-arrow-down]"
-                iconClass="h-5 w-5"
-                :title="t('common.download')"
-                @click.stop="downloadSong(song, index)"
-              />
+                @click.stop.prevent="router.push(`/song/${song.id}`)"
+              >
+                <span class="icon-[mdi--information-outline] h-5 w-5"></span>
+              </button>
             </div>
           </div>
         </div>

@@ -14,12 +14,17 @@ interface Props {
   to: string
   aspectRatio?: 'square' | 'video'
   enableTilt?: boolean
+  playable?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   aspectRatio: 'square',
   enableTilt: true,
+  playable: false,
 })
+const emit = defineEmits<{
+  (e: 'play', id: number | string): void
+}>()
 
 const router = useRouter()
 const cardRef = ref<HTMLElement | null>(null)
@@ -276,6 +281,12 @@ const handleMouseLeave = () => {
     glareRef.value.style.opacity = '0'
   }
 }
+
+const handlePlayClick = (event: MouseEvent) => {
+  event.stopPropagation()
+  if (!props.playable) return
+  emit('play', props.id)
+}
 </script>
 
 <template>
@@ -325,7 +336,16 @@ const handleMouseLeave = () => {
       <div
         class="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition-all duration-300 group-hover:opacity-100"
       >
+        <button
+          v-if="playable"
+          type="button"
+          class="flex h-12 w-12 scale-75 items-center justify-center rounded-full bg-white/90 shadow-xl transition-transform duration-300 group-hover:scale-100"
+          @click.stop="handlePlayClick"
+        >
+          <span class="icon-[mdi--play] h-6 w-6 text-sky-500" />
+        </button>
         <div
+          v-else
           class="flex h-12 w-12 scale-75 items-center justify-center rounded-full bg-white/90 shadow-xl transition-transform duration-300 group-hover:scale-100"
         >
           <span class="icon-[mdi--play] h-6 w-6 text-sky-500" />

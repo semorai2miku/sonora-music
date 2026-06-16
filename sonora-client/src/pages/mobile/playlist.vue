@@ -1,19 +1,35 @@
 <script setup lang="ts">
-import { playlistDetail, playlistTrackAll } from '@/api'
-import { usePlayActions } from '@/composables/usePlayActions'
-import LazyImage from '@/components/Ui/LazyImage.vue'
+import {
+  clientPlaylistDetail,
+  collectPlaylist,
+  myPlaylistDetail,
+  myPlaylists,
+  playlistDetail,
+  playlistTrackAll,
+  uncollectPlaylist,
+  updateMyPlaylist,
+} from '@/api'
 import PlaylistCommentsPopup from '@/components/Mobile/PlaylistCommentsPopup.vue'
 import Button from '@/components/Ui/Button.vue'
-import { useI18n } from 'vue-i18n'
-import { formatCount } from '@/utils/time'
+import LazyImage from '@/components/Ui/LazyImage.vue'
+import { usePlayActions } from '@/composables/usePlayActions'
+import { useUserStore } from '@/stores/modules/user'
 import { withImageParam } from '@/utils/media'
+import { formatCount } from '@/utils/time'
 import {
+  transformClientPlaylistDetail,
   transformPlaylistDetail,
   transformSongs,
   type SongData,
 } from '@/utils/transformers'
+import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
+const userStore = useUserStore()
+const route = useRoute()
+const playlistId = computed(() => Number(route.params.id))
+const { playAll: playAllAction, shufflePlay: shufflePlayAction } = usePlayActions()
+const PLAYLIST_SONG_PAGE_SIZE = 60
 
 type PlaylistInfo = {
   name: string
@@ -28,43 +44,190 @@ type PlaylistInfo = {
   coverImgUrl: string
 }
 
-const route = useRoute()
-const playlistId = computed(() => Number(route.params.id))
-
 const state = reactive({
   info: {} as PlaylistInfo,
   songs: [] as SongData[],
+  songPage: 1,
   loading: true,
   collected: false,
+  isLocalPlaylist: false,
   showFullDesc: false,
   showComments: false,
+  myPlaylist: null as null | { id: number | string; type?: string; status?: number; subscribed?: boolean },
+  actionLoading: false,
 })
 
-const { playAll: playAllAction, shufflePlay: shufflePlayAction } = usePlayActions()
+const isSubscribedPlaylist = computed(() => Boolean(state.myPlaylist?.subscribed))
+const isOwnedNormalPlaylist = computed(
+  () => state.myPlaylist?.type === 'normal' && !isSubscribedPlaylist.value
+)
+const isPublishedPlaylist = computed(() => Number(state.myPlaylist?.status || 0) === 1)
+const showCoverCollectButton = computed(
+  () => state.isLocalPlaylist && !isOwnedNormalPlaylist.value && state.myPlaylist?.type !== 'liked'
+)
+const showUtilityActionButton = computed(() => isOwnedNormalPlaylist.value)
+const visibleSongs = computed(() => state.songs.slice(0, state.songPage * PLAYLIST_SONG_PAGE_SIZE))
+const hasMoreSongs = computed(() => visibleSongs.value.length < state.songs.length)
+const currentCategory = computed(() => {
+  if (state.myPlaylist?.type === 'liked' && !isSubscribedPlaylist.value) {
+    return t('playlist.likedBadge')
+  }
+  if (isOwnedNormalPlaylist.value) {
+    return isPublishedPlaylist.value ? t('playlist.visibility.public') : t('playlist.visibility.private')
+  }
+  return state.info.category || t('home.playlistFallback')
+})
+
+const loadMyPlaylistMeta = async (id: number) => {
+  if (!userStore.isLoggedIn) {
+    state.myPlaylist = null
+    state.collected = false
+    return null
+  }
+  try {
+    const res = await myPlaylists()
+    const found = (res?.data || []).find(item => Number(item.id) === id) || null
+    state.myPlaylist = found
+    state.collected = Boolean(found?.subscribed)
+    return found && !found.subscribed ? found : null
+  } catch {
+    state.myPlaylist = null
+    state.collected = false
+    return null
+  }
+}
+
+const loadPublicPlaylist = async (id: number) => {
+  state.isLocalPlaylist = false
+  try {
+    const res = await clientPlaylistDetail(id)
+    if (res?.code === 200 && res.data) {
+      const detail = transformClientPlaylistDetail(
+        res as Record<string, unknown>,
+        t('home.playlistFallback')
+      )
+      if (detail) {
+        state.info = {
+          ...detail,
+          playCount: formatCount(Number(detail.playCount || 0)),
+          likes: formatCount(Number(detail.likes || 0)),
+        }
+      }
+      state.isLocalPlaylist = true
+      state.collected = Boolean(res.data.subscribed || state.myPlaylist?.subscribed)
+      state.songPage = 1
+      state.songs = transformSongs(res as Record<string, unknown>, 300)
+      return
+    }
+  } catch {}
+
+  const [detailRes, tracksRes] = await Promise.all([
+    playlistDetail({ id }),
+    playlistTrackAll({ id, limit: 100 }),
+  ])
+
+  const detail = transformPlaylistDetail(detailRes as Record<string, unknown>, t('home.playlistFallback'))
+  if (detail) {
+    state.info = {
+      ...detail,
+      playCount: formatCount(detail.playCount as number),
+      likes: formatCount(detail.likes as number),
+    }
+  }
+
+  state.songPage = 1
+  state.songs = transformSongs(tracksRes as Record<string, unknown>)
+}
+
+const loadOwnedPlaylist = async (id: number) => {
+  state.isLocalPlaylist = true
+  const res = await myPlaylistDetail(id)
+  const detail = transformClientPlaylistDetail(
+    res as Record<string, unknown>,
+    currentCategory.value || t('home.playlistFallback')
+  )
+  if (detail) {
+    state.info = {
+      ...detail,
+      playCount: formatCount(Number(detail.playCount || 0)),
+      likes: formatCount(Number(detail.likes || 0)),
+    }
+  }
+
+  state.songPage = 1
+  state.songs = transformSongs(res as Record<string, unknown>, 300)
+}
 
 const load = async (id: number) => {
+  state.loading = true
   try {
-    const [detailRes, tracksRes] = await Promise.all([
-      playlistDetail({ id }),
-      playlistTrackAll({ id, limit: 100 }),
-    ])
-
-    const detail = transformPlaylistDetail(
-      detailRes as Record<string, unknown>,
-      t('home.playlistFallback')
-    )
-    if (detail) {
-      state.info = {
-        ...detail,
-        playCount: formatCount(detail.playCount as number),
-        likes: formatCount(detail.likes as number),
-      }
+    const mine = await loadMyPlaylistMeta(id)
+    if (mine) {
+      await loadOwnedPlaylist(id)
+    } else {
+      await loadPublicPlaylist(id)
     }
-
-    state.songs = transformSongs(tracksRes as Record<string, unknown>)
   } finally {
     state.loading = false
   }
+}
+
+const playAll = () => playAllAction(state.songs)
+const shufflePlay = () => shufflePlayAction(state.songs)
+const loadMoreSongs = () => {
+  if (!hasMoreSongs.value) return
+  state.songPage += 1
+}
+
+const toggleCollect = async () => {
+  if (!userStore.isAuthenticated) {
+    if (userStore.isLoggedIn) userStore.logout()
+    return
+  }
+  if (!state.isLocalPlaylist || isOwnedNormalPlaylist.value || state.myPlaylist?.type === 'liked') {
+    return
+  }
+  state.actionLoading = true
+  try {
+    const res = state.collected
+      ? await uncollectPlaylist(playlistId.value)
+      : await collectPlaylist(playlistId.value)
+    if (res?.code !== 200 || !res.data) return
+    state.collected = !state.collected
+    state.info.likes = formatCount(Number(res.data.collectCount || 0))
+    state.myPlaylist = state.collected ? { ...res.data, subscribed: true } : null
+    window.dispatchEvent(new CustomEvent('sonora:playlists-updated'))
+  } finally {
+    state.actionLoading = false
+  }
+}
+
+const togglePublish = async () => {
+  if (!isOwnedNormalPlaylist.value) return
+  state.actionLoading = true
+  try {
+    const res = await updateMyPlaylist(playlistId.value, {
+      status: isPublishedPlaylist.value ? 0 : 1,
+    })
+    if (res?.code === 200 && res.data) {
+      state.myPlaylist = res.data
+      state.info.category =
+        Number(res.data.status || 0) === 1
+          ? t('playlist.visibility.public')
+          : t('playlist.visibility.private')
+      window.dispatchEvent(new CustomEvent('sonora:playlists-updated'))
+    }
+  } finally {
+    state.actionLoading = false
+  }
+}
+
+const handleUtilityAction = () => {
+  if (isOwnedNormalPlaylist.value) {
+    void togglePublish()
+    return
+  }
+  void toggleCollect()
 }
 
 watch(
@@ -72,20 +235,17 @@ watch(
   idNum => {
     if (!Number.isNaN(idNum) && idNum > 0) {
       state.loading = true
+      state.collected = false
+      state.isLocalPlaylist = false
+      state.songPage = 1
       state.showFullDesc = false
-      load(idNum)
+      void load(idNum)
     }
   },
   { immediate: true }
 )
 
-const playAll = () => playAllAction(state.songs)
-
-const shufflePlay = () => shufflePlayAction(state.songs)
-
-const toggleCollect = () => {
-  state.collected = !state.collected
-}
+watch(() => userStore.isLoggedIn, () => void load(playlistId.value))
 </script>
 
 <template>
@@ -106,6 +266,12 @@ const toggleCollect = () => {
         </div>
 
         <div class="header-content relative z-10 px-4 pt-4 pb-6">
+          <div class="mb-3">
+            <span class="rounded-full bg-black/20 px-3 py-1 text-[11px] text-accent/90">
+              {{ currentCategory }}
+            </span>
+          </div>
+
           <div class="flex gap-4">
             <div class="cover-wrapper relative shrink-0">
               <LazyImage
@@ -114,6 +280,18 @@ const toggleCollect = () => {
                 :alt="$t('components.songList.coverAlt')"
                 imgClass="cover-image h-32 w-32 rounded-2xl object-cover"
               />
+              <button
+                v-if="showCoverCollectButton"
+                type="button"
+                class="absolute top-2 right-2 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-black/45 text-white shadow-lg backdrop-blur-sm"
+                :disabled="state.actionLoading"
+                @click.stop="toggleCollect"
+              >
+                <span
+                  :class="state.collected ? 'icon-[mdi--heart]' : 'icon-[mdi--heart-outline]'"
+                  class="h-4.5 w-4.5"
+                ></span>
+              </button>
               <div
                 class="play-count-badge absolute -right-1 -bottom-1 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium text-accent"
               >
@@ -140,7 +318,7 @@ const toggleCollect = () => {
               <div class="mt-2 flex items-center gap-3 text-[11px] text-accent/60">
                 <span class="flex items-center gap-1">
                   <span class="icon-[mdi--music-note] h-3.5 w-3.5"></span>
-                  {{ $t('commonUnits.songsShort', state.info.songCount) }}
+                  {{ $t('commonUnits.songsShort', { count: state.info.songCount }) }}
                 </span>
                 <span class="flex items-center gap-1">
                   <span class="icon-[mdi--heart] h-3.5 w-3.5"></span>
@@ -196,14 +374,16 @@ const toggleCollect = () => {
           {{ t('actions.shufflePlay') }}
         </Button>
         <Button
+          v-if="showUtilityActionButton"
           variant="glass"
           size="icon-lg"
           rounded="full"
           class="collect-btn"
-          :class="state.collected ? 'collected' : ''"
-          :icon="state.collected ? 'icon-[mdi--heart]' : 'icon-[mdi--heart-outline]'"
+          :class="isPublishedPlaylist ? 'collected' : ''"
+          :icon="isPublishedPlaylist ? 'icon-[mdi--earth-off]' : 'icon-[mdi--earth]'"
           icon-class="h-5 w-5"
-          @click="toggleCollect"
+          :disabled="state.actionLoading"
+          @click="handleUtilityAction"
         />
         <Button
           variant="glass"
@@ -223,7 +403,12 @@ const toggleCollect = () => {
 
       <div class="flex-1 overflow-auto px-4 pb-6">
         <section>
-          <MobileSongList :songs="state.songs" :show-index="true" />
+          <MobileSongList :songs="visibleSongs" :show-index="true" />
+          <div v-if="hasMoreSongs" class="mt-4 text-center">
+            <button class="glass-button rounded-full px-5 py-2 text-sm" @click="loadMoreSongs">
+              {{ t('playlists.loadMore') }}
+            </button>
+          </div>
         </section>
       </div>
     </template>
@@ -273,35 +458,8 @@ const toggleCollect = () => {
   box-shadow: 0 2px 8px rgba(31, 124, 255, 0.3);
 }
 
-.shuffle-btn {
-  background: var(--glass-card-bg);
-  color: var(--glass-text-primary);
-  border: 1px solid var(--glass-border-default);
-  transition: all 0.3s ease;
-}
-
-.shuffle-btn:active {
-  transform: scale(0.97);
-  background: var(--glass-interactive-hover-muted);
-}
-
-.collect-btn {
-  background: var(--glass-card-bg);
-  color: var(--glass-text-primary);
-  border: 1px solid var(--glass-border-default);
-  transition: all 0.3s ease;
-}
-
-.collect-btn:active {
-  transform: scale(0.95);
-}
-
-.collect-btn.collected {
-  background: linear-gradient(135deg, rgba(31, 124, 255, 0.2), rgba(77, 163, 255, 0.2));
-  border-color: rgba(31, 124, 255, 0.3);
-  color: #1f7cff;
-}
-
+.shuffle-btn,
+.collect-btn,
 .comment-btn {
   background: var(--glass-card-bg);
   color: var(--glass-text-primary);
@@ -309,8 +467,16 @@ const toggleCollect = () => {
   transition: all 0.3s ease;
 }
 
+.shuffle-btn:active,
+.collect-btn:active,
 .comment-btn:active {
-  transform: scale(0.95);
+  transform: scale(0.97);
+}
+
+.collect-btn.collected {
+  background: linear-gradient(135deg, rgba(31, 124, 255, 0.2), rgba(77, 163, 255, 0.2));
+  border-color: rgba(31, 124, 255, 0.3);
+  color: #1f7cff;
 }
 
 .desc-section {

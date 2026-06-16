@@ -2,6 +2,12 @@
 import piniaPersistConfig from '@/stores/persist'
 import { defineStore } from 'pinia'
 
+const parseExpiresTime = (expires?: string) => {
+  if (!expires) return Number.POSITIVE_INFINITY
+  const time = Date.parse(expires.replace(/-/g, '/'))
+  return Number.isFinite(time) ? time : Number.POSITIVE_INFINITY
+}
+
 export interface UserProfile {
   userId: number
   profileId?: string
@@ -26,6 +32,9 @@ export const useUserStore = defineStore('user', {
   }),
   getters: {
     userId: state => state.profile?.userId || 0,
+    isTokenExpired: state => parseExpiresTime(state.expires) <= Date.now(),
+    isAuthenticated: state =>
+      Boolean(state.isLoggedIn && state.accessToken && parseExpiresTime(state.expires) > Date.now()),
     profileId: state => state.profile?.profileId || '',
     username: state => state.profile?.username || '',
     email: state => state.profile?.email || '',

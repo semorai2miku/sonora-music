@@ -15,6 +15,7 @@ interface Props {
   variant?: ListVariant
   showIndex?: boolean
   context?: 'queue' | 'generic'
+  showSaveToPlaylist?: boolean
 }
 const { playByIndex, addSong, playlist } = useAudio()
 
@@ -22,6 +23,7 @@ const props = withDefaults(defineProps<Props>(), {
   variant: 'compact',
   showIndex: true,
   context: 'generic',
+  showSaveToPlaylist: true,
 })
 
 const emit = defineEmits<{
@@ -33,6 +35,13 @@ const userStore = useUserStore()
 const showLogin = ref(false)
 const showSaveToPlaylist = ref(false)
 const playlistTargetSong = ref<Song | null>(null)
+
+const ensureAuthenticated = () => {
+  if (userStore.isAuthenticated) return true
+  if (userStore.isLoggedIn) userStore.logout()
+  showLogin.value = true
+  return false
+}
 
 const isCurrent = (s: Song) => {
   const cur = currentSong.value
@@ -58,9 +67,20 @@ const handleClick = (s: Song, i: number) => {
 }
 
 const refreshLikedStates = async () => {
-  if (!userStore.isLoggedIn || !props.songs?.length) return
+  if (!props.songs?.length) return
+  if (!userStore.isAuthenticated) {
+    if (userStore.isLoggedIn) userStore.logout()
+    props.songs.forEach(song => {
+      song.liked = false
+    })
+    return
+  }
   try {
     const res = await likedSongIds()
+    if (res?.code === 401) {
+      showLogin.value = true
+      return
+    }
     const ids = new Set((res?.data || []).map(id => String(id)))
     props.songs.forEach(song => {
       song.liked = ids.has(String(song.id))
@@ -69,32 +89,35 @@ const refreshLikedStates = async () => {
 }
 
 const toggleLike = async (song: Song) => {
-  if (!userStore.isLoggedIn) {
-    showLogin.value = true
-    return
-  }
+  if (!ensureAuthenticated()) return
   const nextLiked = !song.liked
   song.liked = nextLiked
   try {
     const res = nextLiked ? await likeSong(song.id) : await unlikeSong(song.id)
+    if (res?.code === 401) {
+      showLogin.value = true
+      throw new Error(res?.message || '请先登录')
+    }
     if (res?.code !== 200) throw new Error(res?.message || '操作失败')
-  } catch {
+    window.dispatchEvent(new CustomEvent('sonora:playlists-updated'))
+  } catch (error: any) {
     song.liked = !nextLiked
+    if (error?.response?.status === 401) {
+      showLogin.value = true
+    }
+    console.error('Failed to toggle like state in MobileSongList:', error)
   }
 }
 
 const openSaveToPlaylist = (song: Song) => {
-  if (!userStore.isLoggedIn) {
-    showLogin.value = true
-    return
-  }
+  if (!ensureAuthenticated()) return
   if (!song.id) return
   playlistTargetSong.value = song
   showSaveToPlaylist.value = true
 }
 
 watch(
-  () => [props.songs?.map(song => song.id).join(','), userStore.isLoggedIn],
+  () => [props.songs?.map(song => song.id).join(','), userStore.isAuthenticated],
   refreshLikedStates,
   { immediate: true }
 )
@@ -150,7 +173,7 @@ watch(
             :class="song.liked ? 'icon-[mdi--heart] text-pink-400' : 'icon-[mdi--heart-outline]'"
           ></span>
         </button>
-        <button class="rounded-full p-1.5" @click.stop="openSaveToPlaylist(song)">
+        <button v-if="showSaveToPlaylist" class="rounded-full p-1.5" @click.stop="openSaveToPlaylist(song)">
           <span class="icon-[mdi--playlist-plus] h-5 w-5"></span>
         </button>
         <span class="song-duration text-xs">{{ formatDuration(song.duration) }}</span>
@@ -215,7 +238,7 @@ watch(
           :class="song.liked ? 'icon-[mdi--heart] text-pink-400' : 'icon-[mdi--heart-outline]'"
         ></span>
       </button>
-      <button class="rounded-full p-1.5" @click.stop="openSaveToPlaylist(song)">
+      <button v-if="showSaveToPlaylist" class="rounded-full p-1.5" @click.stop="openSaveToPlaylist(song)">
         <span class="icon-[mdi--playlist-plus] h-5 w-5"></span>
       </button>
       <span class="song-duration shrink-0 text-xs">{{ formatDuration(song.duration) }}</span>

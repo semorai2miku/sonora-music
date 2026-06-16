@@ -1,6 +1,6 @@
 /**
  * 设置 Store
- * 管理背景动画、底栏歌词、音频可视化、音质等用户偏好设置
+ * 管理背景动画、底栏歌词、音质等用户偏好设置
  * 所有设置自动持久化到 localStorage
  */
 import { defineStore } from 'pinia'
@@ -90,16 +90,6 @@ export interface FooterLyricsSettingsState {
   modes: Array<'original' | 'trans' | 'roma'>
 }
 
-/** 音频可视化设置 */
-export interface AudioVisualizerSettingsState {
-  /** 是否在底栏显示 */
-  enabledInFooter: boolean
-  /** 是否在抽屉面板显示 */
-  enabledInDrawer: boolean
-  /** 可视化类型 */
-  visualizerType: 'bars' | 'wave' | 'circular'
-}
-
 /** 音频品质等级 */
 export type AudioQuality = 'standard' | 'higher' | 'exhigh' | 'lossless' | 'hires' | 'jyeffect' | 'sky' | 'jymaster'
 
@@ -112,7 +102,6 @@ export const useSettingsStore = defineStore('settings', {
     ultimate: UltimateSettingsState
     shadowBling: ShadowBlingSettingsState
     footerLyrics: FooterLyricsSettingsState
-    audioVisualizer: AudioVisualizerSettingsState
     backgroundType: 'aurora' | 'colorbends' | 'ultimate' | 'shadowBling'
     audioQuality: AudioQuality
   } => ({
@@ -157,11 +146,6 @@ export const useSettingsStore = defineStore('settings', {
     footerLyrics: {
       enabled: true,
       modes: ['original', 'trans'],
-    },
-    audioVisualizer: {
-      enabledInFooter: true,
-      enabledInDrawer: true,
-      visualizerType: 'bars',
     },
     backgroundType: 'aurora',
     audioQuality: 'jymaster',
@@ -274,18 +258,6 @@ export const useSettingsStore = defineStore('settings', {
     /** 设置音频品质 */
     setAudioQuality(quality: AudioQuality) {
       this.audioQuality = quality
-    },
-    /** 设置底栏音频可视化开关 */
-    setAudioVisualizerFooter(enabled: boolean) {
-      this.audioVisualizer.enabledInFooter = enabled
-    },
-    /** 设置抽屉面板音频可视化开关 */
-    setAudioVisualizerDrawer(enabled: boolean) {
-      this.audioVisualizer.enabledInDrawer = enabled
-    },
-    /** 设置音频可视化类型 */
-    setAudioVisualizerType(type: 'bars' | 'wave' | 'circular') {
-      this.audioVisualizer.visualizerType = type
     },
   },
   persist: piniaPersistConfig('settings'),

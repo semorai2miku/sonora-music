@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { clientAlbums } from '@/api'
 import { useI18n } from 'vue-i18n'
+import { usePlayActions } from '@/composables/usePlayActions'
 import { transformAlbums, type AlbumData } from '@/utils/transformers'
 import { withImageParam } from '@/utils/media'
 
 const { t } = useI18n()
+const router = useRouter()
+const { playAlbum: playAlbumAction } = usePlayActions()
 
 const PAGE_SIZE = 24
 const FETCH_LIMIT = 400
@@ -13,6 +16,7 @@ const state = reactive({
   albumPool: [] as AlbumData[],
   albums: [] as AlbumData[],
   isLoading: false,
+  playingAlbumId: null as number | string | null,
   region: 'all',
   page: 1,
 })
@@ -57,6 +61,16 @@ const loadMore = () => {
   if (!hasMore.value) return
   state.page += 1
   applyAlbums()
+}
+
+const playAlbum = async (albumId: number | string) => {
+  if (!albumId || state.playingAlbumId === albumId) return
+  state.playingAlbumId = albumId
+  try {
+    await playAlbumAction(albumId)
+  } finally {
+    state.playingAlbumId = null
+  }
 }
 
 watch(
@@ -106,11 +120,14 @@ onMounted(loadAlbums)
         v-else
         class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
       >
-        <router-link
+        <div
           v-for="album in state.albums"
           :key="album.id"
-          :to="`/album/${album.id}`"
           class="glass-card group flex h-full flex-col overflow-hidden p-3 transition-all hover:bg-white/10"
+          role="link"
+          tabindex="0"
+          @click="router.push(`/album/${album.id}`)"
+          @keydown.enter="router.push(`/album/${album.id}`)"
         >
           <div class="relative mb-3 aspect-square overflow-hidden rounded-2xl">
             <LazyImage
@@ -121,6 +138,24 @@ onMounted(loadAlbums)
             <span v-if="album.region" class="album-region-badge">
               {{ album.region }}
             </span>
+            <div
+              class="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover:bg-black/40 group-hover:opacity-100"
+            >
+              <button
+                type="button"
+                class="album-play-button"
+                @click.stop="playAlbum(album.id)"
+              >
+                <span
+                  :class="
+                    state.playingAlbumId === album.id
+                      ? 'icon-[mdi--loading] animate-spin'
+                      : 'icon-[mdi--play]'
+                  "
+                  class="h-6 w-6 text-white"
+                ></span>
+              </button>
+            </div>
           </div>
 
           <div class="flex min-h-0 flex-1 flex-col">
@@ -136,7 +171,7 @@ onMounted(loadAlbums)
               <span>{{ t('commonUnits.songsShort', album.size || 0) }}</span>
             </div>
           </div>
-        </router-link>
+        </div>
       </div>
 
       <div v-if="hasMore && state.albums.length" class="mt-6 text-center">
@@ -210,5 +245,26 @@ onMounted(loadAlbums)
   color: white;
   font-size: 0.6875rem;
   backdrop-filter: blur(10px);
+}
+
+.album-play-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  border: 0;
+  border-radius: 9999px;
+  background: rgba(15, 23, 42, 0.55);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.35);
+  backdrop-filter: blur(12px);
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
+}
+
+.album-play-button:hover {
+  transform: scale(1.06);
+  background: rgba(37, 99, 235, 0.78);
 }
 </style>

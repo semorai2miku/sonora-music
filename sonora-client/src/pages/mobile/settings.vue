@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { defineAsyncComponent } from 'vue'
 import { useSettingsStore } from '@/stores/modules/settings'
 import { storeToRefs } from 'pinia'
 import { useGlobalStore } from '@/stores/modules/global'
@@ -6,6 +7,19 @@ import { useI18n } from 'vue-i18n'
 import { getBackgroundOptions, getThemeOptions, getLangOptions, getAudioQualityOptions } from '@/config/settingsOptions'
 import I18n from '@/languages'
 import Button from '@/components/Ui/Button.vue'
+
+const AuroraSettingsPanel = defineAsyncComponent(
+  () => import('@/components/Background/AuroraSettingsPanel.vue')
+)
+const ColorBendsSettingsPanel = defineAsyncComponent(
+  () => import('@/components/Background/ColorBendsSettingsPanel.vue')
+)
+const UltimateSettingsPanel = defineAsyncComponent(
+  () => import('@/components/Background/UltimateSettingsPanel.vue')
+)
+const ShadowBlingSettingsPanel = defineAsyncComponent(
+  () => import('@/components/Background/ShadowBlingSettingsPanel.vue')
+)
 
 const settings = useSettingsStore()
 const { footerLyrics, backgroundType, audioQuality } = storeToRefs(settings)
@@ -251,6 +265,29 @@ const romaChecked = computed({
           </Button>
         </div>
       </div>
+    </section>
+
+    <section class="settings-card mt-4 overflow-hidden">
+      <div class="card-header mb-4">
+        <div class="icon-wrapper bg-linear-to-br from-sky-500 to-indigo-600">
+          <span class="icon-[mdi--tune-variant] h-4 w-4 text-primary"></span>
+        </div>
+        <div>
+          <h2 class="card-title">{{ t('components.settings.customColorsTitle') }}</h2>
+          <p class="card-desc">{{ t('components.settings.customColorsDesc') }}</p>
+        </div>
+      </div>
+      <component
+        :is="
+          backgroundType === 'colorbends'
+            ? ColorBendsSettingsPanel
+            : backgroundType === 'aurora'
+              ? AuroraSettingsPanel
+              : backgroundType === 'shadowBling'
+                ? ShadowBlingSettingsPanel
+                : UltimateSettingsPanel
+        "
+      />
     </section>
 
     <div class="mt-8 text-center">

@@ -35,6 +35,13 @@ const state = reactive({
   liked: false,
 })
 
+const ensureAuthenticated = () => {
+  if (userStore.isAuthenticated) return true
+  if (userStore.isLoggedIn) userStore.logout()
+  showLogin.value = true
+  return false
+}
+
 onMounted(() => fetchLyrics(songId.value))
 watch(
   () => route.params.id,
@@ -116,42 +123,54 @@ onMounted(() => loadInfo())
 watch(songId, () => loadInfo())
 
 const refreshLikeState = async () => {
-  if (!userStore.isLoggedIn || !state.info?.id) {
+  if (!state.info?.id) {
+    state.liked = false
+    return
+  }
+  if (!userStore.isAuthenticated) {
+    if (userStore.isLoggedIn) userStore.logout()
     state.liked = false
     return
   }
   try {
     const res = await likedSongIds()
+    if (res?.code === 401) {
+      state.liked = false
+      return
+    }
     state.liked = (res?.data || []).map(String).includes(String(state.info.id))
   } catch {}
 }
 
 const toggleLike = async () => {
   if (!state.info?.id) return
-  if (!userStore.isLoggedIn) {
-    showLogin.value = true
-    return
-  }
+  if (!ensureAuthenticated()) return
   const nextLiked = !state.liked
   state.liked = nextLiked
   try {
     const res = nextLiked ? await likeSong(state.info.id) : await unlikeSong(state.info.id)
+    if (res?.code === 401) {
+      showLogin.value = true
+      throw new Error(res?.message || '请先登录')
+    }
     if (res?.code !== 200) throw new Error(res?.message || '操作失败')
-  } catch {
+    window.dispatchEvent(new CustomEvent('sonora:playlists-updated'))
+  } catch (error: any) {
     state.liked = !nextLiked
+    if (error?.response?.status === 401) {
+      showLogin.value = true
+    }
+    console.error('Failed to toggle like state on song page:', error)
   }
 }
 
 const openSaveToPlaylist = () => {
   if (!state.info?.id) return
-  if (!userStore.isLoggedIn) {
-    showLogin.value = true
-    return
-  }
+  if (!ensureAuthenticated()) return
   showSaveToPlaylist.value = true
 }
 
-watch(() => [state.info?.id, userStore.isLoggedIn], refreshLikeState)
+watch(() => [state.info?.id, userStore.isAuthenticated], refreshLikeState)
 </script>
 
 <template>

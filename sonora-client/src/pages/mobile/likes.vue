@@ -6,11 +6,13 @@ import { useUserStore } from '@/stores/modules/user'
 import type { Song } from '@/stores/interface'
 import { transformSong } from '@/utils/transformers'
 import { withImageParam } from '@/utils/media'
+import { useI18n } from 'vue-i18n'
 
 const userStore = useUserStore()
 const { setPlaylist, play } = useAudio()
 const songs = ref<Song[]>([])
 const loading = ref(false)
+const { t } = useI18n()
 
 const loadLikedSongs = async () => {
   if (!userStore.isLoggedIn) {
@@ -20,6 +22,11 @@ const loadLikedSongs = async () => {
   loading.value = true
   try {
     const res = await likedSongs()
+    if (res?.code === 401) {
+      userStore.logout()
+      songs.value = []
+      return
+    }
     songs.value = (res?.data || []).map(item => ({ ...transformSong(item), liked: true }))
   } finally {
     loading.value = false
@@ -38,13 +45,13 @@ watch(() => userStore.isLoggedIn, loadLikedSongs)
 <template>
   <div class="flex-1 overflow-auto px-3 pb-6">
     <div class="mb-3 px-1">
-      <h1 class="text-primary text-xl font-bold">我喜欢的音乐</h1>
+      <h1 class="text-primary text-xl font-bold">{{ $t('playlist.likedBadge') }}</h1>
       <p class="text-primary/60 mt-1 text-xs">
-        {{ userStore.isLoggedIn ? `共 ${songs.length} 首歌曲` : '登录后同步喜欢的歌曲' }}
+        {{ userStore.isLoggedIn ? t('likes.count', { count: songs.length }) : t('likes.loginHint') }}
       </p>
     </div>
 
-    <div v-if="loading" class="py-10 text-center text-primary/70">加载中...</div>
+    <div v-if="loading" class="py-10 text-center text-primary/70">{{ $t('common.loading') }}...</div>
     <template v-else-if="!songs.length">
       <div class="py-10 text-center text-primary/70">{{ $t('likes.empty') }}</div>
     </template>

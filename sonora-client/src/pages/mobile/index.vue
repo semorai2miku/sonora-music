@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { banner, clientAlbums, clientArtists, clientSongs, topPlaylist } from '@/api'
+import { banner, clientAlbums, clientArtists, clientRecommendPlaylists, clientSongs } from '@/api'
+import { usePlayActions } from '@/composables/usePlayActions'
 import { useI18n } from 'vue-i18n'
 import { Swiper, SwiperSlide } from 'swiper/vue'
 import { Autoplay, Pagination } from 'swiper/modules'
@@ -19,6 +20,7 @@ import {
 } from '@/utils/transformers'
 
 const { t } = useI18n()
+const router = useRouter()
 const PLAYLIST_SOURCE_LIMIT = 12
 const SONG_POOL_LIMIT = 60
 const ARTIST_POOL_LIMIT = 120
@@ -26,6 +28,7 @@ const ALBUM_POOL_LIMIT = 120
 const ARTIST_SOURCE_LIMIT = 10
 const ALBUM_SOURCE_LIMIT = 8
 const MAX_VISIBLE_RECOMMEND_SONGS = 6
+const { playPlaylist: playPlaylistAction } = usePlayActions()
 
 interface HomeState {
   banners: BannerData[]
@@ -37,6 +40,7 @@ interface HomeState {
   albums: AlbumData[]
   playlists: PlaylistData[]
   songs: SongData[]
+  playingPlaylistId: number | string | null
   isLoading: boolean
 }
 
@@ -50,6 +54,7 @@ const state = reactive<HomeState>({
   albums: [],
   playlists: [],
   songs: [],
+  playingPlaylistId: null,
   isLoading: true,
 })
 
@@ -93,7 +98,7 @@ const loadHomeData = async () => {
   try {
     const [b, p, s, artistRes, albumRes] = await Promise.allSettled([
       banner({ type: 2 }),
-      topPlaylist({ order: 'hot', limit: PLAYLIST_SOURCE_LIMIT }),
+      clientRecommendPlaylists({ limit: PLAYLIST_SOURCE_LIMIT }),
       clientSongs({ limit: SONG_POOL_LIMIT, sort: 'id_desc' }),
       clientArtists({ limit: ARTIST_POOL_LIMIT }),
       clientAlbums({ limit: ALBUM_POOL_LIMIT }),
@@ -127,6 +132,16 @@ const loadHomeData = async () => {
     applyAlbums()
   } finally {
     state.isLoading = false
+  }
+}
+
+const playPlaylist = async (playlistId: number | string) => {
+  if (!playlistId || state.playingPlaylistId === playlistId) return
+  state.playingPlaylistId = playlistId
+  try {
+    await playPlaylistAction(playlistId)
+  } finally {
+    state.playingPlaylistId = null
   }
 }
 
@@ -199,11 +214,14 @@ const swiperModules = [Autoplay, Pagination]
             </div>
           </div>
           <div class="grid grid-cols-3 gap-3">
-            <router-link
+            <div
               v-for="pl in playlists"
               :key="pl.id"
-              :to="`/playlist/${pl.id}`"
-              class="group"
+              class="group cursor-pointer"
+              role="link"
+              tabindex="0"
+              @click="router.push(`/playlist/${pl.id}`)"
+              @keydown.enter="router.push(`/playlist/${pl.id}`)"
             >
               <div class="playlist-cover relative mb-2 aspect-square overflow-hidden rounded-xl">
                 <LazyImage
@@ -211,9 +229,27 @@ const swiperModules = [Autoplay, Pagination]
                   :alt="pl.name"
                   imgClass="h-full w-full object-cover transition-transform duration-300 group-active:scale-105"
                 />
+                <div
+                  class="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-active:bg-black/35 group-active:opacity-100"
+                >
+                  <button
+                    type="button"
+                    class="playlist-play-button"
+                    @click.stop="playPlaylist(pl.id)"
+                  >
+                    <span
+                      :class="
+                        state.playingPlaylistId === pl.id
+                          ? 'icon-[mdi--loading] animate-spin'
+                          : 'icon-[mdi--play]'
+                      "
+                      class="h-4.5 w-4.5 text-white"
+                    ></span>
+                  </button>
+                </div>
               </div>
               <p class="playlist-name line-clamp-2 text-xs leading-tight">{{ pl.name }}</p>
-            </router-link>
+            </div>
           </div>
         </section>
 
@@ -483,6 +519,18 @@ const swiperModules = [Autoplay, Pagination]
 .playlist-name {
   color: var(--glass-text-primary);
   opacity: 0.8;
+}
+
+.playlist-play-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 0;
+  border-radius: 9999px;
+  background: rgba(15, 23, 42, 0.82);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.28);
 }
 
 .mobile-song-row {

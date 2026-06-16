@@ -5,9 +5,11 @@ import { useAudio } from '@/composables/useAudio'
 import { useUserStore } from '@/stores/modules/user'
 import type { Song } from '@/stores/interface'
 import { transformSong } from '@/utils/transformers'
+import { useI18n } from 'vue-i18n'
 
 const userStore = useUserStore()
 const { setPlaylist, play } = useAudio()
+const { t } = useI18n()
 
 const state = reactive({
   isPageLoading: false,
@@ -22,6 +24,11 @@ const loadLikedSongs = async () => {
   state.isPageLoading = true
   try {
     const res = await likedSongs()
+    if (res?.code === 401) {
+      userStore.logout()
+      state.songs = []
+      return
+    }
     state.songs = (res?.data || []).map(item => ({
       ...transformSong(item),
       liked: true,
@@ -57,9 +64,13 @@ watch(() => userStore.isLoggedIn, loadLikedSongs)
             <div class="shimmer absolute inset-0"></div>
             <div class="relative z-10 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
               <div>
-                <h1 class="text-primary text-3xl font-bold">我喜欢的音乐</h1>
+                <h1 class="text-primary text-3xl font-bold">{{ $t('playlist.likedBadge') }}</h1>
                 <p class="text-primary/70 mt-1 text-sm">
-                  {{ userStore.isLoggedIn ? `共 ${state.songs.length} 首歌曲` : '登录后同步你点红心收藏的歌曲' }}
+                  {{
+                    userStore.isLoggedIn
+                      ? $t('likes.count', { count: state.songs.length })
+                      : $t('likes.loginHint')
+                  }}
                 </p>
               </div>
               <Button
@@ -69,7 +80,7 @@ watch(() => userStore.isLoggedIn, loadLikedSongs)
                 :disabled="!state.songs.length"
                 @click="playAll"
               >
-                播放全部
+                {{ t('actions.playAll') }}
               </Button>
             </div>
           </div>
@@ -79,7 +90,7 @@ watch(() => userStore.isLoggedIn, loadLikedSongs)
           :songs="state.songs"
           :loading="state.isPageLoading"
           :showHeader="true"
-          emptyMessage="暂无喜欢的歌曲"
+          :empty-message="$t('likes.empty')"
           @like="loadLikedSongs"
         />
       </template>

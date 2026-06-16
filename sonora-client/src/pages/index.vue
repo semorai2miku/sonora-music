@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { banner, clientAlbums, clientArtists, clientSongs, topPlaylist } from '@/api'
+import { banner, clientAlbums, clientArtists, clientRecommendPlaylists, clientSongs } from '@/api'
+import { usePlayActions } from '@/composables/usePlayActions'
 import { useI18n } from 'vue-i18n'
 import { Swiper, SwiperSlide } from 'swiper/vue'
 import { Pagination, Autoplay } from 'swiper/modules'
@@ -21,12 +22,14 @@ import {
 } from '@/utils/transformers'
 
 const { t } = useI18n()
+const router = useRouter()
 
 const PLAYLIST_SOURCE_LIMIT = 24
 const SONG_POOL_LIMIT = 120
 const ARTIST_POOL_LIMIT = 200
 const ALBUM_POOL_LIMIT = 200
 const MAX_VISIBLE_RECOMMEND_SONGS = 10
+const { playPlaylist: playPlaylistAction } = usePlayActions()
 
 const state = reactive({
   banners: [] as BannerData[],
@@ -38,6 +41,7 @@ const state = reactive({
   featuredAlbums: [] as AlbumData[],
   recommendPlaylists: [] as PlaylistData[],
   recommendSongs: [] as SongData[],
+  playingPlaylistId: null as number | string | null,
   isLoading: true,
   windowWidth: typeof window === 'undefined' ? 1280 : window.innerWidth,
 })
@@ -178,7 +182,7 @@ const loadData = async () => {
   try {
     const [b, p, s, artistsRes, albumsRes] = await Promise.allSettled([
       banner({ type: 0 }),
-      topPlaylist({ order: 'hot', limit: PLAYLIST_SOURCE_LIMIT }),
+      clientRecommendPlaylists({ limit: PLAYLIST_SOURCE_LIMIT }),
       clientSongs({ limit: SONG_POOL_LIMIT, sort: 'id_desc' }),
       clientArtists({ limit: ARTIST_POOL_LIMIT }),
       clientAlbums({ limit: ALBUM_POOL_LIMIT }),
@@ -212,6 +216,16 @@ const loadData = async () => {
     applyFeaturedAlbums()
   } finally {
     state.isLoading = false
+  }
+}
+
+const playPlaylist = async (playlistId: number | string) => {
+  if (!playlistId || state.playingPlaylistId === playlistId) return
+  state.playingPlaylistId = playlistId
+  try {
+    await playPlaylistAction(playlistId)
+  } finally {
+    state.playingPlaylistId = null
   }
 }
 
@@ -344,18 +358,39 @@ watch([playlistDisplayCount, songDisplayCount, artistDisplayCount, albumDisplayC
             </div>
           </div>
           <div v-scroll-in="{ stagger: true, staggerDelay: 0.04 }" class="playlist-grid grid gap-4">
-            <router-link
+            <div
               v-for="item in recommendPlaylists"
               :key="item.id"
-              :to="`/playlist/${item.id}`"
-              class="group playlist-card stagger-item"
+              class="group playlist-card stagger-item cursor-pointer"
+              role="link"
+              tabindex="0"
+              @click="router.push(`/playlist/${item.id}`)"
+              @keydown.enter="router.push(`/playlist/${item.id}`)"
             >
-              <div class="playlist-card__cover">
+              <div class="playlist-card__cover relative">
                 <LazyImage
                   :src="item.coverImgUrl"
                   :alt="item.name"
                   img-class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                 />
+                <div
+                  class="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover:bg-black/40 group-hover:opacity-100"
+                >
+                  <button
+                    type="button"
+                    class="album-play-button"
+                    @click.stop="playPlaylist(item.id)"
+                  >
+                    <span
+                      :class="
+                        state.playingPlaylistId === item.id
+                          ? 'icon-[mdi--loading] animate-spin'
+                          : 'icon-[mdi--play]'
+                      "
+                      class="h-6 w-6 text-white"
+                    ></span>
+                  </button>
+                </div>
               </div>
               <div class="playlist-card__body">
                 <p
@@ -363,8 +398,14 @@ watch([playlistDisplayCount, songDisplayCount, artistDisplayCount, albumDisplayC
                 >
                   {{ item.name }}
                 </p>
+                <p
+                  v-if="item.creator"
+                  class="mt-1 truncate text-xs text-[var(--glass-text-muted)]"
+                >
+                  {{ item.creator }}
+                </p>
               </div>
-            </router-link>
+            </div>
           </div>
         </section>
 
@@ -753,6 +794,26 @@ watch([playlistDisplayCount, songDisplayCount, artistDisplayCount, albumDisplayC
 
 .playlist-grid {
   grid-template-columns: repeat(auto-fill, minmax(138px, 1fr));
+}
+
+.album-play-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border: 0;
+  border-radius: 9999px;
+  background: rgba(15, 23, 42, 0.82);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.28);
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
+}
+
+.album-play-button:hover {
+  transform: scale(1.06);
+  background: rgba(31, 124, 255, 0.92);
 }
 
 .section-icon-badge {

@@ -4,8 +4,10 @@
  * 消除各页面（playlist、artist、album、charts）中的重复代码
  */
 import { useAudio } from '@/composables/useAudio'
+import { albumDetail, clientPlaylistDetail } from '@/api'
 import type { Song as StoreSong } from '@/stores/interface'
-import type { SongData } from '@/utils/transformers'
+import { transformAlbumSongs, transformAlbumDetail, type SongData } from '@/utils/transformers'
+import { transformSongs } from '@/utils/transformers'
 
 /**
  * 将 API 层的 SongData 映射为 Store 层的 Song 类型
@@ -89,7 +91,26 @@ export function usePlayActions() {
     play(shuffled[0], 0)
   }
 
-  return { playAll, shufflePlay, mapToStoreSong, mapToStoreSongs }
+  /**
+   * 播放整张专辑
+   * @param albumId - 专辑 ID
+   */
+  const playAlbum = async (albumId: number | string) => {
+    if (!albumId) return
+    const res = await albumDetail({ id: albumId })
+    const album = transformAlbumDetail(res as Record<string, unknown>)
+    const songs = transformAlbumSongs(res as Record<string, unknown>, album || undefined)
+    playAll(songs)
+  }
+
+  const playPlaylist = async (playlistId: number | string) => {
+    if (!playlistId) return
+    const res = await clientPlaylistDetail(playlistId)
+    const songs = transformSongs(res as Record<string, unknown>, 500)
+    playAll(songs)
+  }
+
+  return { playAll, shufflePlay, playAlbum, playPlaylist, mapToStoreSong, mapToStoreSongs }
 }
 
 /**

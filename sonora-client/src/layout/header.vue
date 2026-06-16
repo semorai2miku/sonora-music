@@ -71,10 +71,17 @@ const onDocClick = (e: Event) => {
   if (dd && dd.contains(target)) return
   state.historyOpen = false
 }
+const onAuthExpired = () => {
+  state.showLogin = true
+}
 onMounted(() => {
   document.addEventListener('pointerdown', onDocClick)
+  window.addEventListener('sonora:auth-expired', onAuthExpired)
 })
-onUnmounted(() => document.removeEventListener('pointerdown', onDocClick))
+onUnmounted(() => {
+  document.removeEventListener('pointerdown', onDocClick)
+  window.removeEventListener('sonora:auth-expired', onAuthExpired)
+})
 </script>
 <template>
   <header class="glass-nav sonora-header m-3 mx-4 flex items-center justify-between gap-4 px-4 py-3.5">
@@ -212,7 +219,7 @@ onUnmounted(() => document.removeEventListener('pointerdown', onDocClick))
       </Button>
 
       <!-- 用户头像 / 登录按钮 -->
-      <router-link v-if="userStore.isLoggedIn" to="/profile" class="flex items-center gap-2">
+      <router-link v-if="userStore.isAuthenticated" to="/profile" class="flex items-center gap-2">
         <img
           :src="userStore.avatarUrl"
           alt="avatar"

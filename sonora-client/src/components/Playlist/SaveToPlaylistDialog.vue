@@ -6,6 +6,8 @@ import {
   myPlaylists,
   type ClientPlaylist,
 } from '@/api'
+import { resolveMediaUrl, withImageParam } from '@/utils/media'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{
   songId: number | string
@@ -23,9 +25,10 @@ const loading = ref(false)
 const savingId = ref<number | string | null>(null)
 const errorMessage = ref('')
 const newPlaylistName = ref('')
+const { t } = useI18n()
 
 const normalPlaylists = computed(() =>
-  playlists.value.filter(playlist => playlist.type !== 'liked')
+  playlists.value.filter(playlist => playlist.type !== 'liked' && !playlist.subscribed)
 )
 
 const dispatchPlaylistUpdated = () => {
@@ -37,9 +40,13 @@ const loadPlaylists = async () => {
   errorMessage.value = ''
   try {
     const res = await myPlaylists()
-    playlists.value = res?.data || []
+    playlists.value = (Array.isArray(res?.data) ? res.data : []).map((playlist: ClientPlaylist) => ({
+      ...playlist,
+      cover: resolveMediaUrl(playlist.cover || '/default-cover.svg'),
+    }))
   } catch (error: any) {
-    errorMessage.value = error?.response?.data?.message || error?.message || '歌单加载失败'
+    errorMessage.value =
+      error?.response?.data?.message || error?.message || t('playlist.dialog.loadFailed')
   } finally {
     loading.value = false
   }
@@ -51,12 +58,13 @@ const saveToPlaylist = async (playlist: ClientPlaylist) => {
   errorMessage.value = ''
   try {
     const res = await addSongToMyPlaylist(playlist.id, props.songId)
-    if (res?.code !== 200) throw new Error(res?.message || '收藏失败')
+    if (res?.code !== 200) throw new Error(res?.message || t('playlist.dialog.saveFailed'))
     dispatchPlaylistUpdated()
     emit('saved', res.data || playlist)
     visible.value = false
   } catch (error: any) {
-    errorMessage.value = error?.response?.data?.message || error?.message || '收藏失败'
+    errorMessage.value =
+      error?.response?.data?.message || error?.message || t('playlist.dialog.saveFailed')
   } finally {
     savingId.value = null
   }
@@ -65,23 +73,24 @@ const saveToPlaylist = async (playlist: ClientPlaylist) => {
 const createAndSave = async () => {
   const name = newPlaylistName.value.trim()
   if (!name) {
-    errorMessage.value = '请输入歌单名称'
+    errorMessage.value = t('playlist.messages.nameRequired')
     return
   }
   savingId.value = 'new'
   errorMessage.value = ''
   try {
-    const createRes = await createMyPlaylist({ name })
+    const createRes = await createMyPlaylist({ name, status: 0 })
     if (createRes?.code !== 200 || !createRes.data?.id) {
-      throw new Error(createRes?.message || '创建歌单失败')
+      throw new Error(createRes?.message || t('playlist.dialog.createFailed'))
     }
     const saveRes = await addSongToMyPlaylist(createRes.data.id, props.songId)
-    if (saveRes?.code !== 200) throw new Error(saveRes?.message || '收藏失败')
+    if (saveRes?.code !== 200) throw new Error(saveRes?.message || t('playlist.dialog.saveFailed'))
     dispatchPlaylistUpdated()
     emit('saved', saveRes.data || createRes.data)
     visible.value = false
   } catch (error: any) {
-    errorMessage.value = error?.response?.data?.message || error?.message || '创建或收藏失败'
+    errorMessage.value =
+      error?.response?.data?.message || error?.message || t('playlist.dialog.createOrSaveFailed')
   } finally {
     savingId.value = null
   }
@@ -121,9 +130,11 @@ onMounted(loadPlaylists)
                 <img src="/branding/sonora-logo-icon.svg" alt="Sonora" class="h-6 w-6" />
               </span>
               <div class="min-w-0">
-                <h2 class="brand-font text-primary text-xl font-bold">收藏到歌单</h2>
+                <h2 class="brand-font text-primary text-xl font-bold">
+                  {{ $t('playlist.dialog.title') }}
+                </h2>
                 <p class="text-primary/50 mt-0.5 truncate text-sm">
-                  {{ songName || '选择一个自建歌单' }}
+                  {{ songName || $t('playlist.dialog.subtitle') }}
                 </p>
               </div>
             </div>
@@ -133,7 +144,7 @@ onMounted(loadPlaylists)
                 v-model="newPlaylistName"
                 type="text"
                 maxlength="80"
-                placeholder="新建歌单名称"
+                :placeholder="$t('playlist.dialog.newPlaylistPlaceholder')"
                 class="text-primary glass-card min-w-0 flex-1 rounded-xl border border-glass px-4 py-3 text-sm outline-none placeholder:text-primary/30 focus:border-sky-400/50"
                 @keyup.enter="createAndSave"
               />
@@ -146,7 +157,7 @@ onMounted(loadPlaylists)
                 icon="icon-[mdi--plus]"
                 @click="createAndSave"
               >
-                新建并收藏
+                {{ $t('playlist.dialog.createAndSave') }}
               </Button>
             </div>
 
@@ -157,10 +168,13 @@ onMounted(loadPlaylists)
               class="flex items-center justify-center py-12 text-primary/60"
             >
               <span class="icon-[mdi--loading] mr-2 h-5 w-5 animate-spin" />
-              正在加载歌单
+              {{ $t('playlist.dialog.loading') }}
             </div>
 
-            <div v-else-if="normalPlaylists.length" class="custom-scrollbar max-h-80 space-y-2 overflow-auto pr-1">
+            <div
+              v-else-if="normalPlaylists.length"
+              class="custom-scrollbar max-h-80 space-y-2 overflow-auto pr-1"
+            >
               <button
                 v-for="playlist in normalPlaylists"
                 :key="playlist.id"
@@ -173,7 +187,7 @@ onMounted(loadPlaylists)
                 >
                   <img
                     v-if="playlist.cover"
-                    :src="playlist.cover"
+                    :src="withImageParam(playlist.cover, '120y120')"
                     alt="cover"
                     class="h-full w-full object-cover"
                   />
@@ -181,7 +195,25 @@ onMounted(loadPlaylists)
                 </div>
                 <div class="min-w-0 flex-1">
                   <p class="text-primary truncate text-sm font-medium">{{ playlist.name }}</p>
-                  <p class="text-primary/50 mt-0.5 text-xs">{{ playlist.songCount || 0 }} 首</p>
+                  <div class="text-primary/50 mt-0.5 flex items-center gap-2 text-xs">
+                    <span>
+                      {{ $t('commonUnits.songsShort', { count: playlist.songCount || 0 }) }}
+                    </span>
+                    <span
+                      class="rounded-full px-2 py-0.5"
+                      :class="
+                        Number(playlist.status || 0) === 1
+                          ? 'bg-emerald-500/15 text-emerald-300'
+                          : 'bg-white/8 text-primary/55'
+                      "
+                    >
+                      {{
+                        Number(playlist.status || 0) === 1
+                          ? $t('playlist.visibility.public')
+                          : $t('playlist.visibility.private')
+                      }}
+                    </span>
+                  </div>
                 </div>
                 <span
                   v-if="savingId === playlist.id"
@@ -196,7 +228,7 @@ onMounted(loadPlaylists)
 
             <div v-else class="py-10 text-center">
               <span class="icon-[mdi--playlist-music-outline] text-primary/20 mx-auto mb-3 h-12 w-12" />
-              <p class="text-primary/60 text-sm">还没有自建歌单，可以先新建一个。</p>
+              <p class="text-primary/60 text-sm">{{ $t('playlist.dialog.empty') }}</p>
             </div>
           </div>
         </div>

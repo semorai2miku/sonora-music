@@ -47,9 +47,19 @@ export interface ClientPlaylist {
   cover?: string
   type?: 'liked' | 'normal' | string
   pinned?: number
+  status?: number
   description?: string
   songCount?: number
   createdAt?: string
+  playCount?: number
+  collectCount?: number
+  subscribed?: boolean
+  creatorId?: number
+  creator?: {
+    userId?: number
+    nickname?: string
+    avatarUrl?: string
+  }
 }
 
 export interface ClientPlaylistPayload {
@@ -57,6 +67,27 @@ export interface ClientPlaylistPayload {
   cover?: string
   description?: string
   pinned?: number
+  status?: number
+}
+
+export interface ClientPlaylistDetail extends ClientPlaylist {
+  playCount?: number
+  collectCount?: number
+  tags?: string
+  updatedAt?: string
+  creator?: {
+    userId?: number
+    nickname?: string
+    avatarUrl?: string
+  }
+  songs?: Array<Record<string, unknown>>
+}
+
+export interface ClientPlaylistPage {
+  list: ClientPlaylist[]
+  total: number
+  pageNum: number
+  pageSize: number
 }
 
 export const clientLogin = (data: { username: string; password: string }) =>
@@ -96,6 +127,18 @@ export const createMyPlaylist = (data: ClientPlaylistPayload) =>
 export const updateMyPlaylist = (playlistId: number | string, data: ClientPlaylistPayload) =>
   httpPut<SonoraResult<ClientPlaylist>>(`/api/client/me/playlists/${playlistId}`, data)
 
+export const myPlaylistDetail = (playlistId: number | string) =>
+  httpGet<SonoraResult<ClientPlaylistDetail>>(`/api/client/me/playlists/${playlistId}`)
+
+export const clientPlaylistDetail = (playlistId: number | string) =>
+  httpGet<SonoraResult<ClientPlaylistDetail>>(`/api/client/playlists/${playlistId}`)
+
+export const clientPublicPlaylists = (params?: { pageNum?: number; pageSize?: number }) =>
+  httpGet<SonoraResult<ClientPlaylistPage>>('/api/client/playlists', params)
+
+export const clientRecommendPlaylists = (params?: { limit?: number }) =>
+  httpGet<SonoraResult<Array<Record<string, unknown>>>>('/api/client/playlists/recommend', params)
+
 export const pinMyPlaylist = (playlistId: number | string, pinned: boolean) =>
   updateMyPlaylist(playlistId, { pinned: pinned ? 1 : 0 })
 
@@ -107,6 +150,12 @@ export const addSongToMyPlaylist = (playlistId: number | string, songId: number 
 
 export const removeSongFromMyPlaylist = (playlistId: number | string, songId: number | string) =>
   httpDelete<SonoraResult<null>>(`/api/client/me/playlists/${playlistId}/songs/${songId}`)
+
+export const collectPlaylist = (playlistId: number | string) =>
+  httpPost<SonoraResult<ClientPlaylist>>(`/api/client/me/likes/playlists/${playlistId}`)
+
+export const uncollectPlaylist = (playlistId: number | string) =>
+  httpDelete<SonoraResult<ClientPlaylist>>(`/api/client/me/likes/playlists/${playlistId}`)
 
 export const likedSongIds = () =>
   httpGet<SonoraResult<number[]>>('/api/client/me/likes/song-ids')

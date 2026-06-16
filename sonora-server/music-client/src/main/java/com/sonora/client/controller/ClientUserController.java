@@ -32,6 +32,7 @@ public class ClientUserController {
     private static final String PLAYLIST_TYPE_LIKED = "liked";
     private static final String PLAYLIST_TYPE_NORMAL = "normal";
     private static final String FAVORITE_TYPE_SONG = "song";
+    private static final String FAVORITE_TYPE_PLAYLIST = "playlist";
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final long MAX_AVATAR_SIZE = 5 * 1024 * 1024L;
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
@@ -295,15 +296,55 @@ public class ClientUserController {
             return R.unauthorized("请先登录");
         }
         ensureLikedPlaylist(userId);
-        List<Playlist> playlists = playlistMapper.selectList(
+        List<Playlist> ownPlaylists = playlistMapper.selectList(
                 new LambdaQueryWrapper<Playlist>()
                         .eq(Playlist::getUserId, userId)
                         .orderByDesc(Playlist::getPinned)
                         .orderByAsc(Playlist::getCreatedAt));
-        return R.ok(playlists.stream()
+        List<UserFavorite> collectedFavorites = userFavoriteMapper.selectList(
+                new LambdaQueryWrapper<UserFavorite>()
+                        .eq(UserFavorite::getUserId, userId)
+                        .eq(UserFavorite::getTargetType, FAVORITE_TYPE_PLAYLIST)
+                        .orderByDesc(UserFavorite::getCreatedAt));
+        Map<Long, Playlist> collectedPlaylistMap = new LinkedHashMap<>();
+        List<Long> collectedIds = collectedFavorites.stream().map(UserFavorite::getTargetId).toList();
+        if (!collectedIds.isEmpty()) {
+            playlistMapper.selectList(
+                            new LambdaQueryWrapper<Playlist>()
+                                    .in(Playlist::getId, collectedIds)
+                                    .eq(Playlist::getStatus, 1)
+                                    .eq(Playlist::getType, PLAYLIST_TYPE_NORMAL))
+                    .stream()
+                    .filter(playlist -> !Objects.equals(playlist.getUserId(), userId))
+                    .forEach(playlist -> collectedPlaylistMap.put(playlist.getId(), playlist));
+        }
+
+        List<Map<String, Object>> items = new ArrayList<>();
+        ownPlaylists.stream()
                 .sorted(this::compareMyPlaylist)
-                .map(this::playlistOf)
-                .toList());
+                .map(playlist -> playlistOf(playlist, false))
+                .forEach(items::add);
+        for (Long playlistId : collectedIds) {
+            Playlist playlist = collectedPlaylistMap.get(playlistId);
+            if (playlist != null) {
+                items.add(playlistOf(playlist, true));
+            }
+        }
+        return R.ok(items);
+    }
+
+    @Operation(summary = "我的歌单详情")
+    @GetMapping("/me/playlists/{playlistId}")
+    public R<Map<String, Object>> myPlaylistDetail(@PathVariable Long playlistId) {
+        Long userId = currentUserId();
+        if (userId == null) {
+            return R.unauthorized("请先登录");
+        }
+        Playlist playlist = getOwnPlaylist(userId, playlistId);
+        if (playlist == null) {
+            return R.notFound("歌单不存在");
+        }
+        return R.ok(playlistDetailOf(playlist));
     }
 
     @Operation(summary = "创建我的歌单")
@@ -330,7 +371,7 @@ public class ClientUserController {
         playlist.setDescription(body.description() == null ? null : body.description().trim());
         playlist.setPlayCount(0L);
         playlist.setCollectCount(0L);
-        playlist.setStatus(0);
+        playlist.setStatus(body.status() == null ? 0 : body.status());
         playlistMapper.insert(playlist);
         return R.ok(playlistOf(playlistMapper.selectById(playlist.getId())));
     }
@@ -369,6 +410,9 @@ public class ClientUserController {
         if (body.pinned() != null) {
             playlist.setPinned(Objects.equals(body.pinned(), 1) ? 1 : 0);
         }
+        if (body.status() != null) {
+            playlist.setStatus(body.status());
+        }
         playlistMapper.updateById(playlist);
         return R.ok(playlistOf(playlistMapper.selectById(playlistId)));
     }
@@ -406,8 +450,64 @@ public class ClientUserController {
         }
         playlistSongMapper.delete(
                 new LambdaQueryWrapper<PlaylistSong>().eq(PlaylistSong::getPlaylistId, playlistId));
+        userFavoriteMapper.delete(
+                new LambdaQueryWrapper<UserFavorite>()
+                        .eq(UserFavorite::getTargetType, FAVORITE_TYPE_PLAYLIST)
+                        .eq(UserFavorite::getTargetId, playlistId));
         playlistMapper.deleteById(playlistId);
         return R.ok();
+    }
+
+    @Operation(summary = "收藏歌单")
+    @PostMapping("/me/likes/playlists/{playlistId}")
+    @Transactional
+    public R<Map<String, Object>> collectPlaylist(@PathVariable Long playlistId) {
+        Long userId = currentUserId();
+        if (userId == null) {
+            return R.unauthorized("请先登录");
+        }
+        Playlist playlist = playlistMapper.selectById(playlistId);
+        if (playlist == null || Objects.equals(playlist.getStatus(), 0) || !Objects.equals(playlist.getType(), PLAYLIST_TYPE_NORMAL)) {
+            return R.notFound("歌单不存在");
+        }
+        if (Objects.equals(playlist.getUserId(), userId)) {
+            return R.badRequest("不能收藏自己的歌单");
+        }
+        if (!existsFavorite(userId, FAVORITE_TYPE_PLAYLIST, playlistId)) {
+            UserFavorite favorite = new UserFavorite();
+            favorite.setUserId(userId);
+            favorite.setTargetType(FAVORITE_TYPE_PLAYLIST);
+            favorite.setTargetId(playlistId);
+            userFavoriteMapper.insert(favorite);
+            playlist.setCollectCount((playlist.getCollectCount() == null ? 0L : playlist.getCollectCount()) + 1);
+            playlistMapper.updateById(playlist);
+        }
+        return R.ok(playlistOf(playlistMapper.selectById(playlistId), true));
+    }
+
+    @Operation(summary = "取消收藏歌单")
+    @DeleteMapping("/me/likes/playlists/{playlistId}")
+    @Transactional
+    public R<Map<String, Object>> uncollectPlaylist(@PathVariable Long playlistId) {
+        Long userId = currentUserId();
+        if (userId == null) {
+            return R.unauthorized("请先登录");
+        }
+        Playlist playlist = playlistMapper.selectById(playlistId);
+        if (playlist == null || !Objects.equals(playlist.getType(), PLAYLIST_TYPE_NORMAL)) {
+            return R.notFound("歌单不存在");
+        }
+        boolean removed = userFavoriteMapper.delete(
+                new LambdaQueryWrapper<UserFavorite>()
+                        .eq(UserFavorite::getUserId, userId)
+                        .eq(UserFavorite::getTargetType, FAVORITE_TYPE_PLAYLIST)
+                        .eq(UserFavorite::getTargetId, playlistId)) > 0;
+        if (removed) {
+            long currentCount = playlist.getCollectCount() == null ? 0L : playlist.getCollectCount();
+            playlist.setCollectCount(Math.max(0L, currentCount - 1));
+            playlistMapper.updateById(playlist);
+        }
+        return R.ok(playlistOf(playlistMapper.selectById(playlistId), false));
     }
 
     @Operation(summary = "收藏歌曲到我的歌单")
@@ -585,7 +685,7 @@ public class ClientUserController {
 
     public record PasswordRequest(String oldPassword, String newPassword) {}
 
-    public record PlaylistRequest(String name, String cover, String description, Integer pinned) {}
+    public record PlaylistRequest(String name, String cover, String description, Integer pinned, Integer status) {}
 
     private Map<String, Object> buildAuthData(User user) {
         String accessToken = JwtUtil.createAccessToken(user.getId(), user.getUsername(), List.of(ROLE_USER));
@@ -616,6 +716,10 @@ public class ClientUserController {
     }
 
     private Map<String, Object> playlistOf(Playlist playlist) {
+        return playlistOf(playlist, false);
+    }
+
+    private Map<String, Object> playlistOf(Playlist playlist, boolean subscribed) {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("id", playlist.getId());
         data.put("name", playlist.getName());
@@ -623,10 +727,71 @@ public class ClientUserController {
                 StringUtils.hasText(playlist.getCover()) ? playlist.getCover() : Constants.DEFAULT_COVER));
         data.put("type", playlist.getType());
         data.put("pinned", playlist.getPinned());
+        data.put("status", playlist.getStatus());
         data.put("description", playlist.getDescription());
+        data.put("playCount", playlist.getPlayCount());
+        data.put("collectCount", playlist.getCollectCount());
         data.put("songCount", playlistSongMapper.selectCount(
                 new LambdaQueryWrapper<PlaylistSong>().eq(PlaylistSong::getPlaylistId, playlist.getId())));
         data.put("createdAt", playlist.getCreatedAt());
+        data.put("subscribed", subscribed);
+        data.put("creatorId", playlist.getUserId());
+        User owner = playlist.getUserId() == null ? null : userMapper.selectById(playlist.getUserId());
+        Map<String, Object> creator = new LinkedHashMap<>();
+        creator.put("userId", owner == null ? playlist.getUserId() : owner.getId());
+        creator.put("nickname", owner == null
+                ? "用户 " + playlist.getUserId()
+                : (StringUtils.hasText(owner.getNickname()) ? owner.getNickname() : owner.getUsername()));
+        creator.put("avatarUrl", owner == null
+                ? minioService.resolvePreviewUrl(Constants.DEFAULT_AVATAR)
+                : minioService.resolvePreviewUrl(
+                StringUtils.hasText(owner.getAvatar()) ? owner.getAvatar() : Constants.DEFAULT_AVATAR));
+        data.put("creator", creator);
+        return data;
+    }
+
+    private Map<String, Object> playlistDetailOf(Playlist playlist) {
+        Map<String, Object> data = new LinkedHashMap<>(playlistOf(playlist));
+        List<PlaylistSong> links = playlistSongMapper.selectList(
+                new LambdaQueryWrapper<PlaylistSong>()
+                        .eq(PlaylistSong::getPlaylistId, playlist.getId())
+                        .orderByAsc(PlaylistSong::getSort)
+                        .orderByAsc(PlaylistSong::getId));
+        List<Long> songIds = links.stream().map(PlaylistSong::getSongId).toList();
+        List<Song> songs = songIds.isEmpty()
+                ? List.of()
+                : songMapper.selectBatchIds(songIds);
+        Map<Long, Song> songMap = songs.stream()
+                .collect(Collectors.toMap(Song::getId, song -> song, (a, b) -> a, LinkedHashMap::new));
+        Map<Long, Album> albumMap = albumMapFromSongs(songMap.values());
+        Map<Long, Artist> artistMap = artistMapFromSongs(songMap.values());
+        List<Map<String, Object>> songItems = new ArrayList<>();
+        boolean likedPlaylist = isLikedPlaylist(playlist);
+        for (Long songId : songIds) {
+            Song song = songMap.get(songId);
+            if (song != null && !Objects.equals(song.getStatus(), 0)) {
+                songItems.add(songOf(song, likedPlaylist, albumMap, artistMap));
+            }
+        }
+
+        User owner = playlist.getUserId() == null ? null : userMapper.selectById(playlist.getUserId());
+        Map<String, Object> creator = new LinkedHashMap<>();
+        creator.put("userId", owner == null ? playlist.getUserId() : owner.getId());
+        creator.put("nickname", owner == null
+                ? "用户 " + playlist.getUserId()
+                : (StringUtils.hasText(owner.getNickname()) ? owner.getNickname() : owner.getUsername()));
+        creator.put("avatarUrl", owner == null
+                ? minioService.resolvePreviewUrl(Constants.DEFAULT_AVATAR)
+                : minioService.resolvePreviewUrl(
+                StringUtils.hasText(owner.getAvatar()) ? owner.getAvatar() : Constants.DEFAULT_AVATAR));
+
+        data.put("playCount", playlist.getPlayCount());
+        data.put("collectCount", playlist.getCollectCount());
+        data.put("tags", playlist.getTags());
+        data.put("creator", creator);
+        data.put("songs", songItems);
+        data.put("songCount", songItems.size());
+        data.put("updatedAt", playlist.getUpdatedAt());
         return data;
     }
 
@@ -734,11 +899,15 @@ public class ClientUserController {
     }
 
     private boolean existsFavorite(Long userId, Long songId) {
+        return existsFavorite(userId, FAVORITE_TYPE_SONG, songId);
+    }
+
+    private boolean existsFavorite(Long userId, String targetType, Long targetId) {
         return userFavoriteMapper.selectCount(
                 new LambdaQueryWrapper<UserFavorite>()
                         .eq(UserFavorite::getUserId, userId)
-                        .eq(UserFavorite::getTargetType, FAVORITE_TYPE_SONG)
-                        .eq(UserFavorite::getTargetId, songId)) > 0;
+                        .eq(UserFavorite::getTargetType, targetType)
+                        .eq(UserFavorite::getTargetId, targetId)) > 0;
     }
 
     private boolean existsPlaylistSong(Long playlistId, Long songId) {
@@ -888,6 +1057,12 @@ public class ClientUserController {
         if (body.cover() != null && body.cover().length() > 512) {
             return R.badRequest("封面地址不能超过 512 个字符");
         }
+        if (body.description() != null && body.description().trim().length() > 2000) {
+            return R.badRequest("歌单简介不能超过 2000 个字符");
+        }
+        if (body.status() != null && body.status() != 0 && body.status() != 1) {
+            return R.badRequest("歌单状态仅支持公开或私有");
+        }
         return null;
     }
 
@@ -957,6 +1132,10 @@ public class ClientUserController {
         if (!playlistIds.isEmpty()) {
             playlistSongMapper.delete(
                     new LambdaQueryWrapper<PlaylistSong>().in(PlaylistSong::getPlaylistId, playlistIds));
+            userFavoriteMapper.delete(
+                    new LambdaQueryWrapper<UserFavorite>()
+                            .eq(UserFavorite::getTargetType, FAVORITE_TYPE_PLAYLIST)
+                            .in(UserFavorite::getTargetId, playlistIds));
         }
         playlistMapper.delete(new LambdaQueryWrapper<Playlist>().eq(Playlist::getUserId, userId));
         userFavoriteMapper.delete(new LambdaQueryWrapper<UserFavorite>().eq(UserFavorite::getUserId, userId));

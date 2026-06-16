@@ -1,33 +1,37 @@
 <script setup lang="ts">
-import { topPlaylist } from '@/api'
+import { clientPublicPlaylists } from '@/api'
 import HeroCard from '@/components/Ui/HeroCard.vue'
+import { usePlayActions } from '@/composables/usePlayActions'
 import { useI18n } from 'vue-i18n'
 import { transformPlaylists, type PlaylistData } from '@/utils/transformers'
 
 const { t } = useI18n()
+const { playPlaylist: playPlaylistAction } = usePlayActions()
 
 const state = reactive({
   playlists: [] as PlaylistData[],
   isLoading: false,
-  offset: 0,
-  limit: 24,
+  pageNum: 1,
+  pageSize: 24,
+  total: 0,
   hasMore: true,
+  playingPlaylistId: null as number | string | null,
 })
 
 const loadPlaylists = async (reset = false) => {
   if (reset) {
-    state.offset = 0
+    state.pageNum = 1
     state.playlists = []
+    state.total = 0
     state.hasMore = true
   }
   if (!state.hasMore) return
 
   state.isLoading = true
   try {
-    const res = await topPlaylist({
-      order: 'hot',
-      limit: state.limit,
-      offset: state.offset,
+    const res = await clientPublicPlaylists({
+      pageNum: state.pageNum,
+      pageSize: state.pageSize,
     })
     const rows = transformPlaylists(
       res as Record<string, unknown>,
@@ -35,10 +39,23 @@ const loadPlaylists = async (reset = false) => {
       String(t('home.playlistFallback'))
     )
     state.playlists = reset ? rows : [...state.playlists, ...rows]
-    state.hasMore = rows.length === state.limit
-    state.offset += state.limit
+    state.total = Number(res?.data?.total || 0)
+    state.hasMore = state.playlists.length < state.total
+    if (rows.length) {
+      state.pageNum += 1
+    }
   } finally {
     state.isLoading = false
+  }
+}
+
+const playPlaylist = async (playlistId: number | string) => {
+  if (!playlistId || state.playingPlaylistId === playlistId) return
+  state.playingPlaylistId = playlistId
+  try {
+    await playPlaylistAction(playlistId)
+  } finally {
+    state.playingPlaylistId = null
   }
 }
 
@@ -72,6 +89,8 @@ onMounted(() => loadPlaylists(true))
           :track-count="item.trackCount"
           :to="`/playlist/${item.id}`"
           :enable-tilt="false"
+          :playable="true"
+          @play="playPlaylist"
         />
       </div>
 

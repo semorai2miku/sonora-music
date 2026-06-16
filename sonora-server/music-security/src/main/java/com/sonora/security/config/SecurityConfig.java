@@ -1,8 +1,10 @@
 package com.sonora.security.config;
 
 import com.sonora.security.filter.JwtAuthFilter;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -11,6 +13,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+import java.io.IOException;
 
 @Configuration
 @EnableWebSecurity
@@ -26,9 +30,20 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+            .cors(cors -> {})
             .csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .exceptionHandling(exceptions -> exceptions
+                .authenticationEntryPoint((request, response, authException) -> {
+                    writeJsonError(response, HttpServletResponse.SC_UNAUTHORIZED, "请先登录");
+                })
+                .accessDeniedHandler((request, response, accessDeniedException) -> {
+                    writeJsonError(response, HttpServletResponse.SC_FORBIDDEN, "无权访问或登录已过期");
+                })
+            )
             .authorizeHttpRequests(auth -> auth
+                // CORS 预检请求不携带业务 token，必须先放行，否则浏览器会报 Network Error
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 // 需要客户端登录的个人接口
                 .requestMatchers(
                     "/api/client/auth/me",
@@ -75,6 +90,13 @@ public class SecurityConfig {
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    private void writeJsonError(HttpServletResponse response, int status, String message) throws IOException {
+        response.setStatus(status);
+        response.setCharacterEncoding("UTF-8");
+        response.setContentType("application/json;charset=UTF-8");
+        response.getWriter().write("{\"code\":" + status + ",\"message\":\"" + message + "\",\"data\":null}");
     }
 
     @Bean

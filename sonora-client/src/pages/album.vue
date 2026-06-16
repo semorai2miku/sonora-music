@@ -8,7 +8,7 @@ import { usePlayActions } from '@/composables/usePlayActions'
 import { withImageParam } from '@/utils/media'
 import {
   transformAlbumDetail,
-  extractArray,
+  transformAlbumSongs,
   type SongData,
   type AlbumData,
 } from '@/utils/transformers'
@@ -29,29 +29,9 @@ const load = async () => {
   try {
     const res = await albumDetail({ id: albumId.value })
     const album = transformAlbumDetail(res as Record<string, unknown>)
-    const songs = extractArray(res as Record<string, unknown>, 'songs', 'data.songs', 'album.songs', 'data.album.songs')
 
     state.info = album
-    state.songs = songs.map((s: any) => {
-      const artists = Array.isArray(s?.ar)
-        ? s.ar.map((artist: any) => ({ id: artist?.id || 0, name: artist?.name || '' }))
-        : Array.isArray(s?.artists)
-          ? s.artists.map((artist: any) => ({ id: artist?.id || 0, name: artist?.name || '' }))
-          : []
-
-      return {
-        id: s?.id || 0,
-        name: s?.name || '',
-        artist: artists.map((artist: { name: string }) => artist.name).join(' / '),
-        artistId: artists[0]?.id || 0,
-        artists,
-        album: s?.al?.name || s?.album?.name || album?.name || '',
-        albumId: s?.al?.id ?? s?.album?.id ?? album?.id,
-        duration: s?.dt ?? s?.duration ?? 0,
-        cover: s?.al?.picUrl || s?.album?.picUrl || album?.picUrl || '',
-        liked: false,
-      }
-    })
+    state.songs = transformAlbumSongs(res as Record<string, unknown>, album || undefined)
   } finally {
     state.loading = false
   }

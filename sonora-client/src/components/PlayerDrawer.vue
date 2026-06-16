@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * PlayerDrawer - 全屏播放器抽屉
- * 包含黑胶/圆形频谱两种封面模式、歌词滚动、可视化背景、
+ * 包含黑胶封面、歌词滚动、背景过渡、
  * 共享元素过渡动画、歌词拖动跳转等功能
  */
 import { gsap } from 'gsap'
@@ -11,21 +11,15 @@ import { useLyricsScroll } from '@/composables/useLyricsScroll'
 import { useGradientBackground } from '@/composables/useGradientBackground'
 import { useCommentCount } from '@/composables/useCommentCount'
 import { useI18n } from 'vue-i18n'
-import { useAudioAnalyser } from '@/composables/useAudioAnalyser'
 import { useLyricsDrag } from '@/composables/useLyricsDrag'
 import { useDrawerTransition } from '@/composables/useDrawerTransition'
 import VinylDisc from '@/components/Player/VinylDisc.vue'
-import { withImageParam } from '@/utils/media'
 import type { Artist as SongArtist } from '@/stores/interface'
 
 const { t } = useI18n()
 const router = useRouter()
 const globalStore = useGlobalStore()
-const audioStore = useAudioStore()
-const settingsStore = useSettingsStore()
-const { audioVisualizer } = storeToRefs(settingsStore)
-
-// ═══ 主题与可视化器切换 ═══
+// ═══ 主题切换 ═══
 
 /** 当前主题对应图标 */
 const themeIcon = computed(() => {
@@ -45,25 +39,6 @@ const cycleTheme = () => {
   const idx = order.indexOf(globalStore.theme)
   globalStore.setTheme(order[(idx + 1) % 3])
 }
-
-/** 循环切换可视化器类型：bars → wave → circular */
-const cycleVisualizerType = () => {
-  const types: Array<'bars' | 'wave' | 'circular'> = ['bars', 'wave', 'circular']
-  const idx = types.indexOf(audioVisualizer.value.visualizerType)
-  settingsStore.setAudioVisualizerType(types[(idx + 1) % 3])
-}
-
-/** 可视化器类型对应图标 */
-const visualizerTypeIcon = computed(() => {
-  switch (audioVisualizer.value.visualizerType) {
-    case 'bars':
-      return 'icon-[mdi--chart-bar]'
-    case 'wave':
-      return 'icon-[mdi--waveform]'
-    case 'circular':
-      return 'icon-[mdi--circle-outline]'
-  }
-})
 
 /** 抽屉开关（双向绑定） */
 const isOpen = defineModel<boolean>()
@@ -163,20 +138,6 @@ const {
 const songId = computed(() => currentSong.value?.id)
 const { commentCount } = useCommentCount({ songId })
 
-// 音频分析器
-const {
-  frequencyData,
-  timeDomainData,
-  isInitialized: isAnalyserInitialized,
-  init: initAnalyser,
-  start: startAnalyser,
-  stop: stopAnalyser,
-  resume: resumeAnalyser,
-} = useAudioAnalyser({
-  fftSize: 2048,
-  smoothingTimeConstant: 0.8,
-})
-
 // 抽屉过渡动画
 const {
   isRendered,
@@ -197,10 +158,6 @@ const state = reactive({
   isCommentsOpen: false,
   /** 移动端歌词视图 */
   showMobileLyrics: false,
-  /** 圆形可视化器封面 URL */
-  circularCover: '' as string,
-  /** 封面翻转动画锁 */
-  isCircularFlipping: false,
   /** 滚轮预览歌词索引 */
   wheelPreviewIndex: -1,
   /** 是否显示滚轮预览线 */
@@ -236,63 +193,6 @@ const wheelPreviewTimeLabel = computed(() => {
   const seconds = Math.floor(time % 60)
   return `${minutes}:${seconds.toString().padStart(2, '0')}`
 })
-
-// ═══ 圆形可视化器封面翻转动画 ═══
-
-const circularCoverRef = ref<HTMLElement | null>(null)
-
-/** 翻转动画：旋转 Y 轴 90° → 替换图片 → 旋转回来 + 发光 */
-const flipCircularCover = (newCover: string) => {
-  if (!circularCoverRef.value || state.isCircularFlipping) {
-    state.circularCover = newCover
-    return
-  }
-
-  if (!state.circularCover) {
-    state.circularCover = newCover
-    return
-  }
-
-  state.isCircularFlipping = true
-
-  const tl = gsap.timeline({
-    onComplete: () => {
-      state.isCircularFlipping = false
-    },
-  })
-
-  // 第一阶段：翻转到90度 + 缩放
-  tl.to(circularCoverRef.value, {
-    rotateY: 90,
-    scale: 0.85,
-    duration: 0.25,
-    ease: 'power2.in',
-    onComplete: () => {
-      state.circularCover = newCover
-    },
-  })
-
-  // 第二阶段：翻转回来
-  tl.to(circularCoverRef.value, {
-    rotateY: 0,
-    scale: 1,
-    duration: 0.35,
-    ease: 'back.out(1.7)',
-  })
-
-  // 添加发光效果
-  tl.fromTo(
-    circularCoverRef.value,
-    { boxShadow: '0 0 0 rgba(31, 124, 255, 0)' },
-    {
-      boxShadow: '0 0 40px rgba(31, 124, 255, 0.42)',
-      duration: 0.2,
-      yoyo: true,
-      repeat: 1,
-    },
-    0
-  )
-}
 
 /** 可视化器渐变色：从背景主色调提取并适配当前主题 */
 const visualizerGradient = computed(() => {
@@ -401,12 +301,11 @@ const handleLyricsWheel = (event: WheelEvent) => {
 
   event.preventDefault()
 
-  const step = Math.abs(event.deltaY) > 80 ? 2 : 1
   const direction = event.deltaY > 0 ? 1 : -1
   const baseIndex = state.wheelPreviewVisible ? state.wheelPreviewIndex : currentLyricIndex.value
   const nextIndex = Math.max(
     0,
-    Math.min(activeSingleLyrics.value.length - 1, baseIndex + direction * step)
+    Math.min(activeSingleLyrics.value.length - 1, baseIndex + direction)
   )
 
   autoScroll.value = false
@@ -446,18 +345,12 @@ watch(
   }
 )
 
-/** 播放状态变化：控制呼吸动画和音频分析器 */
+/** 播放状态变化：控制背景呼吸动画 */
 watch(
   isPlaying,
   playing => {
-    if (playing) {
-      if (isAnalyserInitialized.value) {
-        startAnalyser()
-        resumeAnalyser()
-      }
-    } else {
+    if (!playing) {
       stopBackgroundBreathing()
-      stopAnalyser()
     }
   },
   { immediate: true }
@@ -477,13 +370,6 @@ watch(
     await nextTick()
     updateCurrentLyric(true)
     setBackgroundGradient(s?.cover, 0)
-
-    // 触发圆形可视化器封面翻转动画
-    if (s?.cover && oldSong && oldSong.id !== s.id) {
-      flipCircularCover(s.cover)
-    } else if (s?.cover && !state.circularCover) {
-      state.circularCover = s.cover
-    }
   },
   { immediate: true }
 )
@@ -492,27 +378,7 @@ onMounted(() => {
   if (drawerRef.value) {
     gsap.set(drawerRef.value as any, { display: 'none' })
   }
-
-  // 初始化音频分析器
-  const audioElement = audioStore.audio.audio
-  if (audioElement && !isAnalyserInitialized.value) {
-    initAnalyser(audioElement)
-  }
 })
-
-/** 监听音频元素变化，初始化频谱分析器 */
-watch(
-  () => audioStore.audio.audio,
-  audioElement => {
-    if (audioElement && !isAnalyserInitialized.value) {
-      initAnalyser(audioElement)
-      if (isPlaying.value && isOpen.value) {
-        startAnalyser()
-        resumeAnalyser()
-      }
-    }
-  }
-)
 
 onUnmounted(() => {
   stopBackgroundBreathing()
@@ -534,28 +400,6 @@ onUnmounted(() => {
       <div class="bg-overlay/40 absolute inset-0"></div>
       <!-- 暗角 -->
       <div class="vignette pointer-events-none absolute inset-0"></div>
-
-      <!-- 音频可视化器 - 占满背景底部 -->
-      <div
-        v-if="
-          isAnalyserInitialized &&
-          audioVisualizer.enabledInDrawer &&
-          audioVisualizer.visualizerType !== 'circular'
-        "
-        class="absolute right-0 bottom-0 left-0 z-10 opacity-30"
-      >
-        <AudioVisualizer
-          :frequency-data="frequencyData"
-          :time-domain-data="timeDomainData"
-          :type="audioVisualizer.visualizerType"
-          :bar-count="128"
-          :bar-width="4"
-          :bar-gap="1"
-          :gradient-colors="visualizerGradient"
-          :height="180"
-          class="h-full w-full"
-        />
-      </div>
     </div>
 
     <div
@@ -657,29 +501,6 @@ onUnmounted(() => {
           </Button>
 
           <Button
-            v-if="isAnalyserInitialized"
-            variant="ghost"
-            size="icon-sm"
-            rounded="lg"
-            :class="{ 'bg-white/12 text-cyan-300/80': audioVisualizer.enabledInDrawer }"
-            @click="settingsStore.setAudioVisualizerDrawer(!audioVisualizer.enabledInDrawer)"
-            title="切换频谱显示"
-            icon="icon-[mdi--waveform]"
-            icon-class="h-4 w-4"
-          />
-
-          <Button
-            v-if="isAnalyserInitialized && audioVisualizer.enabledInDrawer"
-            variant="ghost"
-            size="icon-sm"
-            rounded="lg"
-            @click="cycleVisualizerType"
-            title="切换频谱模式"
-          >
-            <span :class="[visualizerTypeIcon, 'h-4 w-4']"></span>
-          </Button>
-
-          <Button
             variant="ghost"
             size="icon-sm"
             rounded="lg"
@@ -708,46 +529,7 @@ onUnmounted(() => {
       :class="{ 'hidden lg:flex': state.showMobileLyrics }"
     >
       <!-- 专辑封面区域 -->
-      <!-- 圆形频谱可视化模式 -->
-      <div
-        v-if="
-          isAnalyserInitialized &&
-          audioVisualizer.enabledInDrawer &&
-          audioVisualizer.visualizerType === 'circular'
-        "
-        class="mb-4 flex flex-col items-center lg:mb-6"
-      >
-        <!-- 可视化容器：固定尺寸 384px -->
-        <div class="relative mb-6">
-          <AudioVisualizer
-            :frequency-data="frequencyData"
-            :time-domain-data="timeDomainData"
-            type="circular"
-            :bar-count="128"
-            :gradient-colors="visualizerGradient"
-            :height="384"
-            class="h-full w-full"
-          />
-          <!-- 中心封面 - 带翻转动画 -->
-          <div
-            ref="circularCoverRef"
-            class="circular-cover absolute top-1/2 left-1/2 aspect-square w-1/2 -translate-x-1/2 -translate-y-1/2 scale-80 cursor-pointer overflow-hidden rounded-full"
-            style="perspective: 1000px; transform-style: preserve-3d"
-            @click="handleAlbumCoverClick"
-          >
-            <img
-              v-if="state.circularCover"
-              :src="withImageParam(state.circularCover, '320x320')"
-              :alt="currentSong?.name"
-              class="h-full w-full object-cover"
-              style="backface-visibility: hidden"
-            />
-            <div v-else class="h-full w-full bg-linear-to-br from-slate-900 to-sky-500"></div>
-          </div>
-        </div>
-      </div>
-      <!-- 黑胶播放器模式 -->
-      <div v-else class="mb-4 flex flex-col items-center lg:mb-6">
+      <div class="mb-4 flex flex-col items-center lg:mb-6">
         <VinylDisc
           ref="vinylDiscRef"
           :cover="currentSong?.cover"
@@ -764,14 +546,14 @@ onUnmounted(() => {
         <button
           v-if="currentSong?.id"
           type="button"
-          class="player-title-link text-primary mb-1 block cursor-pointer border-none bg-transparent p-0 line-clamp-1 text-xl font-bold sm:text-2xl lg:text-3xl"
+          class="player-title-link text-primary mb-1 block cursor-pointer border-none bg-transparent p-0 line-clamp-1 text-2xl font-bold sm:text-3xl lg:text-[2.75rem]"
           @click="collapsePlayerAndNavigate(`/song/${currentSong.id}`)"
         >
           {{ currentSong?.name || t('player.unknownSong') }}
         </button>
         <h2
           v-else
-          class="song-title text-primary mb-1 line-clamp-1 text-xl font-bold sm:text-2xl lg:text-3xl"
+          class="song-title text-primary mb-1 line-clamp-1 text-2xl font-bold sm:text-3xl lg:text-[2.75rem]"
         >
           {{ currentSong?.name || t('player.unknownSong') }}
         </h2>
@@ -1027,6 +809,7 @@ onUnmounted(() => {
   background: transparent;
   padding: 0;
   border-radius: 0.25rem;
+  color: inherit;
   cursor: pointer;
   font: inherit;
   line-height: inherit;
@@ -1035,7 +818,7 @@ onUnmounted(() => {
 
 .player-title-link:hover,
 .player-meta-link:hover {
-  color: rgb(249 168 212 / 1);
+  color: rgb(147 197 253 / 1);
 }
 
 .player-title-link::after,
@@ -1047,7 +830,7 @@ onUnmounted(() => {
   width: 100%;
   height: 2px;
   border-radius: 9999px;
-  background: linear-gradient(90deg, rgba(248, 113, 113, 0.18), rgba(244, 114, 182, 0.9));
+  background: linear-gradient(90deg, rgba(96, 165, 250, 0.2), rgba(59, 130, 246, 0.95));
   transform: scaleX(0);
   transform-origin: center;
   transition: transform 0.18s ease;
@@ -1070,19 +853,19 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  color: rgba(255, 255, 255, 0.62);
+  color: var(--glass-text-secondary);
 }
 
 .player-meta-icon {
   flex-shrink: 0;
   width: 1rem;
   height: 1rem;
-  color: rgba(255, 255, 255, 0.38);
+  color: var(--glass-text-muted);
 }
 
 .player-meta-text {
   min-width: 0;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--glass-text-secondary);
 }
 
 /* 控制按钮 hover 效果 */
@@ -1109,17 +892,6 @@ onUnmounted(() => {
     0 0 40px rgba(31, 124, 255, 0.35),
     0 0 60px rgba(77, 163, 255, 0.15),
     0 8px 32px rgba(77, 163, 255, 0.25);
-}
-
-/* 圆形可视化器封面翻转动画 */
-.circular-cover {
-  will-change: transform, box-shadow;
-  transition: box-shadow 0.3s ease;
-  box-shadow: 0 0 40px rgba(0, 0, 0, 0.3);
-}
-
-.circular-cover img {
-  will-change: transform;
 }
 
 .lyrics-container {

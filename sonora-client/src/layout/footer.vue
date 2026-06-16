@@ -2,13 +2,10 @@
 import { useAudio } from '@/composables/useAudio'
 import { useLyrics } from '@/composables/useLyrics'
 import { useSettingsStore } from '@/stores/modules/settings'
-import { useAudioStore } from '@/stores/modules/audio'
 import MusicProgress from '@/components/Ui/MusicProgress.vue'
 import VolumeControl from '@/components/Ui/VolumeControl.vue'
 import Button from '@/components/Ui/Button.vue'
-import AudioVisualizer from '@/components/Ui/AudioVisualizer.vue'
 import PlaylistBubble from '@/components/Ui/PlaylistBubble.vue'
-import { useAudioAnalyser } from '@/composables/useAudioAnalyser'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
 import { getColorPalette } from '@/utils/colorExtractor'
@@ -17,7 +14,6 @@ import { gsap } from 'gsap'
 import { withImageParam } from '@/utils/media'
 
 const { t } = useI18n()
-const audioStore = useAudioStore()
 
 // 使用音频播放器组合式API
 const {
@@ -39,20 +35,6 @@ const {
   // 播放模式控制
   togglePlayMode,
 } = useAudio()
-
-// 音频分析器
-const {
-  frequencyData,
-  timeDomainData,
-  isInitialized: isAnalyserInitialized,
-  init: initAnalyser,
-  start: startAnalyser,
-  stop: stopAnalyser,
-  resume: resumeAnalyser,
-} = useAudioAnalyser({
-  fftSize: 2048,
-  smoothingTimeConstant: 0.8,
-})
 
 const state = reactive({
   // 播放列表
@@ -105,7 +87,7 @@ const extractCoverColors = async (coverUrl?: string) => {
 
 const { mergedLines, activeTimeline, fetchLyrics } = useLyrics()
 const settingsStore = useSettingsStore()
-const { footerLyrics, audioVisualizer } = storeToRefs(settingsStore)
+const { footerLyrics } = storeToRefs(settingsStore)
 
 const updateLyricIndex = () => {
   const times = activeTimeline.value
@@ -189,48 +171,6 @@ watch(
   },
   { immediate: true }
 )
-
-// 监听播放状态，控制音频分析
-watch(
-  isPlaying,
-  (playing: any) => {
-    if (playing && audioVisualizer.value.enabledInFooter) {
-      if (isAnalyserInitialized.value) {
-        startAnalyser()
-        resumeAnalyser()
-      }
-    } else {
-      stopAnalyser()
-    }
-  },
-  { immediate: true }
-)
-
-// 初始化音频分析器
-onMounted(() => {
-  const audioElement = audioStore.audio.audio
-  if (audioElement && !isAnalyserInitialized.value) {
-    initAnalyser(audioElement)
-  }
-})
-
-// 监听音频元素变化
-watch(
-  () => audioStore.audio.audio,
-  audioElement => {
-    if (audioElement && !isAnalyserInitialized.value) {
-      initAnalyser(audioElement)
-      if (isPlaying.value && audioVisualizer.value.enabledInFooter) {
-        startAnalyser()
-        resumeAnalyser()
-      }
-    }
-  }
-)
-
-onUnmounted(() => {
-  stopAnalyser()
-})
 
 const emit = defineEmits(['show'])
 </script>

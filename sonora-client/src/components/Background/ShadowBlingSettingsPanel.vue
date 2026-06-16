@@ -79,7 +79,9 @@ const previewStyle = computed(() => {
         </div>
 
         <div class="space-y-4">
-          <label class="block text-sm text-primary/80">Presets</label>
+          <label class="block text-sm text-primary/80">
+            {{ t('components.background.common.presets') }}
+          </label>
           <div class="flex flex-wrap gap-2">
             <button
               v-for="preset in presets"

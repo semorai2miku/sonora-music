@@ -31,13 +31,15 @@ const state = reactive({
   songs: [] as SongData[],
   albums: [] as AlbumData[],
   loading: true,
+  playingAlbumId: null as number | string | null,
   followed: false,
   activeTab: 'songs' as 'songs' | 'albums',
 })
 
 const { activeTab } = toRefs(state)
 
-const { playAll: playAllAction, shufflePlay: shufflePlayAction } = usePlayActions()
+const { playAll: playAllAction, shufflePlay: shufflePlayAction, playAlbum: playAlbumAction } =
+  usePlayActions()
 
 const load = async (id: number) => {
   state.loading = true
@@ -76,6 +78,16 @@ watch(
 const playAll = () => playAllAction(state.songs)
 
 const shufflePlay = () => shufflePlayAction(state.songs)
+
+const playAlbum = async (albumId: number | string) => {
+  if (!albumId || state.playingAlbumId === albumId) return
+  state.playingAlbumId = albumId
+  try {
+    await playAlbumAction(albumId)
+  } finally {
+    state.playingAlbumId = null
+  }
+}
 
 const toggleFollow = () => {
   state.followed = !state.followed
@@ -267,7 +279,20 @@ const tabs = computed(() => [
                   <div
                     class="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover:bg-black/40 group-hover:opacity-100"
                   >
-                    <span class="icon-[mdi--play-circle] h-12 w-12 text-white"></span>
+                    <button
+                      type="button"
+                      class="album-play-button"
+                      @click.stop="playAlbum(al.id)"
+                    >
+                      <span
+                        :class="
+                          state.playingAlbumId === al.id
+                            ? 'icon-[mdi--loading] animate-spin'
+                            : 'icon-[mdi--play]'
+                        "
+                        class="h-6 w-6 text-white"
+                      ></span>
+                    </button>
                   </div>
                 </div>
                 <p class="truncate text-sm font-medium">{{ al.name }}</p>
@@ -331,6 +356,27 @@ const tabs = computed(() => [
   font-size: 0.875rem;
   color: rgba(255, 255, 255, 0.82);
   backdrop-filter: blur(12px);
+}
+
+.album-play-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  border: 0;
+  border-radius: 9999px;
+  background: rgba(15, 23, 42, 0.55);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.35);
+  backdrop-filter: blur(12px);
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
+}
+
+.album-play-button:hover {
+  transform: scale(1.06);
+  background: rgba(37, 99, 235, 0.78);
 }
 
 .floating-notes {
