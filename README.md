@@ -8,9 +8,7 @@ Sonora Music 是一个全栈音乐流媒体平台，当前包含管理端、Web 
 sonora-music/
 ├── sonora-server/       # 后端服务：Spring Boot 3 + MyBatis-Plus + MySQL + Redis + MinIO
 ├── sonora-admin/        # 管理端：Vue 3 + Element Plus + Pinia + Vite
-├── sonora-client/       # Web 客户端：Vue 3 + Pinia + Vite + Web Audio API
-├── docs/                # 项目文档、开发计划、阶段总结
-└── test-music/          # 本地测试音乐资源，不纳入版本控制
+└── sonora-client/       # Web 客户端：Vue 3 + Pinia + Vite + Web Audio API
 ```
 
 ## 技术栈
