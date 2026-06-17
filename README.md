@@ -2,6 +2,21 @@
 
 Sonora Music 是一个全栈音乐流媒体平台，当前包含管理端、Web 客户端和 Spring Boot 后端。项目的前端部分基于两个前端模板二改：管理端来自 pure-admin-thin，客户端来自 GlassMusicPlayer，后端负责统一数据、权限、文件存储和网易云兼容接口。后端基于Spring Boot开发。
 
+<details>
+<summary>预览图</summary>
+
+![首页](images/首页.png)
+![歌手](images/歌手.png)
+![专辑](images/专辑.png)
+![播放器](images/播放器.png)
+![歌手管理](images/歌手管理.png)
+![歌曲管理](images/歌曲管理.png)
+![专辑管理](images/专辑管理.png)
+![歌单管理](images/歌单管理.png)
+![轮播图管理](images/轮播图管理.png)
+
+</details>
+
 ## 项目结构
 
 ```text
