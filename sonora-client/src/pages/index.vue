@@ -50,6 +50,15 @@ const { banners, recommendPlaylists, recommendSongs, featuredArtists, featuredAl
   toRefs(state)
 let bannerSwiper: SwiperClass | null = null
 
+const syncBannerSwiper = async (restartAutoplay = false) => {
+  await nextTick()
+  if (!bannerSwiper || bannerSwiper.destroyed) return
+  bannerSwiper.update()
+  if (restartAutoplay && banners.value.length > 1) {
+    bannerSwiper.autoplay?.start()
+  }
+}
+
 const shuffleList = <T,>(items: T[]) => {
   const list = [...items]
   for (let i = list.length - 1; i > 0; i -= 1) {
@@ -231,6 +240,7 @@ const playPlaylist = async (playlistId: number | string) => {
 
 const onSwiper = (sw: SwiperClass) => {
   bannerSwiper = sw
+  void syncBannerSwiper(true)
 }
 
 const slideBannerPrev = () => {
@@ -245,15 +255,24 @@ const swiperModules = [Pagination, Autoplay]
 
 onMounted(() => {
   window.addEventListener('resize', handleResize)
-  loadData()
+  void loadData()
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', handleResize)
+  bannerSwiper = null
 })
 
 watch([playlistDisplayCount, songDisplayCount, artistDisplayCount, albumDisplayCount], () => {
   syncResponsiveRecommendations()
+})
+
+onActivated(() => {
+  void syncBannerSwiper(true)
+})
+
+onDeactivated(() => {
+  bannerSwiper?.autoplay?.stop()
 })
 
 </script>
@@ -275,7 +294,8 @@ watch([playlistDisplayCount, songDisplayCount, artistDisplayCount, albumDisplayC
             :slides-per-view="1"
             :space-between="16"
             :centered-slides="true"
-            :loop="banners.length > 1"
+            :loop="false"
+            :rewind="banners.length > 1"
             :autoplay="{ delay: 5000, disableOnInteraction: false }"
             :pagination="{ clickable: true, el: '.home-pagination' }"
             :breakpoints="{
@@ -379,15 +399,11 @@ watch([playlistDisplayCount, songDisplayCount, artistDisplayCount, albumDisplayC
                   <button
                     type="button"
                     class="album-play-button"
-                    @click.stop="playPlaylist(item.id)"
+                    :disabled="state.playingPlaylistId === item.id"
+                    @click.stop.prevent="playPlaylist(item.id)"
                   >
                     <span
-                      :class="
-                        state.playingPlaylistId === item.id
-                          ? 'icon-[mdi--loading] animate-spin'
-                          : 'icon-[mdi--play]'
-                      "
-                      class="h-6 w-6 text-white"
+                      class="icon-[mdi--play] h-6 w-6 text-white"
                     ></span>
                   </button>
                 </div>

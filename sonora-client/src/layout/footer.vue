@@ -6,6 +6,7 @@ import MusicProgress from '@/components/Ui/MusicProgress.vue'
 import VolumeControl from '@/components/Ui/VolumeControl.vue'
 import Button from '@/components/Ui/Button.vue'
 import PlaylistBubble from '@/components/Ui/PlaylistBubble.vue'
+import PlayerSongActions from '@/components/Player/PlayerSongActions.vue'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
 import { getColorPalette } from '@/utils/colorExtractor'
@@ -276,6 +277,7 @@ const emit = defineEmits(['show'])
 
       <!-- 右侧：音量和其他控制 -->
       <div class="relative flex flex-1 items-center justify-end space-x-4">
+        <PlayerSongActions size="sm" />
         <VolumeControl />
         <PlaylistBubble v-model:show="showQueue" placement="top-right" :offset-y="20">
           <template #trigger>

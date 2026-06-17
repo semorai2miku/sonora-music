@@ -111,14 +111,6 @@ const router = createRouter({
           ),
         },
         {
-          path: '/my-music',
-          name: 'my-music',
-          component: responsive(
-            () => import('@/pages/my-music.vue'),
-            () => import('@/pages/mobile/my-music.vue')
-          ),
-        },
-        {
           path: '/likes',
           name: 'likes',
           component: responsive(

@@ -161,8 +161,7 @@ public class ClientPlaylistController {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("id", playlist.getId());
         data.put("name", playlist.getName());
-        data.put("cover", minioService.resolvePreviewUrl(
-                StringUtils.hasText(playlist.getCover()) ? playlist.getCover() : Constants.DEFAULT_COVER));
+        data.put("cover", minioService.resolvePreviewUrl(playlistCoverOf(playlist)));
         data.put("type", playlist.getType());
         data.put("pinned", playlist.getPinned());
         data.put("status", playlist.getStatus());
@@ -283,6 +282,49 @@ public class ClientPlaylistController {
             return minioService.resolvePreviewUrl(album.getCover());
         }
         return Constants.DEFAULT_COVER;
+    }
+
+    private String playlistCoverOf(Playlist playlist) {
+        if (playlist == null) {
+            return Constants.DEFAULT_COVER;
+        }
+        String cover = playlist.getCover();
+        if (hasManualPlaylistCover(cover)) {
+            return minioService.normalizeForStorage(cover);
+        }
+        String firstSongCover = firstPlaylistSongCover(playlist.getId());
+        return StringUtils.hasText(firstSongCover) ? firstSongCover : Constants.DEFAULT_COVER;
+    }
+
+    private String firstPlaylistSongCover(Long playlistId) {
+        if (playlistId == null) {
+            return Constants.DEFAULT_COVER;
+        }
+        List<PlaylistSong> links = playlistSongMapper.selectList(
+                new LambdaQueryWrapper<PlaylistSong>()
+                        .eq(PlaylistSong::getPlaylistId, playlistId)
+                        .orderByAsc(PlaylistSong::getSort)
+                        .orderByAsc(PlaylistSong::getId)
+                        .last("LIMIT 1"));
+        if (links.isEmpty()) {
+            return Constants.DEFAULT_COVER;
+        }
+        Song firstSong = songMapper.selectById(links.get(0).getSongId());
+        if (firstSong == null || Objects.equals(firstSong.getStatus(), 0)) {
+            return Constants.DEFAULT_COVER;
+        }
+        return songCoverOf(firstSong, albumMapFromSongs(List.of(firstSong)));
+    }
+
+    private boolean hasManualPlaylistCover(String cover) {
+        if (!StringUtils.hasText(cover)) {
+            return false;
+        }
+        String normalized = minioService.normalizeForStorage(cover);
+        return normalized.startsWith("playlist-cover/")
+                || normalized.startsWith("cover/")
+                || normalized.startsWith("http://")
+                || normalized.startsWith("https://");
     }
 
     private boolean isPlaylistFavorite(Long userId, Long playlistId) {

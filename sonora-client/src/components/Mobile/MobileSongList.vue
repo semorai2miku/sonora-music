@@ -17,7 +17,7 @@ interface Props {
   context?: 'queue' | 'generic'
   showSaveToPlaylist?: boolean
 }
-const { playByIndex, addSong, playlist } = useAudio()
+const { playByIndex, setPlaylist } = useAudio()
 
 const props = withDefaults(defineProps<Props>(), {
   variant: 'compact',
@@ -60,9 +60,8 @@ const handleClick = (s: Song, i: number) => {
   if (props.context === 'queue') {
     playByIndex(i)
   } else {
-    addSong(s as any)
-    const idx = playlist.value.findIndex((p: any) => p.id === s.id)
-    playByIndex(idx >= 0 ? idx : Math.max(0, playlist.value.length - 1))
+    setPlaylist(props.songs, i)
+    playByIndex(i)
   }
 }
 

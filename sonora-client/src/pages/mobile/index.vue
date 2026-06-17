@@ -4,6 +4,7 @@ import { usePlayActions } from '@/composables/usePlayActions'
 import { useI18n } from 'vue-i18n'
 import { Swiper, SwiperSlide } from 'swiper/vue'
 import { Autoplay, Pagination } from 'swiper/modules'
+import type SwiperClass from 'swiper'
 import 'swiper/css'
 import 'swiper/css/pagination'
 import {
@@ -59,6 +60,16 @@ const state = reactive<HomeState>({
 })
 
 const { banners, playlists, songs, artists, albums, isLoading } = toRefs(state)
+let bannerSwiper: SwiperClass | null = null
+
+const syncBannerSwiper = async (restartAutoplay = false) => {
+  await nextTick()
+  if (!bannerSwiper || bannerSwiper.destroyed) return
+  bannerSwiper.update()
+  if (restartAutoplay && banners.value.length > 1) {
+    bannerSwiper.autoplay?.start()
+  }
+}
 
 const shuffleList = <T,>(items: T[]) => {
   const list = [...items]
@@ -145,7 +156,24 @@ const playPlaylist = async (playlistId: number | string) => {
   }
 }
 
+const onSwiper = (sw: SwiperClass) => {
+  bannerSwiper = sw
+  void syncBannerSwiper(true)
+}
+
 onMounted(loadHomeData)
+
+onBeforeUnmount(() => {
+  bannerSwiper = null
+})
+
+onActivated(() => {
+  void syncBannerSwiper(true)
+})
+
+onDeactivated(() => {
+  bannerSwiper?.autoplay?.stop()
+})
 
 const swiperModules = [Autoplay, Pagination]
 
@@ -160,9 +188,12 @@ const swiperModules = [Autoplay, Pagination]
       <template v-else>
         <section v-if="banners.length" class="mb-6 px-4 pt-2">
           <Swiper
+            @swiper="onSwiper"
             :modules="swiperModules"
             :slides-per-view="1"
             :space-between="12"
+            :loop="false"
+            :rewind="banners.length > 1"
             :autoplay="{ delay: 4000, disableOnInteraction: false }"
             :pagination="{ clickable: true }"
             class="home-swiper h-44 overflow-hidden rounded-2xl"
@@ -235,15 +266,11 @@ const swiperModules = [Autoplay, Pagination]
                   <button
                     type="button"
                     class="playlist-play-button"
-                    @click.stop="playPlaylist(pl.id)"
+                    :disabled="state.playingPlaylistId === pl.id"
+                    @click.stop.prevent="playPlaylist(pl.id)"
                   >
                     <span
-                      :class="
-                        state.playingPlaylistId === pl.id
-                          ? 'icon-[mdi--loading] animate-spin'
-                          : 'icon-[mdi--play]'
-                      "
-                      class="h-4.5 w-4.5 text-white"
+                      class="icon-[mdi--play] h-4.5 w-4.5 text-white"
                     ></span>
                   </button>
                 </div>

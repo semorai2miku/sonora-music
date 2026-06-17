@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { clientPublicPlaylists } from '@/api'
+import { clientPublicPlaylists, collectPlaylist, uncollectPlaylist } from '@/api'
+import LoginDialog from '@/components/Auth/LoginDialog.vue'
 import HeroCard from '@/components/Ui/HeroCard.vue'
 import { usePlayActions } from '@/composables/usePlayActions'
+import { useUserStore } from '@/stores/modules/user'
 import { useI18n } from 'vue-i18n'
 import { transformPlaylists, type PlaylistData } from '@/utils/transformers'
 
 const { t } = useI18n()
 const { playPlaylist: playPlaylistAction } = usePlayActions()
+const userStore = useUserStore()
 
 const state = reactive({
   playlists: [] as PlaylistData[],
@@ -16,6 +19,8 @@ const state = reactive({
   total: 0,
   hasMore: true,
   playingPlaylistId: null as number | string | null,
+  collectingPlaylistId: null as number | string | null,
+  showLogin: false,
 })
 
 const loadPlaylists = async (reset = false) => {
@@ -59,7 +64,53 @@ const playPlaylist = async (playlistId: number | string) => {
   }
 }
 
-onMounted(() => loadPlaylists(true))
+const ensureAuthenticated = () => {
+  if (userStore.isAuthenticated) return true
+  if (userStore.isLoggedIn) userStore.logout()
+  state.showLogin = true
+  return false
+}
+
+const isOwnedPlaylist = (playlist: PlaylistData) => {
+  if (!userStore.profile?.userId || !playlist.creatorId) return false
+  return String(playlist.creatorId) === String(userStore.profile.userId)
+}
+
+const toggleCollect = async (playlist: PlaylistData) => {
+  if (!playlist.id || state.collectingPlaylistId === playlist.id || isOwnedPlaylist(playlist)) return
+  if (!ensureAuthenticated()) return
+
+  state.collectingPlaylistId = playlist.id
+  try {
+    const res = playlist.subscribed
+      ? await uncollectPlaylist(playlist.id)
+      : await collectPlaylist(playlist.id)
+    if (res?.code !== 200) {
+      throw new Error(res?.message || t('playlist.messages.actionFailed'))
+    }
+    playlist.subscribed = !playlist.subscribed
+    window.dispatchEvent(new CustomEvent('sonora:playlists-updated'))
+  } finally {
+    state.collectingPlaylistId = null
+  }
+}
+
+const refreshPublicPlaylists = () => {
+  void loadPlaylists(true)
+}
+
+onMounted(() => {
+  loadPlaylists(true)
+  window.addEventListener('sonora:playlists-updated', refreshPublicPlaylists)
+})
+
+onActivated(() => {
+  void loadPlaylists(true)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('sonora:playlists-updated', refreshPublicPlaylists)
+})
 </script>
 
 <template>
@@ -90,7 +141,11 @@ onMounted(() => loadPlaylists(true))
           :to="`/playlist/${item.id}`"
           :enable-tilt="false"
           :playable="true"
+          :collectible="!isOwnedPlaylist(item)"
+          :collected="Boolean(item.subscribed)"
+          :collect-disabled="state.collectingPlaylistId === item.id"
           @play="playPlaylist"
+          @collect="toggleCollect(item)"
         />
       </div>
 
@@ -105,5 +160,6 @@ onMounted(() => loadPlaylists(true))
         </button>
       </div>
     </div>
+    <LoginDialog v-if="state.showLogin" @close="state.showLogin = false" />
   </div>
 </template>

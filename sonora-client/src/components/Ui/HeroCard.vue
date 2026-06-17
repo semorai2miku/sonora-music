@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { gsap } from 'gsap'
 import LazyImage from '@/components/Ui/LazyImage.vue'
 import { formatCount } from '@/utils/time'
 import { withImageParam } from '@/utils/media'
@@ -15,20 +14,26 @@ interface Props {
   aspectRatio?: 'square' | 'video'
   enableTilt?: boolean
   playable?: boolean
+  collectible?: boolean
+  collected?: boolean
+  collectDisabled?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   aspectRatio: 'square',
   enableTilt: true,
   playable: false,
+  collectible: false,
+  collected: false,
+  collectDisabled: false,
 })
 const emit = defineEmits<{
   (e: 'play', id: number | string): void
+  (e: 'collect', id: number | string): void
 }>()
 
 const router = useRouter()
 const cardRef = ref<HTMLElement | null>(null)
-const isAnimating = ref(false)
 
 // Tilt 效果相关
 const tiltConfig = {
@@ -74,148 +79,8 @@ onUnmounted(() => {
   glareRef.value?.remove()
 })
 
-// Hero 展开动画
-const handleClick = async (_event: MouseEvent) => {
-  if (isAnimating.value || !cardRef.value) {
-    router.push(props.to)
-    return
-  }
-
-  isAnimating.value = true
-  const card = cardRef.value
-  const rect = card.getBoundingClientRect()
-
-  // 创建克隆元素用于动画
-  const clone = document.createElement('div')
-  clone.className = 'hero-card-clone'
-  clone.innerHTML = `
-    <div class="hero-clone-bg" style="
-      position: absolute;
-      inset: 0;
-      background-image: url(${withImageParam(props.coverUrl, '400y400')});
-      background-size: cover;
-      background-position: center;
-      filter: blur(40px) saturate(1.5);
-      transform: scale(1.5);
-      opacity: 0.4;
-    "></div>
-    <div class="hero-clone-content" style="
-      position: relative;
-      z-index: 10;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      padding: 24px;
-      opacity: 0;
-    ">
-      <img src="${withImageParam(props.coverUrl, '400y400')}" style="
-        width: 200px;
-        height: 200px;
-        border-radius: 16px;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-        object-fit: cover;
-      " />
-      <h2 style="
-        margin-top: 24px;
-        font-size: 24px;
-        font-weight: bold;
-        color: white;
-        text-align: center;
-        max-width: 80%;
-      ">${props.title}</h2>
-      ${props.subtitle ? `<p style="margin-top: 8px; font-size: 14px; color: rgba(255,255,255,0.7);">${props.subtitle}</p>` : ''}
-    </div>
-  `
-  clone.style.cssText = `
-    position: fixed;
-    z-index: 9999;
-    width: ${rect.width}px;
-    height: ${rect.height}px;
-    left: ${rect.left}px;
-    top: ${rect.top}px;
-    border-radius: 16px;
-    background: rgba(0,0,0,0.9);
-    backdrop-filter: blur(20px);
-    overflow: hidden;
-    pointer-events: none;
-    will-change: transform, width, height, left, top, border-radius;
-  `
-
-  // 创建背景遮罩
-  const overlay = document.createElement('div')
-  overlay.className = 'hero-card-overlay'
-  overlay.style.cssText = `
-    position: fixed;
-    z-index: 9998;
-    inset: 0;
-    background: rgba(0,0,0,0);
-    pointer-events: none;
-  `
-
-  document.body.appendChild(overlay)
-  document.body.appendChild(clone)
-
-  // 隐藏原始卡片
-  card.style.opacity = '0'
-
-  const content = clone.querySelector('.hero-clone-content') as HTMLElement
-
-  // 创建动画时间线
-  const tl = gsap.timeline({
-    onComplete: () => {
-      // 动画完成后跳转
-      router.push(props.to)
-
-      // 延迟清理
-      setTimeout(() => {
-        clone.remove()
-        overlay.remove()
-        card.style.opacity = '1'
-        isAnimating.value = false
-      }, 100)
-    },
-  })
-
-  // 背景遮罩淡入
-  tl.to(overlay, {
-    background: 'rgba(0,0,0,0.6)',
-    duration: 0.3,
-    ease: 'power2.out',
-  }, 0)
-
-  // 卡片展开到屏幕中央
-  tl.to(clone, {
-    width: Math.min(600, window.innerWidth - 48),
-    height: Math.min(500, window.innerHeight - 100),
-    left: (window.innerWidth - Math.min(600, window.innerWidth - 48)) / 2,
-    top: (window.innerHeight - Math.min(500, window.innerHeight - 100)) / 2,
-    borderRadius: '24px',
-    duration: 0.5,
-    ease: 'power3.out',
-  }, 0)
-
-  // 内容淡入
-  tl.to(content, {
-    opacity: 1,
-    duration: 0.3,
-    ease: 'power2.out',
-  }, 0.2)
-
-  // 短暂停留后淡出
-  tl.to(clone, {
-    opacity: 0,
-    scale: 1.05,
-    duration: 0.2,
-    ease: 'power2.in',
-  }, '+=0.15')
-
-  tl.to(overlay, {
-    background: 'rgba(0,0,0,0)',
-    duration: 0.2,
-    ease: 'power2.in',
-  }, '-=0.2')
+const handleClick = () => {
+  router.push(props.to)
 }
 
 // 3D Tilt 悬停效果
@@ -284,8 +149,16 @@ const handleMouseLeave = () => {
 
 const handlePlayClick = (event: MouseEvent) => {
   event.stopPropagation()
+  event.preventDefault()
   if (!props.playable) return
   emit('play', props.id)
+}
+
+const handleCollectClick = (event: MouseEvent) => {
+  event.stopPropagation()
+  event.preventDefault()
+  if (!props.collectible || props.collectDisabled) return
+  emit('collect', props.id)
 }
 </script>
 
@@ -321,6 +194,19 @@ const handlePlayClick = (event: MouseEvent) => {
         {{ formatCount(playCount) }}
       </div>
 
+      <button
+        v-if="collectible"
+        type="button"
+        class="absolute top-2 left-2 z-20 flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-black/45 text-white shadow-lg backdrop-blur-sm transition-transform duration-200 hover:scale-105"
+        :disabled="collectDisabled"
+        @click.stop.prevent="handleCollectClick"
+      >
+        <span
+          class="h-4.5 w-4.5"
+          :class="collected ? 'icon-[mdi--heart] text-pink-400' : 'icon-[mdi--heart-outline]'"
+        ></span>
+      </button>
+
       <!-- 底部信息 -->
       <div class="absolute right-0 bottom-0 left-0 p-2.5">
         <p class="line-clamp-2 text-xs leading-tight font-medium text-white">
@@ -340,7 +226,7 @@ const handlePlayClick = (event: MouseEvent) => {
           v-if="playable"
           type="button"
           class="flex h-12 w-12 scale-75 items-center justify-center rounded-full bg-white/90 shadow-xl transition-transform duration-300 group-hover:scale-100"
-          @click.stop="handlePlayClick"
+          @click.stop.prevent="handlePlayClick"
         >
           <span class="icon-[mdi--play] h-6 w-6 text-sky-500" />
         </button>

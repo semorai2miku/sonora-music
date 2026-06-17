@@ -127,6 +127,12 @@ export const createMyPlaylist = (data: ClientPlaylistPayload) =>
 export const updateMyPlaylist = (playlistId: number | string, data: ClientPlaylistPayload) =>
   httpPut<SonoraResult<ClientPlaylist>>(`/api/client/me/playlists/${playlistId}`, data)
 
+export const uploadMyPlaylistCover = (playlistId: number | string, formData: FormData) =>
+  httpUpload<SonoraResult<{ objectKey: string; url: string; fileName: string; fileSize: number }>>(
+    `/api/client/me/playlists/${playlistId}/cover`,
+    formData
+  )
+
 export const myPlaylistDetail = (playlistId: number | string) =>
   httpGet<SonoraResult<ClientPlaylistDetail>>(`/api/client/me/playlists/${playlistId}`)
 

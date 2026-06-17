@@ -8,7 +8,7 @@ const items = [
   { to: '/', icon: 'icon-[mdi--home]', labelKey: 'layout.nav.home' },
   { to: '/library', icon: 'icon-[mdi--music-box-multiple-outline]', labelKey: 'layout.aside.menu.library' },
   { to: '/playlists', icon: 'icon-[mdi--playlist-music]', labelKey: 'layout.aside.menu.playlists' },
-  { to: '/my-music', icon: 'icon-[mdi--history]', labelKey: 'layout.nav.myMusic' },
+  { to: '/recent', icon: 'icon-[mdi--history]', labelKey: 'layout.aside.menu.recent' },
 ]
 
 const emit = defineEmits(['show-player'])

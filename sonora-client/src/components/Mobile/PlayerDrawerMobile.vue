@@ -5,12 +5,11 @@ import { useAudio } from '@/composables/useAudio'
 import { useLyrics } from '@/composables/useLyrics'
 import { useLyricsScroll } from '@/composables/useLyricsScroll'
 import { useGradientBackground } from '@/composables/useGradientBackground'
-import { useCommentCount } from '@/composables/useCommentCount'
 import { useI18n } from 'vue-i18n'
 import MusicProgress from '@/components/Ui/MusicProgress.vue'
 import VolumeControlMobile from '@/components/Mobile/VolumeControlMobile.vue'
 import PlaylistDrawerMobile from '@/components/Mobile/PlaylistDrawerMobile.vue'
-import PlaylistCommentsPopup from '@/components/Mobile/PlaylistCommentsPopup.vue'
+import PlayerSongActions from '@/components/Player/PlayerSongActions.vue'
 import Button from '@/components/Ui/Button.vue'
 import VinylDisc from '@/components/Player/VinylDisc.vue'
 import type { Artist as SongArtist } from '@/stores/interface'
@@ -25,6 +24,8 @@ const drawerRef = useTemplateRef('drawerRef')
 const lyricsRef = useTemplateRef('lyricsRef')
 const bgARef = useTemplateRef('bgARef')
 const bgBRef = useTemplateRef('bgBRef')
+const lyricsContainerRef = ref<HTMLElement | null>(null)
+const vinylDiscRef = ref<InstanceType<typeof VinylDisc> | null>(null)
 
 // 音频播放器
 const {
@@ -85,14 +86,9 @@ const {
   isOpen: isOpen as Ref<boolean>,
 })
 
-// 评论数量
-const songId = computed(() => currentSong.value?.id)
-const { commentCount } = useCommentCount({ songId })
-
 // 本地状态
 const state = reactive({
   isRendered: false,
-  isCommentsOpen: false,
   showLyrics: false,
   showToolbar: false,
   // 触摸相关
@@ -110,7 +106,6 @@ const {
   showToolbar,
   lyricDragMoved,
   previewLyricTime,
-  isCommentsOpen,
 } = toRefs(state)
 
 const playerArtists = computed<SongArtist[]>(() => {
@@ -589,23 +584,7 @@ const playModeIcon = computed(() => {
       <div class="mx-auto flex w-full max-w-xs items-center justify-between px-4">
         <!-- 播放列表和历史播放 -->
         <PlaylistDrawerMobile />
-        <!-- 评论 -->
-        <div class="relative">
-          <Button
-            variant="ghost"
-            size="none"
-            class="group p-2"
-            icon="icon-[mdi--message-processing-outline]"
-            icon-class="h-6 w-6 text-primary/70 group-hover:text-primary transition-colors"
-            @click.stop="isCommentsOpen = true"
-          />
-          <span
-            v-if="commentCount > 0"
-            class="pointer-events-none absolute top-2 right-2 flex h-4 min-w-4 translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-pink-500 px-1 text-[0.6rem] font-bold text-white shadow-sm"
-          >
-            {{ commentCount > 999 ? '999+' : commentCount }}
-          </span>
-        </div>
+        <PlayerSongActions size="md" />
         <!-- 翻译 -->
         <Button
           v-if="lyricsTrans.length"
@@ -685,8 +664,6 @@ const playModeIcon = computed(() => {
       </div>
     </div>
   </div>
-  <!-- 评论弹窗 -->
-  <PlaylistCommentsPopup v-model:show="isCommentsOpen" :id="currentSong?.id ?? null" />
 </template>
 
 <style scoped>

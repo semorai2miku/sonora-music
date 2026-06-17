@@ -23,6 +23,7 @@ const isProtectedClientUrl = (url?: string) => {
         value.startsWith('/api/client/me/') ||
         value === '/api/client/auth/me' ||
         value === '/api/client/auth/avatar' ||
+        value.includes('/api/client/me/playlists/') && value.endsWith('/cover') ||
         value === '/api/client/auth/password'
     )
 }

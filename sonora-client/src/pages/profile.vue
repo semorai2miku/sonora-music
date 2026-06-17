@@ -312,7 +312,14 @@ onMounted(loadProfile)
             <div class="grid w-full gap-3 sm:grid-cols-4">
               <Button variant="solid" size="md" :loading="state.saving" @click="saveProfile">更新信息</Button>
               <Button variant="glass" size="md" @click="openPasswordDialog">修改密码</Button>
-              <Button variant="glass" size="md" @click="logout">退出登录</Button>
+              <Button
+                variant="soft"
+                size="md"
+                class="bg-red-500/15 text-red-300 hover:bg-red-500/25"
+                @click="logout"
+              >
+                退出登录
+              </Button>
               <Button variant="soft" size="md" @click="state.cancelDialogVisible = true">注销账号</Button>
             </div>
           </div>

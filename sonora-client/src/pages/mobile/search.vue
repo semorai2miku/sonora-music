@@ -3,25 +3,31 @@ import { cloudSearch, searchDefault, searchSuggest } from '@/api'
 import LazyImage from '@/components/Ui/LazyImage.vue'
 import Button from '@/components/Ui/Button.vue'
 import { useAudio } from '@/composables/useAudio'
+import { usePlayActions } from '@/composables/usePlayActions'
 import { withImageParam } from '@/utils/media'
+import { formatCount } from '@/utils/time'
 import {
   transformSearchAlbums,
   transformSearchArtists,
+  transformSearchPlaylists,
   transformSearchSongs,
   type AlbumData,
   type ArtistData,
+  type PlaylistData,
   type SongData,
 } from '@/utils/transformers'
 
 const route = useRoute()
 const router = useRouter()
 const { setPlaylist, play } = useAudio()
+const { playPlaylist: playPlaylistAction } = usePlayActions()
 
 const q = computed(() => String(route.query.q || '').trim())
 
 const SONG_LIMIT = 12
 const ARTIST_LIMIT = 8
 const ALBUM_LIMIT = 8
+const PLAYLIST_LIMIT = 8
 
 const state = reactive({
   placeholder: '',
@@ -32,14 +38,23 @@ const state = reactive({
   songs: [] as SongData[],
   artists: [] as ArtistData[],
   albums: [] as AlbumData[],
+  playlists: [] as PlaylistData[],
   songTotal: 0,
   artistTotal: 0,
   albumTotal: 0,
+  playlistTotal: 0,
+  playingPlaylistId: null as number | string | null,
 })
 
-const totalResults = computed(() => state.songTotal + state.artistTotal + state.albumTotal)
+const totalResults = computed(
+  () => state.songTotal + state.artistTotal + state.albumTotal + state.playlistTotal
+)
 const hasAnyResults = computed(
-  () => state.songs.length > 0 || state.artists.length > 0 || state.albums.length > 0
+  () =>
+    state.songs.length > 0 ||
+    state.artists.length > 0 ||
+    state.albums.length > 0 ||
+    state.playlists.length > 0
 )
 
 const inputRef = useTemplateRef('inputRef')
@@ -49,9 +64,11 @@ const resetResults = () => {
   state.songs = []
   state.artists = []
   state.albums = []
+  state.playlists = []
   state.songTotal = 0
   state.artistTotal = 0
   state.albumTotal = 0
+  state.playlistTotal = 0
 }
 
 const fetchDefault = async () => {
@@ -86,10 +103,11 @@ const fetchResults = async () => {
 
   state.loading = true
   try {
-    const [songsRes, artistsRes, albumsRes] = await Promise.allSettled([
+    const [songsRes, artistsRes, albumsRes, playlistsRes] = await Promise.allSettled([
       cloudSearch({ keywords: keyword, type: 1, limit: SONG_LIMIT, offset: 0 }),
       cloudSearch({ keywords: keyword, type: 100, limit: ARTIST_LIMIT, offset: 0 }),
       cloudSearch({ keywords: keyword, type: 10, limit: ALBUM_LIMIT, offset: 0 }),
+      cloudSearch({ keywords: keyword, type: 1000, limit: PLAYLIST_LIMIT, offset: 0 }),
     ])
 
     if (songsRes.status === 'fulfilled') {
@@ -126,6 +144,18 @@ const fetchResults = async () => {
     } else {
       state.albums = []
       state.albumTotal = 0
+    }
+
+    if (playlistsRes.status === 'fulfilled') {
+      const { playlists, total } = transformSearchPlaylists(
+        playlistsRes.value as Record<string, unknown>,
+        PLAYLIST_LIMIT
+      )
+      state.playlists = playlists
+      state.playlistTotal = total
+    } else {
+      state.playlists = []
+      state.playlistTotal = 0
     }
   } finally {
     state.loading = false
@@ -164,6 +194,16 @@ const playAllSongs = () => {
   if (!state.songs.length) return
   setPlaylist(state.songs, 0)
   play(state.songs[0], 0)
+}
+
+const playPlaylist = async (playlistId: number | string) => {
+  if (!playlistId || state.playingPlaylistId === playlistId) return
+  state.playingPlaylistId = playlistId
+  try {
+    await playPlaylistAction(playlistId)
+  } finally {
+    state.playingPlaylistId = null
+  }
 }
 
 const handleInputFocus = () => {
@@ -393,6 +433,67 @@ onUnmounted(() => {
                   </p>
                   <p class="mt-1 truncate text-xs text-[var(--glass-text-muted)]">
                     {{ album.artist || $t('player.unknownArtist') }}
+                  </p>
+                </div>
+              </router-link>
+            </div>
+          </section>
+
+          <section v-if="state.playlists.length > 0" class="glass-card p-4">
+            <div class="section-header">
+              <div>
+                <h2 class="section-title">{{ $t('search.sections.playlists') }}</h2>
+                <p class="section-meta">
+                  {{
+                    $t('search.showingCount', {
+                      count: state.playlists.length,
+                      total: state.playlistTotal,
+                    })
+                  }}
+                </p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <router-link
+                v-for="playlist in state.playlists"
+                :key="playlist.id"
+                :to="`/playlist/${playlist.id}`"
+                class="album-card"
+              >
+                <div class="album-card__cover relative overflow-hidden">
+                  <LazyImage
+                    :src="playlist.coverImgUrl ? withImageParam(playlist.coverImgUrl, '240y240') : '/default-cover.svg'"
+                    :alt="playlist.name"
+                    imgClass="h-full w-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    class="absolute right-2 bottom-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white"
+                    :disabled="state.playingPlaylistId === playlist.id"
+                    @click.prevent.stop="playPlaylist(playlist.id)"
+                  >
+                    <span
+                      :class="
+                        state.playingPlaylistId === playlist.id
+                          ? 'icon-[mdi--loading] animate-spin'
+                          : 'icon-[mdi--play]'
+                      "
+                      class="h-4.5 w-4.5"
+                    />
+                  </button>
+                </div>
+                <div class="min-w-0">
+                  <p class="truncate text-sm font-semibold text-[var(--glass-text-primary)]">
+                    {{ playlist.name }}
+                  </p>
+                  <p class="mt-1 truncate text-xs text-[var(--glass-text-muted)]">
+                    {{ playlist.creator || $t('common.me') }}
+                  </p>
+                  <p class="mt-2 truncate text-xs text-[var(--glass-text-muted)]">
+                    {{ $t('commonUnits.songsShort', { count: playlist.trackCount || 0 }) }}
+                    <span class="mx-1">·</span>
+                    {{ formatCount(playlist.playCount || 0) }} {{ $t('common.stats.plays') }}
                   </p>
                 </div>
               </router-link>

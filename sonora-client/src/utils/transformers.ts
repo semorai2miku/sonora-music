@@ -20,9 +20,12 @@ export interface PlaylistData {
   name: string
   coverImgUrl: string
   playCount: number
+  collectCount?: number
   trackCount?: number
   creator?: string
+  creatorId?: number | string
   description?: string
+  subscribed?: boolean
 }
 
 export interface SongData {
@@ -168,13 +171,24 @@ export function transformPlaylist(
         DEFAULT_COVER
     ),
     playCount: (item?.playCount as number) || 0,
+    collectCount: (item?.collectCount as number) || 0,
     trackCount: (item?.trackCount as number) || (item?.songCount as number) || 0,
     creator:
       (creator?.nickname as string) ||
       (item?.creatorName as string) ||
       (item?.artist as string) ||
       '',
+    creatorId:
+      (creator?.userId as number | string) ||
+      (item?.creatorId as number | string) ||
+      0,
     description: (item?.description as string) || '',
+    subscribed:
+      typeof item?.subscribed === 'boolean'
+        ? (item.subscribed as boolean)
+        : typeof item?.subscribed === 'number'
+          ? Boolean(item.subscribed)
+          : false,
   }
 }
 

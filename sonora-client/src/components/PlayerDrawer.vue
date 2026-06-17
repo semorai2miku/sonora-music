@@ -9,10 +9,10 @@ import { useAudio } from '@/composables/useAudio'
 import { useLyrics } from '@/composables/useLyrics'
 import { useLyricsScroll } from '@/composables/useLyricsScroll'
 import { useGradientBackground } from '@/composables/useGradientBackground'
-import { useCommentCount } from '@/composables/useCommentCount'
 import { useI18n } from 'vue-i18n'
 import { useLyricsDrag } from '@/composables/useLyricsDrag'
 import { useDrawerTransition } from '@/composables/useDrawerTransition'
+import PlayerSongActions from '@/components/Player/PlayerSongActions.vue'
 import VinylDisc from '@/components/Player/VinylDisc.vue'
 import type { Artist as SongArtist } from '@/stores/interface'
 
@@ -134,10 +134,6 @@ const {
   isOpen: isOpen as Ref<boolean>,
 })
 
-// 评论数量
-const songId = computed(() => currentSong.value?.id)
-const { commentCount } = useCommentCount({ songId })
-
 // 抽屉过渡动画
 const {
   isRendered,
@@ -154,8 +150,6 @@ const {
 const state = reactive({
   /** 播放列表弹出框 */
   isRecentOpen: false,
-  /** 评论弹窗 */
-  isCommentsOpen: false,
   /** 移动端歌词视图 */
   showMobileLyrics: false,
   /** 滚轮预览歌词索引 */
@@ -164,7 +158,7 @@ const state = reactive({
   wheelPreviewVisible: false,
 })
 
-const { isRecentOpen, isCommentsOpen, showMobileLyrics } = toRefs(state)
+const { isRecentOpen, showMobileLyrics } = toRefs(state)
 let wheelPreviewTimer: ReturnType<typeof setTimeout> | null = null
 
 const playerArtists = computed<SongArtist[]>(() => {
@@ -293,7 +287,7 @@ const scheduleWheelPreviewReset = () => {
   }
   wheelPreviewTimer = setTimeout(() => {
     resetWheelPreview(true)
-  }, 5000)
+  }, 8000)
 }
 
 const handleLyricsWheel = (event: WheelEvent) => {
@@ -674,18 +668,8 @@ onUnmounted(() => {
         </PlaylistBubble>
       </div>
 
-      <div class="flex w-full max-w-sm items-center justify-between px-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          rounded="2xl"
-          class="gap-1.5 px-3.5 py-1.5 text-xs"
-          @click="isCommentsOpen = true"
-        >
-          <span class="icon-[mdi--comment-outline] h-4 w-4"></span>
-          <span>{{ commentCount }}</span>
-        </Button>
-
+      <div class="flex w-full max-w-sm items-center justify-between gap-4 px-4">
+        <PlayerSongActions size="md" />
         <div class="volume-control flex items-center gap-2">
           <VolumeControl />
         </div>
@@ -775,7 +759,6 @@ onUnmounted(() => {
       </div>
     </div>
   </div>
-  <SongCommentsDialog v-model:show="isCommentsOpen" :song-id="currentSong?.id ?? null" />
 </template>
 
 <style scoped>

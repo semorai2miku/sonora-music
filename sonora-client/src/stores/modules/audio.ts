@@ -415,14 +415,19 @@ export const useAudioStore = defineStore('audio', {
           return
 
         case PlayMode.RANDOM:
-          // 随机播放 - 从历史记录中获取上一首
+          // 随机播放时优先按真实播放历史回退
           if (this.audio.playHistory.length > 1) {
-            const prevSong = this.audio.playHistory[this.audio.playHistory.length - 2]
+            const currentId = this.audio.currentSong?.id
+            const lastHistory = this.audio.playHistory[this.audio.playHistory.length - 1]
+            if (String(lastHistory?.id ?? '') === String(currentId ?? '')) {
+              this.audio.playHistory.pop()
+            }
+
+            const previousEntry = this.audio.playHistory.pop()
             prevIndex = this.audio.playlist.findIndex(
-              (song: { id: any }) => song.id === prevSong.id
+              (song: { id: any }) => song.id === previousEntry?.id
             )
           } else {
-            // 如果没有历史记录，随机选择
             prevIndex = Math.floor(Math.random() * this.audio.playlist.length)
           }
           break

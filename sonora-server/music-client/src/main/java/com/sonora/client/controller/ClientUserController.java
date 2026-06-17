@@ -35,6 +35,7 @@ public class ClientUserController {
     private static final String FAVORITE_TYPE_PLAYLIST = "playlist";
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final long MAX_AVATAR_SIZE = 5 * 1024 * 1024L;
+    private static final long MAX_PLAYLIST_COVER_SIZE = 5 * 1024 * 1024L;
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
     private static final Pattern PASSWORD_PATTERN = Pattern.compile("^[\\x21-\\x7E]{6,72}$");
     private static final Pattern PHONE_PATTERN = Pattern.compile("^1[3-9]\\d{9}$");
@@ -244,6 +245,38 @@ public class ClientUserController {
             return R.ok(data);
         } catch (Exception e) {
             return R.fail("头像上传失败: " + e.getMessage());
+        }
+    }
+
+    @Operation(summary = "上传我的歌单封面")
+    @PostMapping("/me/playlists/{playlistId}/cover")
+    public R<Map<String, Object>> uploadMyPlaylistCover(@PathVariable Long playlistId,
+                                                        @RequestParam("file") MultipartFile file) {
+        Long userId = currentUserId();
+        if (userId == null) {
+            return R.unauthorized("请先登录");
+        }
+        Playlist playlist = getOwnPlaylist(userId, playlistId);
+        if (playlist == null) {
+            return R.notFound("歌单不存在");
+        }
+        if (isLikedPlaylist(playlist)) {
+            return R.badRequest("默认喜欢歌单不可编辑");
+        }
+        if (!validImageFile(file, MAX_PLAYLIST_COVER_SIZE)) {
+            return R.badRequest("请上传 5MB 以内的图片文件");
+        }
+        try {
+            String objectKey = minioService.upload(file, "playlist-cover");
+            String url = minioService.buildPreviewUrl(objectKey);
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("objectKey", objectKey);
+            data.put("url", url);
+            data.put("fileName", file.getOriginalFilename());
+            data.put("fileSize", file.getSize());
+            return R.ok(data);
+        } catch (Exception e) {
+            return R.fail("歌单封面上传失败: " + e.getMessage());
         }
     }
 
@@ -536,10 +569,8 @@ public class ClientUserController {
             ps.setSort(nextPlaylistSongSort(playlistId));
             playlistSongMapper.insert(ps);
         }
-        String songCover = songCoverOf(song);
-        if (!StringUtils.hasText(playlist.getCover()) && StringUtils.hasText(songCover)) {
-            playlist.setCover(minioService.normalizeForStorage(songCover));
-            playlistMapper.updateById(playlist);
+        if (!hasManualPlaylistCover(playlist.getCover())) {
+            refreshPlaylistCover(playlist);
         }
         return R.ok(playlistOf(playlistMapper.selectById(playlistId)));
     }
@@ -563,6 +594,9 @@ public class ClientUserController {
                 new LambdaQueryWrapper<PlaylistSong>()
                         .eq(PlaylistSong::getPlaylistId, playlistId)
                         .eq(PlaylistSong::getSongId, songId));
+        if (!hasManualPlaylistCover(playlist.getCover())) {
+            refreshPlaylistCover(playlist);
+        }
         return R.ok();
     }
 
@@ -649,10 +683,8 @@ public class ClientUserController {
             ps.setSort(nextPlaylistSongSort(liked.getId()));
             playlistSongMapper.insert(ps);
         }
-        String songCover = songCoverOf(song);
-        if (StringUtils.hasText(songCover)) {
-            liked.setCover(minioService.normalizeForStorage(songCover));
-            playlistMapper.updateById(liked);
+        if (!hasManualPlaylistCover(liked.getCover())) {
+            refreshPlaylistCover(liked);
         }
         return R.ok(songOf(song, true));
     }
@@ -723,8 +755,7 @@ public class ClientUserController {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("id", playlist.getId());
         data.put("name", playlist.getName());
-        data.put("cover", minioService.resolvePreviewUrl(
-                StringUtils.hasText(playlist.getCover()) ? playlist.getCover() : Constants.DEFAULT_COVER));
+        data.put("cover", minioService.resolvePreviewUrl(playlistCoverOf(playlist)));
         data.put("type", playlist.getType());
         data.put("pinned", playlist.getPinned());
         data.put("status", playlist.getStatus());
@@ -923,19 +954,52 @@ public class ClientUserController {
     }
 
     private void refreshPlaylistCover(Playlist playlist) {
-        List<PlaylistSong> songs = playlistSongMapper.selectList(
-                new LambdaQueryWrapper<PlaylistSong>()
-                        .eq(PlaylistSong::getPlaylistId, playlist.getId())
-                        .orderByDesc(PlaylistSong::getSort)
-                        .last("LIMIT 1"));
-        if (songs.isEmpty()) {
-            playlist.setCover(null);
-            playlistMapper.updateById(playlist);
+        if (playlist == null || hasManualPlaylistCover(playlist.getCover())) {
             return;
         }
-        Song lastSong = songMapper.selectById(songs.get(0).getSongId());
-        playlist.setCover(lastSong == null ? null : minioService.normalizeForStorage(songCoverOf(lastSong)));
+        playlist.setCover(null);
         playlistMapper.updateById(playlist);
+    }
+
+    private String playlistCoverOf(Playlist playlist) {
+        if (playlist == null) {
+            return Constants.DEFAULT_COVER;
+        }
+        String cover = StringUtils.hasText(playlist.getCover()) ? playlist.getCover().trim() : null;
+        if (hasManualPlaylistCover(cover)) {
+            return cover;
+        }
+        String firstSongCover = firstPlaylistSongCover(playlist.getId());
+        return StringUtils.hasText(firstSongCover) ? firstSongCover : Constants.DEFAULT_COVER;
+    }
+
+    private String firstPlaylistSongCover(Long playlistId) {
+        if (playlistId == null) {
+            return Constants.DEFAULT_COVER;
+        }
+        List<PlaylistSong> links = playlistSongMapper.selectList(
+                new LambdaQueryWrapper<PlaylistSong>()
+                        .eq(PlaylistSong::getPlaylistId, playlistId)
+                        .orderByAsc(PlaylistSong::getSort)
+                        .orderByAsc(PlaylistSong::getId)
+                        .last("LIMIT 1"));
+        if (links.isEmpty()) {
+            return Constants.DEFAULT_COVER;
+        }
+        Song firstSong = songMapper.selectById(links.get(0).getSongId());
+        String cover = firstSong == null ? null : songCoverOf(firstSong);
+        return StringUtils.hasText(cover) ? cover : Constants.DEFAULT_COVER;
+    }
+
+    private boolean hasManualPlaylistCover(String cover) {
+        if (!StringUtils.hasText(cover)) {
+            return false;
+        }
+        String normalized = minioService.normalizeForStorage(cover);
+        return normalized.startsWith("playlist-cover/")
+                || normalized.startsWith("cover/")
+                || normalized.startsWith("http://")
+                || normalized.startsWith("https://");
     }
 
     private Map<Long, Album> albumMapFromSongs(Collection<Song> songs) {
@@ -1090,9 +1154,13 @@ public class ClientUserController {
     }
 
     private boolean validAvatarFile(MultipartFile file) {
+        return validImageFile(file, MAX_AVATAR_SIZE);
+    }
+
+    private boolean validImageFile(MultipartFile file, long maxSize) {
         return file != null
                 && !file.isEmpty()
-                && file.getSize() <= MAX_AVATAR_SIZE
+                && file.getSize() <= maxSize
                 && file.getContentType() != null
                 && file.getContentType().startsWith("image/");
     }

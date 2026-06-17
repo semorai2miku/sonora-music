@@ -6,6 +6,7 @@ import LoginDialog from '@/components/Auth/LoginDialog.vue'
 import SaveToPlaylistDialog from '@/components/Playlist/SaveToPlaylistDialog.vue'
 import { likedSongIds, likeSong, search, songDetail, unlikeSong } from '@/api'
 import { useAudio } from '@/composables/useAudio'
+import { usePlayActions } from '@/composables/usePlayActions'
 import { useUserStore } from '@/stores/modules/user'
 import { formatDuration } from '@/utils/time'
 import LazyImage from '@/components/Ui/LazyImage.vue'
@@ -23,6 +24,7 @@ const router = useRouter()
 const songId = computed(() => route.params.id as string | number)
 const { mergedLines, fetchLyrics } = useLyrics()
 const { play, setPlaylist, currentSong, isPlaying } = useAudio()
+const { playPlaylist: playPlaylistAction } = usePlayActions()
 const userStore = useUserStore()
 const showComments = ref(false)
 const showLogin = ref(false)
@@ -33,6 +35,7 @@ const state = reactive({
   similarSongs: [] as SongData[],
   similarPlaylists: [] as PlaylistData[],
   liked: false,
+  playingPlaylistId: null as number | string | null,
 })
 
 const ensureAuthenticated = () => {
@@ -168,6 +171,16 @@ const openSaveToPlaylist = () => {
   if (!state.info?.id) return
   if (!ensureAuthenticated()) return
   showSaveToPlaylist.value = true
+}
+
+const playPlaylist = async (playlistId: number | string) => {
+  if (!playlistId || state.playingPlaylistId === playlistId) return
+  state.playingPlaylistId = playlistId
+  try {
+    await playPlaylistAction(playlistId)
+  } finally {
+    state.playingPlaylistId = null
+  }
 }
 
 watch(() => [state.info?.id, userStore.isAuthenticated], refreshLikeState)
@@ -324,11 +337,14 @@ watch(() => [state.info?.id, userStore.isAuthenticated], refreshLikeState)
                 <h2 class="text-lg font-semibold">相关歌单</h2>
               </div>
               <div class="grid grid-cols-2 gap-3 p-4">
-                <router-link
+                <div
                   v-for="pl in state.similarPlaylists"
                   :key="pl.id"
-                  :to="`/playlist/${pl.id}`"
-                  class="group overflow-hidden rounded-xl"
+                  class="group cursor-pointer overflow-hidden rounded-xl"
+                  role="link"
+                  tabindex="0"
+                  @click="router.push(`/playlist/${pl.id}`)"
+                  @keydown.enter="router.push(`/playlist/${pl.id}`)"
                 >
                   <div class="relative aspect-square overflow-hidden rounded-lg">
                     <img
@@ -338,6 +354,16 @@ watch(() => [state.info?.id, userStore.isAuthenticated], refreshLikeState)
                     <div
                       class="absolute inset-0 bg-linear-to-t from-black/60 to-transparent opacity-0 transition-opacity group-hover:opacity-100"
                     ></div>
+                    <button
+                      type="button"
+                      class="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100"
+                      :disabled="state.playingPlaylistId === pl.id"
+                      @click.stop.prevent="playPlaylist(pl.id)"
+                    >
+                      <span class="flex h-12 w-12 items-center justify-center rounded-full bg-pink-500/90 text-white shadow-lg">
+                        <span class="icon-[mdi--play] h-6 w-6"></span>
+                      </span>
+                    </button>
                   </div>
                   <p
                     class="text-primary mt-2 truncate text-xs font-medium group-hover:text-pink-300"
@@ -345,7 +371,7 @@ watch(() => [state.info?.id, userStore.isAuthenticated], refreshLikeState)
                     {{ pl.name }}
                   </p>
                   <p class="text-primary/50 truncate text-xs">{{ pl.trackCount }} 首</p>
-                </router-link>
+                </div>
               </div>
             </div>
           </div>

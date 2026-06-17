@@ -9,7 +9,6 @@ import {
   uncollectPlaylist,
   updateMyPlaylist,
 } from '@/api'
-import PlaylistCommentsPopup from '@/components/Mobile/PlaylistCommentsPopup.vue'
 import Button from '@/components/Ui/Button.vue'
 import LazyImage from '@/components/Ui/LazyImage.vue'
 import { usePlayActions } from '@/composables/usePlayActions'
@@ -52,7 +51,6 @@ const state = reactive({
   collected: false,
   isLocalPlaylist: false,
   showFullDesc: false,
-  showComments: false,
   myPlaylist: null as null | { id: number | string; type?: string; status?: number; subscribed?: boolean },
   actionLoading: false,
 })
@@ -65,7 +63,9 @@ const isPublishedPlaylist = computed(() => Number(state.myPlaylist?.status || 0)
 const showCoverCollectButton = computed(
   () => state.isLocalPlaylist && !isOwnedNormalPlaylist.value && state.myPlaylist?.type !== 'liked'
 )
-const showUtilityActionButton = computed(() => isOwnedNormalPlaylist.value)
+const showUtilityActionButton = computed(
+  () => (state.isLocalPlaylist && state.myPlaylist?.type !== 'liked') || isOwnedNormalPlaylist.value
+)
 const visibleSongs = computed(() => state.songs.slice(0, state.songPage * PLAYLIST_SONG_PAGE_SIZE))
 const hasMoreSongs = computed(() => visibleSongs.value.length < state.songs.length)
 const currentCategory = computed(() => {
@@ -281,6 +281,19 @@ watch(() => userStore.isLoggedIn, () => void load(playlistId.value))
                 imgClass="cover-image h-32 w-32 rounded-2xl object-cover"
               />
               <button
+                type="button"
+                class="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/10"
+                :disabled="state.actionLoading || !state.songs.length"
+                @click.stop.prevent="playAll"
+              >
+                <span
+                  class="flex h-12 w-12 items-center justify-center rounded-full bg-black/45 text-white shadow-lg backdrop-blur-sm"
+                  :class="{ 'opacity-70': state.actionLoading || !state.songs.length }"
+                >
+                  <span class="icon-[mdi--play] h-6 w-6"></span>
+                </span>
+              </button>
+              <button
                 v-if="showCoverCollectButton"
                 type="button"
                 class="absolute top-2 right-2 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-black/45 text-white shadow-lg backdrop-blur-sm"
@@ -379,25 +392,27 @@ watch(() => userStore.isLoggedIn, () => void load(playlistId.value))
           size="icon-lg"
           rounded="full"
           class="collect-btn"
-          :class="isPublishedPlaylist ? 'collected' : ''"
-          :icon="isPublishedPlaylist ? 'icon-[mdi--earth-off]' : 'icon-[mdi--earth]'"
+          :class="
+            isOwnedNormalPlaylist
+              ? isPublishedPlaylist
+                ? 'collected'
+                : ''
+              : state.collected
+                ? 'collected'
+                : ''
+          "
+          :icon="
+            isOwnedNormalPlaylist
+              ? isPublishedPlaylist
+                ? 'icon-[mdi--earth-off]'
+                : 'icon-[mdi--earth]'
+              : state.collected
+                ? 'icon-[mdi--heart]'
+                : 'icon-[mdi--heart-outline]'
+          "
           icon-class="h-5 w-5"
           :disabled="state.actionLoading"
           @click="handleUtilityAction"
-        />
-        <Button
-          variant="glass"
-          size="icon-lg"
-          rounded="full"
-          class="comment-btn"
-          icon="icon-[mdi--message-processing-outline]"
-          icon-class="h-5 w-5"
-          @click="state.showComments = true"
-        />
-        <PlaylistCommentsPopup
-          v-model:show="state.showComments"
-          :id="playlistId"
-          type="playlist"
         />
       </div>
 
@@ -459,8 +474,7 @@ watch(() => userStore.isLoggedIn, () => void load(playlistId.value))
 }
 
 .shuffle-btn,
-.collect-btn,
-.comment-btn {
+.collect-btn {
   background: var(--glass-card-bg);
   color: var(--glass-text-primary);
   border: 1px solid var(--glass-border-default);
@@ -468,8 +482,7 @@ watch(() => userStore.isLoggedIn, () => void load(playlistId.value))
 }
 
 .shuffle-btn:active,
-.collect-btn:active,
-.comment-btn:active {
+.collect-btn:active {
   transform: scale(0.97);
 }
 
