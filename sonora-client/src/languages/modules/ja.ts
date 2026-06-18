@@ -409,7 +409,7 @@ export default {
     loadMore: 'もっと見る',
   },
   newAlbums: {
-    title: '新着アルバム',
+    title: 'アルバム',
     areas: { all: '全部', zh: '中華', ea: '洋楽', jp: '日本', kr: '韓国' },
     loadMore: 'もっと見る',
   },

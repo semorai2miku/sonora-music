@@ -416,7 +416,7 @@ export default {
     loadMore: 'Load More',
   },
   newAlbums: {
-    title: 'New Albums',
+    title: 'Albums',
     areas: { all: 'All', zh: 'Chinese', ea: 'Western', jp: 'Japanese', kr: 'Korean' },
     loadMore: 'Load More',
   },

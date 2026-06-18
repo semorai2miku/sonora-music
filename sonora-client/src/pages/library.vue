@@ -61,6 +61,7 @@ onMounted(loadSongs)
         :loading="state.isLoading"
         :show-header="true"
         :show-controls="true"
+        :copy-song-name="true"
         :empty-message="$t('library.empty')"
       />
     </div>

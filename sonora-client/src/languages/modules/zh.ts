@@ -398,7 +398,7 @@ export default {
     loadMore: '加载更多',
   },
   newAlbums: {
-    title: '新碟上架',
+    title: '专辑',
     areas: { all: '全部', zh: '华语', ea: '欧美', jp: '日本', kr: '韩国' },
     loadMore: '加载更多',
   },

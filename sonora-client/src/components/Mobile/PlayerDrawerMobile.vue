@@ -73,7 +73,6 @@ const {
 
 // 背景渐变
 const {
-  useCoverBg,
   bgAStyle,
   bgBStyle,
   startBackgroundBreathing,
@@ -329,8 +328,8 @@ const playModeIcon = computed(() => {
     ref="drawerRef"
     class="bg-overlay/95 fixed inset-0 z-9999 flex flex-col backdrop-blur-xl"
   >
-    <!-- 封面模糊背景（可切换启用） -->
-    <div v-show="useCoverBg" class="absolute inset-0 -z-10 overflow-hidden">
+    <!-- 封面模糊背景 -->
+    <div class="absolute inset-0 -z-10 overflow-hidden">
       <div
         ref="bgARef"
         class="bg-layer absolute inset-0 opacity-0"
@@ -369,7 +368,7 @@ const playModeIcon = computed(() => {
       />
     </div>
 
-    <!-- 工具栏：自动居中、翻译、罗马音、背景、字号、评论 -->
+    <!-- 工具栏：自动居中、字号 -->
     <div
       v-show="showToolbar"
       class="toolbar-panel fixed top-16 right-4 left-4 z-50 overflow-hidden rounded-2xl bg-white/10 backdrop-blur-md"
@@ -385,17 +384,6 @@ const playModeIcon = computed(() => {
           @click="toggleAutoScroll"
         >
           <span>{{ t('player.autoCenter') }}</span>
-        </Button>
-
-        <Button
-          variant="text"
-          size="none"
-          class="toolbar-btn"
-          :icon="useCoverBg ? 'icon-[mdi--image]' : 'icon-[mdi--image-off]'"
-          icon-class="h-5 w-5"
-          @click="useCoverBg = !useCoverBg"
-        >
-          <span>{{ t('player.bgToggle') }}</span>
         </Button>
 
         <Button

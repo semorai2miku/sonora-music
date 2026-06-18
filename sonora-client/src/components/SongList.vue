@@ -22,6 +22,7 @@ interface Props {
   emptyMessage?: string
   loading?: boolean
   allowRemove?: boolean
+  copySongName?: boolean
 }
 
 interface Emits {
@@ -42,6 +43,7 @@ const props = withDefaults(defineProps<Props>(), {
   emptyMessage: '',
   loading: false,
   allowRemove: false,
+  copySongName: false,
 })
 
 const emit = defineEmits<Emits>()
@@ -208,6 +210,14 @@ const openSaveToPlaylist = (song: Song) => {
   showSaveToPlaylist.value = true
 }
 
+const preventNavigationWhenSelecting = (event: MouseEvent) => {
+  if (!props.copySongName) return
+  const selectedText = window.getSelection?.()?.toString().trim()
+  if (!selectedText) return
+  event.preventDefault()
+  event.stopPropagation()
+}
+
 watch(
   () => [props.songs?.map(song => song.id).join(','), userStore.isAuthenticated],
   refreshLikedStates,
@@ -350,7 +360,9 @@ watch(
                   :to="`/song/${song.id}`"
                   :title="song.name"
                   class="text-primary block truncate text-base font-medium transition-colors group-hover:text-pink-300 hover:text-pink-300"
-                  @click.stop
+                  :class="copySongName ? 'cursor-text select-text' : ''"
+                  @click.stop="preventNavigationWhenSelecting"
+                  @dblclick.stop
                 >
                   {{ song.name }}
                 </RouterLink>
@@ -358,6 +370,8 @@ watch(
                   v-else
                   :title="song.name"
                   class="text-primary truncate text-base font-medium transition-colors group-hover:text-pink-300"
+                  :class="copySongName ? 'cursor-text select-text' : ''"
+                  @dblclick.stop
                 >
                   {{ song.name }}
                 </h3>

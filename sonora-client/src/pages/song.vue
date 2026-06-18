@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router'
 import { useLyrics } from '@/composables/useLyrics'
-import SongCommentsDialog from '@/components/Comments/SongCommentsDialog.vue'
 import LoginDialog from '@/components/Auth/LoginDialog.vue'
 import SaveToPlaylistDialog from '@/components/Playlist/SaveToPlaylistDialog.vue'
 import { likedSongIds, likeSong, search, songDetail, unlikeSong } from '@/api'
@@ -26,7 +25,6 @@ const { mergedLines, fetchLyrics } = useLyrics()
 const { play, setPlaylist, currentSong, isPlaying } = useAudio()
 const { playPlaylist: playPlaylistAction } = usePlayActions()
 const userStore = useUserStore()
-const showComments = ref(false)
 const showLogin = ref(false)
 const showSaveToPlaylist = ref(false)
 
@@ -266,13 +264,6 @@ watch(() => [state.info?.id, userStore.isAuthenticated], refreshLikeState)
                 <span class="icon-[mdi--playlist-plus] h-5 w-5"></span>
                 收藏到歌单
               </button>
-              <button
-                class="glass-button inline-flex items-center gap-2 px-5 py-3 transition-colors hover:bg-white/20"
-                @click="showComments = true"
-              >
-                <span class="icon-[mdi--comment-outline] h-5 w-5"></span>
-                评论
-              </button>
             </div>
           </div>
         </div>
@@ -378,7 +369,6 @@ watch(() => [state.info?.id, userStore.isAuthenticated], refreshLikeState)
         </div>
       </div>
     </div>
-    <SongCommentsDialog v-model:show="showComments" :song-id="songId" />
     <LoginDialog v-if="showLogin" @close="showLogin = false" @success="refreshLikeState" />
     <SaveToPlaylistDialog
       v-if="showSaveToPlaylist && state.info?.id"

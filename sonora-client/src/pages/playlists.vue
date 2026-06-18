@@ -95,21 +95,12 @@ const toggleCollect = async (playlist: PlaylistData) => {
   }
 }
 
-const refreshPublicPlaylists = () => {
-  void loadPlaylists(true)
-}
-
 onMounted(() => {
   loadPlaylists(true)
-  window.addEventListener('sonora:playlists-updated', refreshPublicPlaylists)
 })
 
 onActivated(() => {
   void loadPlaylists(true)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('sonora:playlists-updated', refreshPublicPlaylists)
 })
 </script>
 

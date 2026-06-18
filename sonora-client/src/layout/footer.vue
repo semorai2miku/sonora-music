@@ -234,7 +234,8 @@ const emit = defineEmits(['show'])
       </div>
 
       <!-- 中间：播放控制 -->
-      <div class="flex items-center space-x-4">
+      <div class="flex items-center space-x-3">
+        <PlayerSongActions size="sm" action="like" />
         <Button
           variant="text"
           size="none"
@@ -273,11 +274,11 @@ const emit = defineEmits(['show'])
           @click="togglePlayMode"
           :title="playModeText"
         />
+        <PlayerSongActions size="sm" action="save" />
       </div>
 
       <!-- 右侧：音量和其他控制 -->
       <div class="relative flex flex-1 items-center justify-end space-x-4">
-        <PlayerSongActions size="sm" />
         <VolumeControl />
         <PlaylistBubble v-model:show="showQueue" placement="top-right" :offset-y="20">
           <template #trigger>

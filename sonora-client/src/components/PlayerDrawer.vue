@@ -12,6 +12,7 @@ import { useGradientBackground } from '@/composables/useGradientBackground'
 import { useI18n } from 'vue-i18n'
 import { useLyricsDrag } from '@/composables/useLyricsDrag'
 import { useDrawerTransition } from '@/composables/useDrawerTransition'
+import { adaptColorsForTheme } from '@/utils/colorThemeAdapter'
 import PlayerSongActions from '@/components/Player/PlayerSongActions.vue'
 import VinylDisc from '@/components/Player/VinylDisc.vue'
 import type { Artist as SongArtist } from '@/stores/interface'
@@ -121,7 +122,6 @@ const {
 
 // 背景渐变
 const {
-  useCoverBg,
   bgAStyle,
   bgBStyle,
   activeGradient,
@@ -388,7 +388,7 @@ onUnmounted(() => {
     ref="drawerRef"
     class="bg-overlay/95 absolute inset-0 z-50 flex backdrop-blur-md backdrop-filter"
   >
-    <div v-show="useCoverBg" class="absolute inset-0 -z-10 overflow-hidden">
+    <div class="absolute inset-0 -z-10 overflow-hidden">
       <div ref="bgARef" class="bg-layer absolute inset-0 opacity-0" :style="bgAStyle"></div>
       <div ref="bgBRef" class="bg-layer absolute inset-0 opacity-0" :style="bgBStyle"></div>
       <div class="bg-overlay/40 absolute inset-0"></div>
@@ -477,22 +477,6 @@ onUnmounted(() => {
             :icon="showMobileLyrics ? 'icon-[mdi--album]' : 'icon-[mdi--text-box-outline]'"
             icon-class="h-4 w-4"
           />
-
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            rounded="lg"
-            :class="{ 'bg-white/12 text-yellow-300/80': !useCoverBg }"
-            @click="useCoverBg = !useCoverBg"
-            :title="t('player.toggleBg')"
-          >
-            <span
-              :class="[
-                useCoverBg ? 'icon-[mdi--image-multiple-outline]' : 'icon-[mdi--palette-swatch]',
-                'h-4 w-4',
-              ]"
-            ></span>
-          </Button>
 
           <Button
             variant="ghost"
@@ -601,16 +585,7 @@ onUnmounted(() => {
       </div>
 
       <div class="controls-row mb-5 flex items-center gap-3 sm:gap-5 lg:mb-6">
-        <Button
-          variant="ghost"
-          rounded="full"
-          size="none"
-          class="ctrl-btn h-10 w-10 justify-center"
-          :class="{ 'bg-sky-500/15 text-sky-400!': playMode !== 'list' }"
-          @click="togglePlayMode"
-        >
-          <span :class="playModeIconClass" class="h-5 w-5" />
-        </Button>
+        <PlayerSongActions size="md" action="like" />
 
         <Button
           variant="ghost"
@@ -649,6 +624,19 @@ onUnmounted(() => {
           icon-class="h-6 w-6"
         />
 
+        <Button
+          variant="ghost"
+          rounded="full"
+          size="none"
+          class="ctrl-btn h-10 w-10 justify-center"
+          :class="{ 'bg-sky-500/15 text-sky-400!': playMode !== 'list' }"
+          @click="togglePlayMode"
+        >
+          <span :class="playModeIconClass" class="h-5 w-5" />
+        </Button>
+
+        <PlayerSongActions size="md" action="save" />
+
         <PlaylistBubble
           v-model:show="isRecentOpen"
           placement="top-left"
@@ -668,8 +656,7 @@ onUnmounted(() => {
         </PlaylistBubble>
       </div>
 
-      <div class="flex w-full max-w-sm items-center justify-between gap-4 px-4">
-        <PlayerSongActions size="md" />
+      <div class="flex w-full max-w-sm items-center justify-center gap-4 px-4">
         <div class="volume-control flex items-center gap-2">
           <VolumeControl />
         </div>

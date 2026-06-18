@@ -62,6 +62,12 @@ public class SongStreamController {
             } else {
                 // Range 请求 (拖动进度条)
                 long[] range = parseRange(rangeHeader, fileSize);
+                if (range == null) {
+                    response.setStatus(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE.value());
+                    response.setHeader(HttpHeaders.ACCEPT_RANGES, "bytes");
+                    response.setHeader(HttpHeaders.CONTENT_RANGE, "bytes */" + fileSize);
+                    return;
+                }
                 long start = range[0];
                 long end = range[1];
                 long contentLength = end - start + 1;
@@ -73,7 +79,7 @@ public class SongStreamController {
                 response.setHeader(HttpHeaders.CONTENT_RANGE,
                         "bytes " + start + "-" + end + "/" + fileSize);
 
-                inputStream.skip(start);
+                skipFully(inputStream, start);
                 byte[] buffer = new byte[8192];
                 long remaining = contentLength;
                 int bytesRead;
@@ -93,19 +99,49 @@ public class SongStreamController {
         }
     }
 
-    /** 解析 Range 请求头: "bytes=0-1023" → [0, 1023] */
+    /** 解析单段 Range，兼容闭区间、开放区间和后缀区间。 */
     private long[] parseRange(String rangeHeader, long fileSize) {
         try {
-            String rangeValue = rangeHeader.substring("bytes=".length());
-            String[] parts = rangeValue.split("-");
-            long start = Long.parseLong(parts[0]);
-            long end = parts.length > 1 && !parts[1].isEmpty()
-                    ? Long.parseLong(parts[1])
-                    : fileSize - 1;
-            if (end >= fileSize) end = fileSize - 1;
+            if (fileSize <= 0) return null;
+            String rangeValue = rangeHeader.substring("bytes=".length()).trim();
+            if (rangeValue.isEmpty() || rangeValue.contains(",")) return null;
+
+            String[] parts = rangeValue.split("-", -1);
+            if (parts.length != 2) return null;
+
+            long start;
+            long end;
+            if (parts[0].isEmpty()) {
+                long suffixLength = Long.parseLong(parts[1]);
+                if (suffixLength <= 0) return null;
+                start = Math.max(0, fileSize - suffixLength);
+                end = fileSize - 1;
+            } else {
+                start = Long.parseLong(parts[0]);
+                if (start < 0 || start >= fileSize) return null;
+                end = parts[1].isEmpty() ? fileSize - 1 : Long.parseLong(parts[1]);
+                if (end < start) return null;
+                end = Math.min(end, fileSize - 1);
+            }
             return new long[]{start, end};
         } catch (Exception e) {
-            return new long[]{0, fileSize - 1};
+            return null;
+        }
+    }
+
+    /** InputStream.skip 允许少跳，循环直到真正到达 Range 起点。 */
+    private void skipFully(InputStream inputStream, long bytesToSkip) throws Exception {
+        long remaining = bytesToSkip;
+        while (remaining > 0) {
+            long skipped = inputStream.skip(remaining);
+            if (skipped > 0) {
+                remaining -= skipped;
+                continue;
+            }
+            if (inputStream.read() == -1) {
+                throw new IllegalStateException("音频流在 Range 起点之前结束");
+            }
+            remaining--;
         }
     }
 }

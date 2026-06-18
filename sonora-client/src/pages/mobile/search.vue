@@ -1,16 +1,31 @@
 <script setup lang="ts">
-import { cloudSearch, searchDefault, searchSuggest } from '@/api'
+import {
+  clientAlbums,
+  clientArtists,
+  clientPublicPlaylists,
+  clientSongs,
+  myPlaylists,
+  searchDefault,
+  searchSuggest,
+} from '@/api'
 import LazyImage from '@/components/Ui/LazyImage.vue'
 import Button from '@/components/Ui/Button.vue'
 import { useAudio } from '@/composables/useAudio'
 import { usePlayActions } from '@/composables/usePlayActions'
+import { useUserStore } from '@/stores/modules/user'
+import {
+  filterAlbumsByKeyword,
+  filterArtistsByKeyword,
+  filterPlaylistsByKeyword,
+  filterSongsByKeyword,
+} from '@/utils/localSearch'
 import { withImageParam } from '@/utils/media'
 import { formatCount } from '@/utils/time'
 import {
-  transformSearchAlbums,
-  transformSearchArtists,
-  transformSearchPlaylists,
-  transformSearchSongs,
+  transformAlbums,
+  transformArtists,
+  transformPlaylists,
+  transformSongs,
   type AlbumData,
   type ArtistData,
   type PlaylistData,
@@ -19,6 +34,7 @@ import {
 
 const route = useRoute()
 const router = useRouter()
+const userStore = useUserStore()
 const { setPlaylist, play } = useAudio()
 const { playPlaylist: playPlaylistAction } = usePlayActions()
 
@@ -28,6 +44,10 @@ const SONG_LIMIT = 12
 const ARTIST_LIMIT = 8
 const ALBUM_LIMIT = 8
 const PLAYLIST_LIMIT = 8
+const SONG_POOL_LIMIT = 500
+const ARTIST_POOL_LIMIT = 400
+const ALBUM_POOL_LIMIT = 400
+const PLAYLIST_POOL_LIMIT = 200
 
 const state = reactive({
   placeholder: '',
@@ -71,6 +91,72 @@ const resetResults = () => {
   state.playlistTotal = 0
 }
 
+const fetchSongResults = async (keyword: string) => {
+  const res = await clientSongs({ sort: 'id_asc', limit: SONG_POOL_LIMIT })
+  const pool = transformSongs({ songs: res?.data || [] } as Record<string, unknown>, SONG_POOL_LIMIT)
+  const matched = filterSongsByKeyword(pool, keyword)
+  return {
+    songs: matched.slice(0, SONG_LIMIT),
+    total: matched.length,
+  }
+}
+
+const fetchArtistResults = async (keyword: string) => {
+  const res = await clientArtists({ limit: ARTIST_POOL_LIMIT })
+  const pool = transformArtists(
+    { artists: res?.data || [] } as Record<string, unknown>,
+    ARTIST_POOL_LIMIT
+  )
+  const matched = filterArtistsByKeyword(pool, keyword)
+  return {
+    artists: matched.slice(0, ARTIST_LIMIT),
+    total: matched.length,
+  }
+}
+
+const fetchAlbumResults = async (keyword: string) => {
+  const res = await clientAlbums({ limit: ALBUM_POOL_LIMIT })
+  const pool = transformAlbums(
+    { albums: res?.data || [] } as Record<string, unknown>,
+    ALBUM_POOL_LIMIT
+  )
+  const matched = filterAlbumsByKeyword(pool, keyword)
+  return {
+    albums: matched.slice(0, ALBUM_LIMIT),
+    total: matched.length,
+  }
+}
+
+const fetchPlaylistResults = async (keyword: string) => {
+  const [publicRes, ownRes] = await Promise.allSettled([
+    clientPublicPlaylists({ pageNum: 1, pageSize: PLAYLIST_POOL_LIMIT, keyword }),
+    userStore.isAuthenticated ? myPlaylists() : Promise.resolve(null),
+  ])
+
+  const merged = new Map<string, PlaylistData>()
+
+  if (publicRes.status === 'fulfilled') {
+    const publicRows = filterPlaylistsByKeyword(
+      transformPlaylists(publicRes.value as Record<string, unknown>),
+      keyword
+    )
+    publicRows.forEach(item => merged.set(String(item.id), item))
+  }
+
+  if (ownRes.status === 'fulfilled' && ownRes.value?.data) {
+    const ownRows = filterPlaylistsByKeyword(
+      transformPlaylists({ data: ownRes.value.data } as Record<string, unknown>),
+      keyword
+    )
+    ownRows.forEach(item => merged.set(String(item.id), item))
+  }
+
+  return {
+    playlists: Array.from(merged.values()).slice(0, PLAYLIST_LIMIT),
+    total: merged.size,
+  }
+}
+
 const fetchDefault = async () => {
   try {
     const res = await searchDefault()
@@ -104,17 +190,14 @@ const fetchResults = async () => {
   state.loading = true
   try {
     const [songsRes, artistsRes, albumsRes, playlistsRes] = await Promise.allSettled([
-      cloudSearch({ keywords: keyword, type: 1, limit: SONG_LIMIT, offset: 0 }),
-      cloudSearch({ keywords: keyword, type: 100, limit: ARTIST_LIMIT, offset: 0 }),
-      cloudSearch({ keywords: keyword, type: 10, limit: ALBUM_LIMIT, offset: 0 }),
-      cloudSearch({ keywords: keyword, type: 1000, limit: PLAYLIST_LIMIT, offset: 0 }),
+      fetchSongResults(keyword),
+      fetchArtistResults(keyword),
+      fetchAlbumResults(keyword),
+      fetchPlaylistResults(keyword),
     ])
 
     if (songsRes.status === 'fulfilled') {
-      const { songs, total } = transformSearchSongs(
-        songsRes.value as Record<string, unknown>,
-        SONG_LIMIT
-      )
+      const { songs, total } = songsRes.value
       state.songs = songs
       state.songTotal = total
     } else {
@@ -123,10 +206,7 @@ const fetchResults = async () => {
     }
 
     if (artistsRes.status === 'fulfilled') {
-      const { artists, total } = transformSearchArtists(
-        artistsRes.value as Record<string, unknown>,
-        ARTIST_LIMIT
-      )
+      const { artists, total } = artistsRes.value
       state.artists = artists
       state.artistTotal = total
     } else {
@@ -135,10 +215,7 @@ const fetchResults = async () => {
     }
 
     if (albumsRes.status === 'fulfilled') {
-      const { albums, total } = transformSearchAlbums(
-        albumsRes.value as Record<string, unknown>,
-        ALBUM_LIMIT
-      )
+      const { albums, total } = albumsRes.value
       state.albums = albums
       state.albumTotal = total
     } else {
@@ -147,10 +224,7 @@ const fetchResults = async () => {
     }
 
     if (playlistsRes.status === 'fulfilled') {
-      const { playlists, total } = transformSearchPlaylists(
-        playlistsRes.value as Record<string, unknown>,
-        PLAYLIST_LIMIT
-      )
+      const { playlists, total } = playlistsRes.value
       state.playlists = playlists
       state.playlistTotal = total
     } else {

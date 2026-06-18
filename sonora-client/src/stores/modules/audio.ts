@@ -16,6 +16,41 @@ let eventsBound = false
 let lastRetrySongId: string | number | null = null
 /** 上次重试时间戳 */
 let lastRetryTime = 0
+/** 后台播放恢复轮询器 */
+let recoveryMonitorId: ReturnType<typeof window.setInterval> | null = null
+/** 可见性事件是否已绑定 */
+let visibilityEventsBound = false
+/** 是否由用户主动触发暂停 */
+let manualPauseRequested = false
+/** 最近一次 pause 是否属于意外中断 */
+let unexpectedPauseDetected = false
+/** 最近一次确认播放进度推进的时间 */
+let lastPlaybackProgressAt = 0
+/** 最近一次观测到的播放时间 */
+let lastObservedPlaybackTime = 0
+/** 最近一次恢复尝试时间 */
+let lastRecoveryAttemptAt = 0
+/** 防止监控器、媒体事件和可见性事件同时执行恢复。 */
+let recoveryInProgress = false
+/** 标识最近一次主动播放请求，避免旧请求覆盖刚切换的歌曲。 */
+let playRequestSequence = 0
+/** 同一时间只允许一次刷新地址并重播。 */
+let refreshPromise: Promise<void> | null = null
+/** 可见性切换处理函数 */
+let visibilityChangeHandler: (() => void) | null = null
+/** 页面恢复显示处理函数 */
+let pageShowHandler: (() => void) | null = null
+
+const PLAYBACK_STALL_THRESHOLD_MS = 20000
+const BACKGROUND_PLAYBACK_STALL_THRESHOLD_MS = 45000
+const PLAYBACK_RECOVERY_COOLDOWN_MS = 12000
+
+const markPlaybackProgress = (audio?: HTMLAudioElement | null) => {
+  lastPlaybackProgressAt = Date.now()
+  if (audio) {
+    lastObservedPlaybackTime = audio.currentTime || 0
+  }
+}
 
 /** 将音频地址规范化，避免相对路径和绝对路径比较时误判为不同地址 */
 const normalizeAudioUrl = (url?: string): string => {
@@ -131,6 +166,7 @@ export const useAudioStore = defineStore('audio', {
       if (!this.audio.audio) {
         this.audio.audio = getAudioSingleton()
         this.setupAudioEvents()
+        this.setupPlaybackRecovery()
         // 如果有歌曲的情况下
         if (this.audio.playlist.length > 0) {
           const index =
@@ -159,14 +195,25 @@ export const useAudioStore = defineStore('audio', {
         this.audio.isPlaying = true
         this.audio.isPaused = false
         this.audio.error = null
+        this.audio._isWaiting = false
+        unexpectedPauseDetected = false
+        markPlaybackProgress(audio)
       })
 
       // 播放暂停
       audio.addEventListener('pause', () => {
+        const pausedByUser = manualPauseRequested
+        manualPauseRequested = false
+        unexpectedPauseDetected = !pausedByUser && !this.audio._isWaiting && !audio.ended
         // waiting 导致的暂停不更新状态，等待自动恢复
         if (!this.audio._isWaiting) {
           this.audio.isPlaying = false
           this.audio.isPaused = true
+        }
+        if (!pausedByUser && this.audio.currentSong && !audio.ended) {
+          window.setTimeout(() => {
+            void this.ensurePlaybackActive('pause-event')
+          }, 800)
         }
       })
 
@@ -174,6 +221,8 @@ export const useAudioStore = defineStore('audio', {
       audio.addEventListener('ended', () => {
         this.audio.isPlaying = false
         this.audio._isWaiting = false
+        unexpectedPauseDetected = false
+        markPlaybackProgress(audio)
         this.handleSongEnd()
       })
 
@@ -186,6 +235,7 @@ export const useAudioStore = defineStore('audio', {
       audio.addEventListener('canplay', () => {
         this.audio.isLoading = false
         this.audio.duration = audio.duration || 0
+        markPlaybackProgress(audio)
       })
 
       // 缓冲等待：网络慢或缓冲不足时触发
@@ -200,16 +250,30 @@ export const useAudioStore = defineStore('audio', {
         this.audio.isLoading = false
         this.audio.isPlaying = true
         this.audio.isPaused = false
+        unexpectedPauseDetected = false
+        markPlaybackProgress(audio)
       })
 
       // 网络数据获取停滞
       audio.addEventListener('stalled', () => {
         console.warn('Audio stalled: 网络数据获取停滞')
+        void this.ensurePlaybackActive('stalled-event')
+      })
+
+      audio.addEventListener('seeked', () => {
+        markPlaybackProgress(audio)
+      })
+
+      audio.addEventListener('suspend', () => {
+        if (this.audio.isPlaying) {
+          void this.ensurePlaybackActive('suspend-event')
+        }
       })
 
       // 时间更新
       audio.addEventListener('timeupdate', () => {
         this.audio.currentTime = audio.currentTime || 0
+        markPlaybackProgress(audio)
       })
 
       // 音量变化
@@ -236,9 +300,145 @@ export const useAudioStore = defineStore('audio', {
       eventsBound = true
     },
 
+    setupPlaybackRecovery() {
+      if (typeof window === 'undefined') return
+
+      if (!recoveryMonitorId) {
+        recoveryMonitorId = window.setInterval(() => {
+          void this.ensurePlaybackActive(document.hidden ? 'hidden-monitor' : 'monitor')
+        }, 15000)
+      }
+
+      if (visibilityEventsBound) return
+
+      visibilityChangeHandler = () => {
+        this.syncAudioState()
+        if (document.hidden) {
+          if (this.audio.isPlaying) {
+            markPlaybackProgress(this.audio.audio)
+          }
+          return
+        }
+        void this.ensurePlaybackActive('visibilitychange')
+      }
+
+      pageShowHandler = () => {
+        this.syncAudioState()
+        void this.ensurePlaybackActive('pageshow')
+      }
+
+      document.addEventListener('visibilitychange', visibilityChangeHandler)
+      window.addEventListener('pageshow', pageShowHandler)
+      visibilityEventsBound = true
+    },
+
+    syncAudioState() {
+      const audio = this.audio.audio
+      if (!audio) return
+
+      this.audio.currentTime = audio.currentTime || 0
+      this.audio.duration = audio.duration || 0
+      this.audio.volume = audio.volume
+      this.audio.isMuted = audio.muted
+      this.audio.isPlaying = !audio.paused && !audio.ended
+      this.audio.isPaused = audio.paused && !audio.ended
+      if (!audio.paused) {
+        unexpectedPauseDetected = false
+        if ((audio.currentTime || 0) > lastObservedPlaybackTime + 0.25) {
+          markPlaybackProgress(audio)
+        }
+      }
+    },
+
+    _seekAfterReady(time: number) {
+      const audio = this.audio.audio
+      if (!audio || !Number.isFinite(time) || time <= 0) return
+
+      const applyTime = () => {
+        if (!this.audio.audio) return
+        const duration = this.audio.audio.duration
+        const targetTime =
+          Number.isFinite(duration) && duration > 0
+            ? Math.min(Math.max(0, time), duration)
+            : Math.max(0, time)
+        this.audio.audio.currentTime = targetTime
+      }
+
+      if (audio.readyState >= HTMLMediaElement.HAVE_METADATA) {
+        applyTime()
+        return
+      }
+
+      audio.addEventListener('loadedmetadata', applyTime, { once: true })
+      audio.addEventListener('canplay', applyTime, { once: true })
+    },
+
+    async ensurePlaybackActive(reason: string = 'monitor') {
+      const audio = this.audio.audio
+      const currentSong = this.audio.currentSong
+      if (!audio || !currentSong) return
+      if (manualPauseRequested || audio.ended) return
+      if (!this.audio.isPlaying && !this.audio._isWaiting && !unexpectedPauseDetected) return
+
+      const now = Date.now()
+      const currentTime = audio.currentTime || this.audio.currentTime || 0
+      const progressed = currentTime > lastObservedPlaybackTime + 0.25
+      if (progressed) {
+        markPlaybackProgress(audio)
+        return
+      }
+
+      const stallThreshold = document.hidden
+        ? BACKGROUND_PLAYBACK_STALL_THRESHOLD_MS
+        : PLAYBACK_STALL_THRESHOLD_MS
+      const stalledTooLong = now - lastPlaybackProgressAt > stallThreshold
+      const unexpectedlyPaused = audio.paused && !audio.ended && unexpectedPauseDetected
+      const waitingTooLong = Boolean(this.audio._isWaiting) && stalledTooLong
+      const lowReadyState = audio.readyState < HTMLMediaElement.HAVE_FUTURE_DATA
+      const likelyStuckWhilePlaying =
+        stalledTooLong && !audio.paused && !audio.ended
+
+      if (!unexpectedlyPaused && !waitingTooLong && !likelyStuckWhilePlaying) return
+      if (now - lastRecoveryAttemptAt < PLAYBACK_RECOVERY_COOLDOWN_MS) return
+      if (recoveryInProgress) return
+
+      lastRecoveryAttemptAt = now
+      const resumeTime = currentTime
+      const recoveringSongId = currentSong.id
+      recoveryInProgress = true
+
+      try {
+        if (unexpectedlyPaused && !waitingTooLong && !likelyStuckWhilePlaying && !lowReadyState) {
+          await audio.play()
+          markPlaybackProgress(audio)
+          this.audio.error = null
+          return
+        }
+
+        let recoveryUrl = currentSong.url || audio.src || ''
+        if (!currentSong.isLocal) {
+          recoveryUrl = await this._fetchAndApplyUrl(recoveringSongId)
+        }
+        if (String(this.audio.currentSong?.id ?? '') !== String(recoveringSongId)) return
+
+        this._loadAudioSrc(recoveryUrl, true)
+        this._seekAfterReady(resumeTime)
+        await audio.play()
+        unexpectedPauseDetected = false
+        markPlaybackProgress(audio)
+        this.audio.error = null
+      } catch (error) {
+        console.warn(`Audio playback recovery failed during ${reason}:`, error)
+        this.audio.error = '播放中断，正在等待重试'
+      } finally {
+        recoveryInProgress = false
+      }
+    },
+
     /** 播放歌曲（自动获取缺失的播放地址） */
     async playSong(song?: Song, index?: number) {
       this.initAudio()
+      const requestId = ++playRequestSequence
 
       if (song && index !== undefined) {
         this.audio.currentSong = song
@@ -246,28 +446,36 @@ export const useAudioStore = defineStore('audio', {
       }
 
       if (!this.audio.currentSong || !this.audio.audio) return
+      const requestedSong = this.audio.currentSong
 
       try {
+        manualPauseRequested = false
+        unexpectedPauseDetected = false
         this.audio.error = null
 
         // 若无 URL 则拉取（本地音乐除外）
-        if (!this.audio.currentSong.url && !this.audio.currentSong.isLocal) {
+        if (!requestedSong.url && !requestedSong.isLocal) {
           this.audio.isLoading = true
-          await this._fetchAndApplyUrl()
+          await this._fetchAndApplyUrl(requestedSong.id)
         }
+        if (
+          requestId !== playRequestSequence ||
+          String(this.audio.currentSong?.id ?? '') !== String(requestedSong.id)
+        ) return
 
         // 如果 URL 变化，重新加载
-        this._loadAudioSrc(this.audio.currentSong.url || '')
+        this._loadAudioSrc(requestedSong.url || '')
         await this.audio.audio.play()
+        markPlaybackProgress(this.audio.audio)
 
         // 添加到播放历史
-        this.addToHistory(this.audio.currentSong)
+        this.addToHistory(requestedSong)
       } catch (error) {
+        if (requestId !== playRequestSequence) return
         this.audio.error = '播放失败，请检查网络连接'
         console.error('Play error:', error)
         // 播放失败时也尝试刷新 URL 后重试
-        const id = this.audio.currentSong?.id ?? null
-        if (id) this.refreshAndReplay()
+        if (requestedSong.id) void this.refreshAndReplay(0, requestedSong.id)
       }
     },
 
@@ -275,20 +483,36 @@ export const useAudioStore = defineStore('audio', {
      * 刷新当前歌曲的播放地址并重试播放
      * 用于链接过期等场景的自动恢复
      */
-    async refreshAndReplay() {
+    async refreshAndReplay(resumeTime: number = 0, songId?: string | number) {
       if (!this.audio.currentSong || !this.audio.audio) return
       if (this.audio.currentSong.isLocal) return
+      if (refreshPromise) return refreshPromise
 
-      this.audio.isLoading = true
+      const expectedSongId = songId ?? this.audio.currentSong.id
+      const audio = this.audio.audio
+
+      refreshPromise = (async () => {
+        this.audio.isLoading = true
+        try {
+          const url = await this._fetchAndApplyUrl(expectedSongId)
+          if (String(this.audio.currentSong?.id ?? '') !== String(expectedSongId)) return
+          this._loadAudioSrc(url, true)
+          this._seekAfterReady(resumeTime)
+          await audio.play()
+          unexpectedPauseDetected = false
+          markPlaybackProgress(audio)
+          this.audio.error = null
+        } catch (e) {
+          console.error('Refresh url failed:', e)
+        } finally {
+          this.audio.isLoading = false
+        }
+      })()
+
       try {
-        await this._fetchAndApplyUrl()
-        this._loadAudioSrc(this.audio.currentSong!.url || '')
-        await this.audio.audio!.play()
-        this.audio.error = null
-      } catch (e) {
-        console.error('Refresh url failed:', e)
+        await refreshPromise
       } finally {
-        this.audio.isLoading = false
+        refreshPromise = null
       }
     },
 
@@ -296,29 +520,44 @@ export const useAudioStore = defineStore('audio', {
      * 内部方法：获取歌曲播放地址并同步到 currentSong 和 playlist
      * 抽取自 playSong 和 refreshAndReplay 的公共逻辑
      */
-    async _fetchAndApplyUrl() {
-      if (!this.audio.currentSong) return
+    async _fetchAndApplyUrl(songId?: string | number): Promise<string> {
+      const expectedSongId = songId ?? this.audio.currentSong?.id
+      if (expectedSongId === undefined || expectedSongId === null) {
+        throw new Error('没有可播放的歌曲')
+      }
       const settingsStore = useSettingsStore()
       const res: any = await songUrlV1({
-        id: String(this.audio.currentSong.id),
+        id: String(expectedSongId),
         level: settingsStore.audioQuality,
       })
       const url: string = res?.data?.[0]?.url || res?.data?.data?.[0]?.url || res?.url || ''
-      this.audio.currentSong.url = url
-      // 同步到播放列表对应项
-      const idx = this.audio.currentIndex
-      if (idx >= 0 && idx < this.audio.playlist.length) {
-        this.audio.playlist[idx].url = url
+      if (!url) throw new Error('服务端未返回播放地址')
+
+      if (String(this.audio.currentSong?.id ?? '') === String(expectedSongId)) {
+        this.audio.currentSong!.url = url
       }
+      const playlistSong = this.audio.playlist.find(
+        item => String(item.id) === String(expectedSongId)
+      )
+      if (playlistSong) {
+        playlistSong.url = url
+      }
+      return url
     },
 
     /**
      * 内部方法：当 URL 变化时重新加载音频源
      */
-    _loadAudioSrc(url: string) {
+    _loadAudioSrc(url: string, forceReload: boolean = false) {
       if (!this.audio.audio) return
       const nextSrc = normalizeAudioUrl(url)
-      if (this.audio.audio.src !== nextSrc) {
+      if (forceReload && this.audio.audio.src === nextSrc) {
+        manualPauseRequested = true
+        this.audio.audio.pause()
+        this.audio.audio.removeAttribute('src')
+        this.audio.audio.load()
+      }
+      if (forceReload || this.audio.audio.src !== nextSrc) {
         this.audio.audio.src = nextSrc
         this.audio.audio.load()
       }
@@ -327,6 +566,7 @@ export const useAudioStore = defineStore('audio', {
     // 暂停播放
     pause() {
       if (this.audio.audio && this.audio.isPlaying) {
+        manualPauseRequested = true
         this.audio.audio.pause()
       }
     },
@@ -334,7 +574,10 @@ export const useAudioStore = defineStore('audio', {
     // 继续播放
     resume() {
       if (this.audio.audio) {
-        this.audio.audio.play()
+        manualPauseRequested = false
+        this.audio.audio.play().catch(error => {
+          console.warn('Resume playback failed:', error)
+        })
       }
     },
 
@@ -668,6 +911,8 @@ export const useAudioStore = defineStore('audio', {
     // 停止播放
     stop() {
       if (this.audio.audio) {
+        manualPauseRequested = true
+        unexpectedPauseDetected = false
         this.audio.audio.pause()
         this.audio.audio.currentTime = 0
       }
@@ -709,9 +954,27 @@ export const useAudioStore = defineStore('audio', {
     // 销毁音频播放器
     destroy() {
       if (this.audio.audio) {
+        manualPauseRequested = true
+        unexpectedPauseDetected = false
         this.audio.audio.pause()
         this.audio.audio.src = ''
         this.audio.audio = null
+      }
+
+      if (recoveryMonitorId) {
+        window.clearInterval(recoveryMonitorId)
+        recoveryMonitorId = null
+      }
+      if (visibilityEventsBound) {
+        if (visibilityChangeHandler) {
+          document.removeEventListener('visibilitychange', visibilityChangeHandler)
+        }
+        if (pageShowHandler) {
+          window.removeEventListener('pageshow', pageShowHandler)
+        }
+        visibilityEventsBound = false
+        visibilityChangeHandler = null
+        pageShowHandler = null
       }
 
       this.audio.isPlaying = false

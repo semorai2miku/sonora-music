@@ -188,7 +188,8 @@ const handleCollectClick = (event: MouseEvent) => {
       <!-- 播放量标签 -->
       <div
         v-if="playCount"
-        class="absolute top-2 right-2 flex items-center gap-1 rounded-full bg-black/50 px-2 py-1 text-[10px] text-white backdrop-blur-sm"
+        class="absolute top-2 flex items-center gap-1 rounded-full bg-black/50 px-2 py-1 text-[10px] text-white backdrop-blur-sm"
+        :class="collectible ? 'left-2' : 'right-2'"
       >
         <span class="icon-[mdi--headphones] h-3 w-3" />
         {{ formatCount(playCount) }}
@@ -197,14 +198,24 @@ const handleCollectClick = (event: MouseEvent) => {
       <button
         v-if="collectible"
         type="button"
-        class="absolute top-2 left-2 z-20 flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-black/45 text-white shadow-lg backdrop-blur-sm transition-transform duration-200 hover:scale-105"
+        class="absolute top-2 right-2 z-20 flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-black/45 text-white shadow-lg backdrop-blur-sm transition-all duration-200 hover:scale-105"
+        :class="collectDisabled ? 'scale-95 opacity-85' : ''"
         :disabled="collectDisabled"
         @click.stop.prevent="handleCollectClick"
       >
         <span
-          class="h-4.5 w-4.5"
-          :class="collected ? 'icon-[mdi--heart] text-pink-400' : 'icon-[mdi--heart-outline]'"
+          class="h-4.5 w-4.5 transition-all duration-200"
+          :class="[
+            collected ? 'icon-[mdi--heart] text-pink-400' : 'icon-[mdi--heart-outline]',
+            collectDisabled ? 'opacity-35' : 'opacity-100',
+          ]"
         ></span>
+        <span
+          v-if="collectDisabled"
+          class="pointer-events-none absolute inset-0 flex items-center justify-center"
+        >
+          <span class="icon-[mdi--loading] h-4 w-4 animate-spin text-white/85"></span>
+        </span>
       </button>
 
       <!-- 底部信息 -->
@@ -220,7 +231,7 @@ const handleCollectClick = (event: MouseEvent) => {
 
       <!-- 悬停播放按钮 -->
       <div
-        class="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition-all duration-300 group-hover:opacity-100"
+        class="absolute inset-0 z-10 flex items-center justify-center bg-black/20 opacity-0 transition-all duration-300 group-hover:opacity-100"
       >
         <button
           v-if="playable"

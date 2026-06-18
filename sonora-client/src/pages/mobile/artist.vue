@@ -24,7 +24,6 @@ type ArtistInfo = {
   region: string
   albumSize: number
   musicSize: number
-  followed: boolean
 }
 
 const state = reactive({
@@ -33,7 +32,6 @@ const state = reactive({
   albums: [] as AlbumData[],
   loading: true,
   activeTab: 0,
-  followed: false,
 })
 
 const { playAll: playAllAction, shufflePlay: shufflePlayAction } = usePlayActions()
@@ -52,9 +50,7 @@ const load = async (id: number) => {
       region: String(data.region || ''),
       albumSize: Number(data.albumCount || 0),
       musicSize: Number(data.songCount || 0),
-      followed: false,
     }
-    state.followed = state.info.followed
     state.songs = transformSongs({ songs: (data.songs as Record<string, unknown>[]) || [] })
     state.albums = transformAlbums({ albums: (data.albums as Record<string, unknown>[]) || [] })
   } finally {
@@ -75,10 +71,6 @@ watch(
 const playAll = () => playAllAction(state.songs)
 
 const shufflePlay = () => shufflePlayAction(state.songs)
-
-const toggleFollow = () => {
-  state.followed = !state.followed
-}
 
 const goToAlbum = (id: number | string) => {
   router.push(`/album/${id}`)
@@ -165,16 +157,6 @@ const tabs = ['artistPage.tabs.hotSongs', 'artistPage.tabs.albums']
         >
           {{ t('actions.shufflePlay') }}
         </Button>
-        <Button
-          variant="glass"
-          size="icon-lg"
-          rounded="full"
-          class="follow-btn"
-          :class="state.followed ? 'followed' : ''"
-          :icon="state.followed ? 'icon-[mdi--account-check]' : 'icon-[mdi--account-plus]'"
-          icon-class="h-5 w-5"
-          @click="toggleFollow"
-        />
       </div>
 
       <div class="tabs-bar flex gap-1 px-4 pb-2">
@@ -289,23 +271,6 @@ const tabs = ['artistPage.tabs.hotSongs', 'artistPage.tabs.albums']
 .shuffle-btn:active {
   transform: scale(0.97);
   background: var(--glass-interactive-hover-muted);
-}
-
-.follow-btn {
-  background: var(--glass-bg-card);
-  color: var(--glass-text-primary);
-  border: 1px solid var(--glass-border-default);
-  transition: all 0.3s ease;
-}
-
-.follow-btn:active {
-  transform: scale(0.95);
-}
-
-.follow-btn.followed {
-  background: linear-gradient(135deg, rgba(31, 124, 255, 0.2), rgba(77, 163, 255, 0.2));
-  border-color: rgba(31, 124, 255, 0.3);
-  color: #1f7cff;
 }
 
 .tabs-bar {

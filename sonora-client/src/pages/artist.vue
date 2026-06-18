@@ -23,7 +23,6 @@ type ArtistInfo = {
   region: string
   albumSize: number
   musicSize: number
-  followed: boolean
 }
 
 const state = reactive({
@@ -32,7 +31,6 @@ const state = reactive({
   albums: [] as AlbumData[],
   loading: true,
   playingAlbumId: null as number | string | null,
-  followed: false,
   activeTab: 'songs' as 'songs' | 'albums',
 })
 
@@ -55,9 +53,7 @@ const load = async (id: number) => {
       region: String(data.region || ''),
       albumSize: Number(data.albumCount || 0),
       musicSize: Number(data.songCount || 0),
-      followed: false,
     }
-    state.followed = state.info.followed
     state.songs = transformSongs({ songs: (data.songs as Record<string, unknown>[]) || [] })
     state.albums = transformAlbums({ albums: (data.albums as Record<string, unknown>[]) || [] })
   } finally {
@@ -87,10 +83,6 @@ const playAlbum = async (albumId: number | string) => {
   } finally {
     state.playingAlbumId = null
   }
-}
-
-const toggleFollow = () => {
-  state.followed = !state.followed
 }
 
 const tabs = computed(() => [
@@ -200,20 +192,6 @@ const tabs = computed(() => [
                   >
                     <span class="icon-[mdi--shuffle] h-4 w-4"></span>
                     {{ $t('actions.shufflePlay') }}
-                  </Button>
-                  <Button
-                    variant="soft"
-                    size="md"
-                    rounded="full"
-                    class="gap-2"
-                    :class="state.followed ? 'bg-pink-500/20! text-pink-400!' : ''"
-                    @click="toggleFollow"
-                  >
-                    <span
-                      :class="state.followed ? 'icon-[mdi--heart]' : 'icon-[mdi--heart-outline]'"
-                      class="h-4 w-4"
-                    ></span>
-                    {{ state.followed ? $t('common.followed') : $t('common.follow') }}
                   </Button>
                 </div>
 

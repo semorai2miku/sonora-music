@@ -9,9 +9,11 @@ import { useUserStore } from '@/stores/modules/user'
 const props = withDefaults(
   defineProps<{
     size?: 'sm' | 'md'
+    action?: 'like' | 'save' | 'both'
   }>(),
   {
     size: 'sm',
+    action: 'both',
   }
 )
 
@@ -22,6 +24,9 @@ const showLogin = ref(false)
 const showSaveToPlaylist = ref(false)
 const isLiked = ref(false)
 const isSubmitting = ref(false)
+
+const showLike = computed(() => props.action === 'like' || props.action === 'both')
+const showSave = computed(() => props.action === 'save' || props.action === 'both')
 
 const buttonClass = computed(() =>
   props.size === 'md'
@@ -103,32 +108,50 @@ watch(
 
 <template>
   <div class="flex items-center gap-2">
-    <Button
-      variant="ghost"
-      size="none"
-      :class="buttonClass"
-      :disabled="!currentSong?.id || isSubmitting"
-      :title="$t(isLiked ? 'common.unlike' : 'common.like')"
-      @click="toggleLike"
-    >
-      <span
+    <div v-if="showLike" class="group relative flex">
+      <Button
+        variant="ghost"
+        size="none"
         :class="[
-          isLiked ? 'icon-[mdi--heart] text-pink-400' : 'icon-[mdi--heart-outline] text-primary/70',
-          iconClass,
+          buttonClass,
+          'items-center justify-center transition-all duration-200',
+          isLiked ? 'bg-pink-500/10 text-pink-400' : 'text-primary/70',
+          isSubmitting ? 'scale-95 opacity-80' : '',
         ]"
-      />
-    </Button>
+        :disabled="!currentSong?.id || isSubmitting"
+        @click="toggleLike"
+      >
+        <span
+          :class="[
+            isLiked ? 'icon-[mdi--heart] text-pink-400' : 'icon-[mdi--heart-outline] text-primary/70',
+            iconClass,
+            'transition-all duration-200',
+            isSubmitting ? 'scale-90' : '',
+          ]"
+        />
+      </Button>
+      <span class="player-action-tooltip">
+        {{ $t(isLiked ? 'common.unlike' : 'common.like') }}
+      </span>
+    </div>
 
-    <Button
-      variant="ghost"
-      size="none"
-      :class="buttonClass"
-      :disabled="!currentSong?.id"
-      :title="$t('playlist.dialog.title')"
-      @click="openSaveToPlaylist"
-    >
-      <span :class="['icon-[mdi--playlist-plus]', iconClass, 'text-primary/70']" />
-    </Button>
+    <div v-if="showSave" class="group relative flex">
+      <Button
+        variant="ghost"
+        size="none"
+        :class="[
+          buttonClass,
+          'items-center justify-center text-primary/70 transition-all duration-200',
+        ]"
+        :disabled="!currentSong?.id"
+        @click="openSaveToPlaylist"
+      >
+        <span :class="['icon-[mdi--playlist-plus]', iconClass, 'text-primary/70']" />
+      </Button>
+      <span class="player-action-tooltip">
+        {{ $t('playlist.dialog.title') }}
+      </span>
+    </div>
   </div>
 
   <LoginDialog v-if="showLogin" @close="showLogin = false" @success="refreshLikedState" />
@@ -139,3 +162,32 @@ watch(
     @close="showSaveToPlaylist = false"
   />
 </template>
+
+<style scoped>
+.player-action-tooltip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 0.5rem);
+  transform: translateX(-50%) translateY(4px);
+  pointer-events: none;
+  white-space: nowrap;
+  border-radius: 0.625rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(15, 23, 42, 0.84);
+  padding: 0.35rem 0.55rem;
+  color: #fff;
+  font-size: 0.75rem;
+  line-height: 1;
+  opacity: 0;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.25);
+  backdrop-filter: blur(10px);
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+}
+
+.group:hover .player-action-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+</style>

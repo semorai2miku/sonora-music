@@ -139,7 +139,11 @@ export const myPlaylistDetail = (playlistId: number | string) =>
 export const clientPlaylistDetail = (playlistId: number | string) =>
   httpGet<SonoraResult<ClientPlaylistDetail>>(`/api/client/playlists/${playlistId}`)
 
-export const clientPublicPlaylists = (params?: { pageNum?: number; pageSize?: number }) =>
+export const clientPublicPlaylists = (params?: {
+  pageNum?: number
+  pageSize?: number
+  keyword?: string
+}) =>
   httpGet<SonoraResult<ClientPlaylistPage>>('/api/client/playlists', params)
 
 export const clientRecommendPlaylists = (params?: { limit?: number }) =>

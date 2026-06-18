@@ -81,16 +81,26 @@ public class ClientPlaylistController {
     @Operation(summary = "公开歌单列表")
     @GetMapping("/playlists")
     public R<Map<String, Object>> list(@RequestParam(defaultValue = "1") int pageNum,
-                                       @RequestParam(defaultValue = "24") int pageSize) {
+                                       @RequestParam(defaultValue = "24") int pageSize,
+                                       @RequestParam(required = false) String keyword) {
         int current = Math.max(pageNum, 1);
         int size = normalizePageSize(pageSize, 24);
+        LambdaQueryWrapper<Playlist> queryWrapper = new LambdaQueryWrapper<Playlist>()
+                .eq(Playlist::getStatus, 1)
+                .eq(Playlist::getType, PLAYLIST_TYPE_NORMAL);
+        if (StringUtils.hasText(keyword)) {
+            String keywordValue = keyword.trim();
+            queryWrapper.and(wrapper -> wrapper
+                    .like(Playlist::getName, keywordValue)
+                    .or()
+                    .like(Playlist::getDescription, keywordValue)
+                    .or()
+                    .like(Playlist::getTags, keywordValue));
+        }
+        queryWrapper.orderByDesc(Playlist::getCollectCount).orderByDesc(Playlist::getId);
         Page<Playlist> page = playlistMapper.selectPage(
                 new Page<>(current, size),
-                new LambdaQueryWrapper<Playlist>()
-                        .eq(Playlist::getStatus, 1)
-                        .eq(Playlist::getType, PLAYLIST_TYPE_NORMAL)
-                        .orderByDesc(Playlist::getCollectCount)
-                        .orderByDesc(Playlist::getId));
+                queryWrapper);
         Long viewerUserId = currentUserId();
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("list", page.getRecords().stream().map(item -> playlistOf(item, viewerUserId)).toList());
