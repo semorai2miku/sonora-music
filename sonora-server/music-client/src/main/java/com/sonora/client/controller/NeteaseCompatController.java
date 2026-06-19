@@ -88,6 +88,45 @@ public class NeteaseCompatController {
         return search(keywords, type, limit);
     }
 
+    @GetMapping("/search/default")
+    public Map<String, Object> searchDefault() {
+        Song song = songMapper.selectOne(
+                new LambdaQueryWrapper<Song>()
+                        .eq(Song::getStatus, 1)
+                        .orderByDesc(Song::getPlayCount)
+                        .orderByDesc(Song::getId)
+                        .last("LIMIT 1"));
+        String keyword = song == null || !StringUtils.hasText(song.getName()) ? "" : song.getName();
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("showKeyword", keyword);
+        data.put("realkeyword", keyword);
+        return Map.of("code", 200, "data", data);
+    }
+
+    @GetMapping("/search/suggest")
+    public Map<String, Object> searchSuggest(@RequestParam String keywords,
+                                              @RequestParam(required = false) String type) {
+        if (!StringUtils.hasText(keywords)) {
+            return Map.of("code", 200, "result", Map.of("allMatch", List.of()));
+        }
+
+        List<Map<String, Object>> matches = songMapper.selectList(
+                        new LambdaQueryWrapper<Song>()
+                                .eq(Song::getStatus, 1)
+                                .like(Song::getName, keywords.trim())
+                                .orderByDesc(Song::getPlayCount)
+                                .orderByDesc(Song::getId)
+                                .last("LIMIT 8"))
+                .stream()
+                .map(song -> Map.<String, Object>of(
+                        "keyword", song.getName(),
+                        "type", 1,
+                        "alg", "database"))
+                .toList();
+        return Map.of("code", 200, "result", Map.of("allMatch", matches));
+    }
+
     // ==================== 歌曲 ====================
 
     @GetMapping("/song/url/v1")

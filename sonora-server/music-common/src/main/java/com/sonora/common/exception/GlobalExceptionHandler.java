@@ -9,6 +9,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * 全局异常处理器
@@ -43,6 +44,14 @@ public class GlobalExceptionHandler {
     public R<Void> handleConstraintViolation(ConstraintViolationException e) {
         log.warn("参数校验失败: {}", e.getMessage());
         return R.badRequest(e.getMessage());
+    }
+
+    /** 请求路径不存在 */
+    @ExceptionHandler(NoResourceFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public R<Void> handleNoResourceFound(NoResourceFoundException e) {
+        log.warn("接口不存在: {}", e.getResourcePath());
+        return R.notFound("接口不存在");
     }
 
     /** 兜底异常 */

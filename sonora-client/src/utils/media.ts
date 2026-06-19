@@ -65,6 +65,37 @@ export const resolveMediaUrl = (value?: string | null): string => {
   return API_BASE_URL ? `${API_BASE_URL}${previewUrl}` : previewUrl
 }
 
+/**
+ * 音频流必须直连 API 服务。开发服务器代理不适合承载后台播放的长连接，
+ * 浏览器挂起后台标签页时代理链路可能先于媒体会话断开。
+ */
+export const resolveAudioStreamUrl = (value?: string | null): string => {
+  if (!value) return ''
+
+  const normalized = value.trim()
+  if (!normalized || normalized.startsWith('blob:') || normalized.startsWith('data:')) {
+    return normalized
+  }
+  if (isAbsoluteUrl(normalized)) {
+    return normalized
+  }
+
+  if (API_BASE_URL) {
+    if (normalized.startsWith('/client/')) {
+      return `${API_BASE_URL}/api${normalized}`
+    }
+    if (normalized.startsWith('/api/')) {
+      return `${API_BASE_URL}${normalized}`
+    }
+  }
+
+  try {
+    return new URL(normalized, window.location.href).href
+  } catch {
+    return normalized
+  }
+}
+
 export const withImageParam = (value?: string | null, param?: string): string => {
   const resolved = resolveMediaUrl(value)
   if (!resolved || !param) {

@@ -19,8 +19,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.InputStream;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -163,10 +161,10 @@ public class SongServiceImpl extends ServiceImpl<SongMapper, Song> implements So
         }
 
         try {
-            InputStream inputStream = minioService.getObject(song.getFileKey());
+            long fileSize = minioService.getObjectSize(song.getFileKey());
             String contentType = "audio/" + (song.getFormat() != null ? song.getFormat() : "mpeg");
             String fileName = song.getName() + "." + song.getFormat();
-            return new SongStreamInfo(inputStream, song.getFileSize(), contentType, fileName);
+            return new SongStreamInfo(song.getFileKey(), fileSize, contentType, fileName);
         } catch (Exception e) {
             log.error("获取歌曲流失败: songId={}", songId, e);
             throw new BusinessException(ResultCode.FILE_NOT_FOUND);

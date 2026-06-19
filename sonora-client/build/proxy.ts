@@ -21,6 +21,9 @@ export function createProxy(list: ProxyList = []) {
       target: target,
       changeOrigin: true,
       ws: true,
+      // 媒体等长连接不应由开发代理主动超时。
+      timeout: 0,
+      proxyTimeout: 0,
       rewrite: path => path.replace(new RegExp(`^${prefix}`), ''),
       // https is require secure=false
       ...(isHttps ? { secure: false } : {}),

@@ -7,6 +7,7 @@ import { songUrlV1 } from '@/api'
 import { Song, PlayMode, AudioStoreState } from '../interface'
 import { useSettingsStore } from './settings'
 import piniaPersistConfig from '../persist'
+import { resolveAudioStreamUrl } from '@/utils/media'
 
 /** 全局 Audio 单例（整个应用只创建一个 HTMLAudioElement） */
 let globalAudio: HTMLAudioElement | null = null
@@ -16,58 +17,44 @@ let eventsBound = false
 let lastRetrySongId: string | number | null = null
 /** 上次重试时间戳 */
 let lastRetryTime = 0
-/** 后台播放恢复轮询器 */
-let recoveryMonitorId: ReturnType<typeof window.setInterval> | null = null
 /** 可见性事件是否已绑定 */
 let visibilityEventsBound = false
 /** 是否由用户主动触发暂停 */
 let manualPauseRequested = false
-/** 最近一次 pause 是否属于意外中断 */
-let unexpectedPauseDetected = false
-/** 最近一次确认播放进度推进的时间 */
-let lastPlaybackProgressAt = 0
-/** 最近一次观测到的播放时间 */
-let lastObservedPlaybackTime = 0
-/** 最近一次恢复尝试时间 */
-let lastRecoveryAttemptAt = 0
-/** 防止监控器、媒体事件和可见性事件同时执行恢复。 */
-let recoveryInProgress = false
 /** 标识最近一次主动播放请求，避免旧请求覆盖刚切换的歌曲。 */
 let playRequestSequence = 0
 /** 同一时间只允许一次刷新地址并重播。 */
 let refreshPromise: Promise<void> | null = null
+/** 防止媒体尾部的 waiting、pause、stalled、ended 重复切歌。 */
+let completedSongId: string | number | null = null
+/** 当前 Audio 元素实际加载的歌曲，隔离切歌时旧音源迟到的媒体事件。 */
+let activeMediaSongId: string | number | null = null
 /** 可见性切换处理函数 */
 let visibilityChangeHandler: (() => void) | null = null
 /** 页面恢复显示处理函数 */
 let pageShowHandler: (() => void) | null = null
 
-const PLAYBACK_STALL_THRESHOLD_MS = 20000
-const BACKGROUND_PLAYBACK_STALL_THRESHOLD_MS = 45000
-const PLAYBACK_RECOVERY_COOLDOWN_MS = 12000
-
-const markPlaybackProgress = (audio?: HTMLAudioElement | null) => {
-  lastPlaybackProgressAt = Date.now()
-  if (audio) {
-    lastObservedPlaybackTime = audio.currentTime || 0
-  }
+const isAtMediaEnd = (audio: HTMLAudioElement, toleranceSeconds: number = 1.25): boolean => {
+  const duration = audio.duration
+  const currentTime = audio.currentTime
+  return (
+    Number.isFinite(duration) &&
+    duration > 0 &&
+    Number.isFinite(currentTime) &&
+    duration - currentTime <= toleranceSeconds
+  )
 }
 
 /** 将音频地址规范化，避免相对路径和绝对路径比较时误判为不同地址 */
 const normalizeAudioUrl = (url?: string): string => {
-  if (!url) return ''
-  try {
-    return new URL(url, window.location.href).href
-  } catch {
-    return url
-  }
+  return resolveAudioStreamUrl(url)
 }
 
 /** 获取 Audio 单例（懒初始化） */
 const getAudioSingleton = (): HTMLAudioElement => {
   if (!globalAudio) {
     globalAudio = new Audio()
-    // 允许跨域，以便 AudioContext 进行音频可视化分析
-    globalAudio.crossOrigin = 'anonymous'
+    globalAudio.preload = 'auto'
   }
   return globalAudio
 }
@@ -166,7 +153,7 @@ export const useAudioStore = defineStore('audio', {
       if (!this.audio.audio) {
         this.audio.audio = getAudioSingleton()
         this.setupAudioEvents()
-        this.setupPlaybackRecovery()
+        this.setupAudioStateSync()
         // 如果有歌曲的情况下
         if (this.audio.playlist.length > 0) {
           const index =
@@ -178,6 +165,7 @@ export const useAudioStore = defineStore('audio', {
           this.audio.currentIndex = index
           this.audio.currentSong = this.audio.playlist[index]
           this._loadAudioSrc((this.audio.currentSong && this.audio.currentSong.url) || '')
+          activeMediaSongId = this.audio.currentSong?.id ?? null
         }
         //
       }
@@ -196,34 +184,24 @@ export const useAudioStore = defineStore('audio', {
         this.audio.isPaused = false
         this.audio.error = null
         this.audio._isWaiting = false
-        unexpectedPauseDetected = false
-        markPlaybackProgress(audio)
+        completedSongId = null
       })
 
       // 播放暂停
       audio.addEventListener('pause', () => {
         const pausedByUser = manualPauseRequested
         manualPauseRequested = false
-        unexpectedPauseDetected = !pausedByUser && !this.audio._isWaiting && !audio.ended
-        // waiting 导致的暂停不更新状态，等待自动恢复
-        if (!this.audio._isWaiting) {
-          this.audio.isPlaying = false
-          this.audio.isPaused = true
+        if (!pausedByUser && isAtMediaEnd(audio)) {
+          this._completeCurrentSong('pause-at-end')
+          return
         }
-        if (!pausedByUser && this.audio.currentSong && !audio.ended) {
-          window.setTimeout(() => {
-            void this.ensurePlaybackActive('pause-event')
-          }, 800)
-        }
+        this.audio.isPlaying = false
+        this.audio.isPaused = true
       })
 
       // 播放结束
       audio.addEventListener('ended', () => {
-        this.audio.isPlaying = false
-        this.audio._isWaiting = false
-        unexpectedPauseDetected = false
-        markPlaybackProgress(audio)
-        this.handleSongEnd()
+        this._completeCurrentSong('ended')
       })
 
       // 加载开始
@@ -235,11 +213,14 @@ export const useAudioStore = defineStore('audio', {
       audio.addEventListener('canplay', () => {
         this.audio.isLoading = false
         this.audio.duration = audio.duration || 0
-        markPlaybackProgress(audio)
       })
 
       // 缓冲等待：网络慢或缓冲不足时触发
       audio.addEventListener('waiting', () => {
+        if (isAtMediaEnd(audio)) {
+          this._completeCurrentSong('waiting-at-end')
+          return
+        }
         this.audio._isWaiting = true
         this.audio.isLoading = true
       })
@@ -250,30 +231,33 @@ export const useAudioStore = defineStore('audio', {
         this.audio.isLoading = false
         this.audio.isPlaying = true
         this.audio.isPaused = false
-        unexpectedPauseDetected = false
-        markPlaybackProgress(audio)
+        completedSongId = null
       })
 
       // 网络数据获取停滞
       audio.addEventListener('stalled', () => {
+        if (isAtMediaEnd(audio)) {
+          this._completeCurrentSong('stalled-at-end')
+          return
+        }
         console.warn('Audio stalled: 网络数据获取停滞')
-        void this.ensurePlaybackActive('stalled-event')
-      })
-
-      audio.addEventListener('seeked', () => {
-        markPlaybackProgress(audio)
       })
 
       audio.addEventListener('suspend', () => {
-        if (this.audio.isPlaying) {
-          void this.ensurePlaybackActive('suspend-event')
+        if (isAtMediaEnd(audio)) {
+          this._completeCurrentSong('suspend-at-end')
         }
       })
 
       // 时间更新
       audio.addEventListener('timeupdate', () => {
         this.audio.currentTime = audio.currentTime || 0
-        markPlaybackProgress(audio)
+        if (
+          isAtMediaEnd(audio, 0.15) &&
+          audio.readyState <= HTMLMediaElement.HAVE_CURRENT_DATA
+        ) {
+          this._completeCurrentSong('timeupdate-at-end')
+        }
       })
 
       // 音量变化
@@ -284,6 +268,10 @@ export const useAudioStore = defineStore('audio', {
 
       // 错误处理
       audio.addEventListener('error', (e: any) => {
+        if (isAtMediaEnd(audio)) {
+          this._completeCurrentSong('error-at-end')
+          return
+        }
         this.audio.error = '播放出错，请重试'
         this.audio.isLoading = false
         this.audio.isPlaying = false
@@ -300,31 +288,16 @@ export const useAudioStore = defineStore('audio', {
       eventsBound = true
     },
 
-    setupPlaybackRecovery() {
+    setupAudioStateSync() {
       if (typeof window === 'undefined') return
-
-      if (!recoveryMonitorId) {
-        recoveryMonitorId = window.setInterval(() => {
-          void this.ensurePlaybackActive(document.hidden ? 'hidden-monitor' : 'monitor')
-        }, 15000)
-      }
-
       if (visibilityEventsBound) return
 
       visibilityChangeHandler = () => {
         this.syncAudioState()
-        if (document.hidden) {
-          if (this.audio.isPlaying) {
-            markPlaybackProgress(this.audio.audio)
-          }
-          return
-        }
-        void this.ensurePlaybackActive('visibilitychange')
       }
 
       pageShowHandler = () => {
         this.syncAudioState()
-        void this.ensurePlaybackActive('pageshow')
       }
 
       document.addEventListener('visibilitychange', visibilityChangeHandler)
@@ -342,12 +315,27 @@ export const useAudioStore = defineStore('audio', {
       this.audio.isMuted = audio.muted
       this.audio.isPlaying = !audio.paused && !audio.ended
       this.audio.isPaused = audio.paused && !audio.ended
-      if (!audio.paused) {
-        unexpectedPauseDetected = false
-        if ((audio.currentTime || 0) > lastObservedPlaybackTime + 0.25) {
-          markPlaybackProgress(audio)
-        }
+      if (this.audio.currentSong && isAtMediaEnd(audio) && (audio.paused || audio.ended)) {
+        this._completeCurrentSong('state-sync-at-end')
       }
+    },
+
+    _completeCurrentSong(reason: string) {
+      const songId = this.audio.currentSong?.id
+      if (
+        songId === undefined ||
+        songId === null ||
+        String(activeMediaSongId ?? '') !== String(songId) ||
+        String(completedSongId ?? '') === String(songId)
+      ) return
+
+      completedSongId = songId
+      this.audio.isPlaying = false
+      this.audio.isPaused = false
+      this.audio.isLoading = false
+      this.audio._isWaiting = false
+      console.debug(`Audio completed via ${reason}`)
+      this.handleSongEnd()
     },
 
     _seekAfterReady(time: number) {
@@ -373,68 +361,6 @@ export const useAudioStore = defineStore('audio', {
       audio.addEventListener('canplay', applyTime, { once: true })
     },
 
-    async ensurePlaybackActive(reason: string = 'monitor') {
-      const audio = this.audio.audio
-      const currentSong = this.audio.currentSong
-      if (!audio || !currentSong) return
-      if (manualPauseRequested || audio.ended) return
-      if (!this.audio.isPlaying && !this.audio._isWaiting && !unexpectedPauseDetected) return
-
-      const now = Date.now()
-      const currentTime = audio.currentTime || this.audio.currentTime || 0
-      const progressed = currentTime > lastObservedPlaybackTime + 0.25
-      if (progressed) {
-        markPlaybackProgress(audio)
-        return
-      }
-
-      const stallThreshold = document.hidden
-        ? BACKGROUND_PLAYBACK_STALL_THRESHOLD_MS
-        : PLAYBACK_STALL_THRESHOLD_MS
-      const stalledTooLong = now - lastPlaybackProgressAt > stallThreshold
-      const unexpectedlyPaused = audio.paused && !audio.ended && unexpectedPauseDetected
-      const waitingTooLong = Boolean(this.audio._isWaiting) && stalledTooLong
-      const lowReadyState = audio.readyState < HTMLMediaElement.HAVE_FUTURE_DATA
-      const likelyStuckWhilePlaying =
-        stalledTooLong && !audio.paused && !audio.ended
-
-      if (!unexpectedlyPaused && !waitingTooLong && !likelyStuckWhilePlaying) return
-      if (now - lastRecoveryAttemptAt < PLAYBACK_RECOVERY_COOLDOWN_MS) return
-      if (recoveryInProgress) return
-
-      lastRecoveryAttemptAt = now
-      const resumeTime = currentTime
-      const recoveringSongId = currentSong.id
-      recoveryInProgress = true
-
-      try {
-        if (unexpectedlyPaused && !waitingTooLong && !likelyStuckWhilePlaying && !lowReadyState) {
-          await audio.play()
-          markPlaybackProgress(audio)
-          this.audio.error = null
-          return
-        }
-
-        let recoveryUrl = currentSong.url || audio.src || ''
-        if (!currentSong.isLocal) {
-          recoveryUrl = await this._fetchAndApplyUrl(recoveringSongId)
-        }
-        if (String(this.audio.currentSong?.id ?? '') !== String(recoveringSongId)) return
-
-        this._loadAudioSrc(recoveryUrl, true)
-        this._seekAfterReady(resumeTime)
-        await audio.play()
-        unexpectedPauseDetected = false
-        markPlaybackProgress(audio)
-        this.audio.error = null
-      } catch (error) {
-        console.warn(`Audio playback recovery failed during ${reason}:`, error)
-        this.audio.error = '播放中断，正在等待重试'
-      } finally {
-        recoveryInProgress = false
-      }
-    },
-
     /** 播放歌曲（自动获取缺失的播放地址） */
     async playSong(song?: Song, index?: number) {
       this.initAudio()
@@ -450,7 +376,7 @@ export const useAudioStore = defineStore('audio', {
 
       try {
         manualPauseRequested = false
-        unexpectedPauseDetected = false
+        completedSongId = null
         this.audio.error = null
 
         // 若无 URL 则拉取（本地音乐除外）
@@ -465,8 +391,8 @@ export const useAudioStore = defineStore('audio', {
 
         // 如果 URL 变化，重新加载
         this._loadAudioSrc(requestedSong.url || '')
+        activeMediaSongId = requestedSong.id
         await this.audio.audio.play()
-        markPlaybackProgress(this.audio.audio)
 
         // 添加到播放历史
         this.addToHistory(requestedSong)
@@ -497,10 +423,10 @@ export const useAudioStore = defineStore('audio', {
           const url = await this._fetchAndApplyUrl(expectedSongId)
           if (String(this.audio.currentSong?.id ?? '') !== String(expectedSongId)) return
           this._loadAudioSrc(url, true)
+          activeMediaSongId = expectedSongId
           this._seekAfterReady(resumeTime)
           await audio.play()
-          unexpectedPauseDetected = false
-          markPlaybackProgress(audio)
+          completedSongId = null
           this.audio.error = null
         } catch (e) {
           console.error('Refresh url failed:', e)
@@ -886,6 +812,8 @@ export const useAudioStore = defineStore('audio', {
       this.audio.playlist = []
       this.audio.originalPlaylist = []
       this.audio.currentSong = null
+      activeMediaSongId = null
+      completedSongId = null
       this.audio.currentIndex = -1
     },
 
@@ -912,7 +840,6 @@ export const useAudioStore = defineStore('audio', {
     stop() {
       if (this.audio.audio) {
         manualPauseRequested = true
-        unexpectedPauseDetected = false
         this.audio.audio.pause()
         this.audio.audio.currentTime = 0
       }
@@ -955,16 +882,11 @@ export const useAudioStore = defineStore('audio', {
     destroy() {
       if (this.audio.audio) {
         manualPauseRequested = true
-        unexpectedPauseDetected = false
         this.audio.audio.pause()
         this.audio.audio.src = ''
         this.audio.audio = null
       }
 
-      if (recoveryMonitorId) {
-        window.clearInterval(recoveryMonitorId)
-        recoveryMonitorId = null
-      }
       if (visibilityEventsBound) {
         if (visibilityChangeHandler) {
           document.removeEventListener('visibilitychange', visibilityChangeHandler)
@@ -981,6 +903,8 @@ export const useAudioStore = defineStore('audio', {
       this.audio.isPaused = false
       this.audio.isLoading = false
       this.audio.currentSong = null
+      activeMediaSongId = null
+      completedSongId = null
       this.audio.currentIndex = -1
       this.audio.currentTime = 0
       this.audio.duration = 0

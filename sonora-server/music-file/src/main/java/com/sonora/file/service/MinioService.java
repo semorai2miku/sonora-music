@@ -173,6 +173,25 @@ public class MinioService {
                 .build());
     }
 
+    /** 按字节范围获取文件输入流，避免 Range 请求从对象开头读取并丢弃数据。 */
+    public InputStream getObject(String objectKey, long offset, long length) throws Exception {
+        return minioClient.getObject(GetObjectArgs.builder()
+                .bucket(bucket)
+                .object(objectKey)
+                .offset(offset)
+                .length(length)
+                .build());
+    }
+
+    /** 获取对象的实际字节大小。 */
+    public long getObjectSize(String objectKey) throws Exception {
+        return minioClient.statObject(StatObjectArgs.builder()
+                .bucket(bucket)
+                .object(objectKey)
+                .build())
+                .size();
+    }
+
     /** 删除文件 */
     public void delete(String objectKey) throws Exception {
         minioClient.removeObject(RemoveObjectArgs.builder()

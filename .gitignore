@@ -38,5 +38,5 @@ minio_data/
 # ======== Resources Files ========
 /test/
 
-# ======== Docs 别改 ========
-/docs/
+# ======== Documentation ========
+# Project documentation is versioned under /docs.

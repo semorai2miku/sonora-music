@@ -22,6 +22,6 @@ public interface SongService extends IService<Song> {
     /** 删除歌曲 (逻辑删除 + 删除 MinIO 文件) */
     void deleteSong(Long id);
 
-    /** 获取歌曲流媒体信息 (文件大小、content-type、输入流) */
+    /** 获取歌曲流媒体信息（对象键、实际文件大小、content-type）。 */
     SongStreamInfo getStreamInfo(Long songId);
 }
