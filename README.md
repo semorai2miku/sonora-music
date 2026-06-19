@@ -174,4 +174,9 @@ pnpm build
 | Web 客户端 | `XiangZi7/GlassMusicPlayer` | 基于其播放器界面和交互进行业务化改造 |
 | 管理端 | `pure-admin/pure-admin-thin` | 基于其后台框架和动态路由能力开发 |
 
-请同时遵守仓库内各模块的许可证与上游项目许可。项目仅用于学习、研究和非商业展示；音频、图片等演示资源应确保拥有合法使用权。
+Sonora Music 原创代码及修改部分采用
+[PolyForm Noncommercial License 1.0.0](LICENSE)，仅允许非商业用途。
+客户端和管理端的上游代码继续适用各自许可证，详见
+[第三方许可声明](THIRD_PARTY_NOTICES.md)。
+
+软件许可证不包含音频、歌词、封面、头像等内容资源的版权授权，使用者应确保拥有合法使用权。
