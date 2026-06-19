@@ -1,6 +1,6 @@
 # Sonora Music
 
-Sonora Music 是一个前后端分离的 Web 音乐平台，包含用户客户端、内容管理端和 Spring Boot 后端。项目围绕音乐内容管理、在线播放、歌词、搜索、用户收藏与歌单等完整业务链路展开，适合作为全栈学习、课程设计和面试展示项目。
+Sonora Music 是一个前后端分离的 Web 音乐平台，包含用户客户端、内容管理端和 Spring Boot 后端。项目围绕音乐内容管理、在线播放、歌词、搜索、用户收藏与歌单等完整业务链路展开。
 
 ## 项目预览
 
@@ -144,7 +144,6 @@ pnpm dev
 
 - [完整接口文档](docs/API.md)
 - [开发与部署指南](docs/DEPLOYMENT.md)
-- [项目技术文档](docs/音乐平台-项目文档.md)
 - [后端架构文档](docs/后端架构文档.md)
 - [数据库初始化脚本](sonora-server/docs/sonora_music.sql)
 - [后端模块说明](sonora-server/README.md)
