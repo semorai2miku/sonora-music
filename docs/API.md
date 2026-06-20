@@ -249,7 +249,23 @@ curl -X POST http://localhost:8080/api/client/me/likes/songs/12 \
 
 除登录和刷新令牌外，管理端请求需携带具有 `ADMIN` 角色的 Bearer Token。
 
-### 5.1 用户管理
+### 5.1 角色与菜单权限管理
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/admin/roles` | 角色分页，支持 `keyword`、`status` |
+| POST | `/api/admin/roles` | 新增后台角色 |
+| GET | `/api/admin/roles/{id}` | 角色详情、关联账号数和权限数 |
+| PUT | `/api/admin/roles/{id}` | 编辑角色名称、编码、排序、说明和状态 |
+| PUT | `/api/admin/roles/{id}/status?status=0|1` | 启用/禁用角色 |
+| DELETE | `/api/admin/roles/{id}` | 删除未关联账号的非内置角色 |
+| GET | `/api/admin/roles/permission-tree` | 获取可分配的菜单权限树 |
+| GET | `/api/admin/roles/{id}/permissions` | 获取角色已分配的权限 ID |
+| PUT | `/api/admin/roles/{id}/permissions` | 替换角色权限，正文 `{"permissionIds":[1,2]}` |
+
+角色正文支持：`code`、`name`、`description`、`sort`、`status`。角色编码会规范为大写字母、数字和下划线。`ADMIN` 与 `USER` 是受保护的系统内置角色，不允许删除或修改权限；超级管理员角色也不允许禁用。角色禁用后，后续登录不会再获得该角色和对应菜单权限。
+
+### 5.2 用户管理
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
@@ -263,7 +279,7 @@ curl -X POST http://localhost:8080/api/client/me/likes/songs/12 \
 
 用户正文支持：`username`、`password`、`profileId`、`email`、`phone`、`avatar`、`bio`、`status`。
 
-### 5.2 歌手管理
+### 5.3 歌手管理
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
@@ -278,7 +294,7 @@ curl -X POST http://localhost:8080/api/client/me/likes/songs/12 \
 
 歌手主要字段：`name`、`avatar`、`description`、`region`、`status`。简介最大长度由当前数据库和后端校验控制，目标上限为 10000 字。
 
-### 5.3 专辑管理
+### 5.4 专辑管理
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
@@ -292,7 +308,7 @@ curl -X POST http://localhost:8080/api/client/me/likes/songs/12 \
 
 专辑主要字段：`name`、`cover`、`artistId`、`releaseDate`、`description`、`type`、`status`。一首歌曲只关联一个 `albumId`。
 
-### 5.4 歌曲管理
+### 5.5 歌曲管理
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
@@ -327,7 +343,7 @@ curl -X POST http://localhost:8080/api/admin/songs \
   -F "lyrics=<demo.lrc"
 ```
 
-### 5.5 歌单管理
+### 5.6 歌单管理
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
@@ -343,7 +359,7 @@ curl -X POST http://localhost:8080/api/admin/songs \
 
 歌单正文：`name`、`cover`、`description`、`tags`、`status`、`songIds`。
 
-### 5.6 轮播图与上传
+### 5.7 轮播图与上传
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
