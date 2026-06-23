@@ -8,6 +8,7 @@ import { useAudio } from '@/composables/useAudio'
 import { usePlayActions } from '@/composables/usePlayActions'
 import { useUserStore } from '@/stores/modules/user'
 import { formatDuration } from '@/utils/time'
+import Button from '@/components/Ui/Button.vue'
 import LazyImage from '@/components/Ui/LazyImage.vue'
 import { withImageParam } from '@/utils/media'
 import {
@@ -200,7 +201,7 @@ watch(() => [state.info?.id, userStore.isAuthenticated], refreshLikeState)
               class="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
             >
               <button
-                class="flex h-16 w-16 items-center justify-center rounded-full bg-pink-500/90 text-white shadow-lg transition-transform hover:scale-110"
+                class="sonora-cover-play-button sonora-cover-play-button--lg"
                 @click="playCurrent"
               >
                 <span v-if="isCurrent && isPlaying" class="icon-[mdi--pause] h-8 w-8"></span>
@@ -220,7 +221,7 @@ watch(() => [state.info?.id, userStore.isAuthenticated], refreshLikeState)
                 <template v-for="(artist, index) in artistEntries" :key="`${artist.id}-${artist.name}-${index}`">
                   <button
                     type="button"
-                    class="transition-colors hover:text-pink-300"
+                    class="transition-colors hover:text-sky-300"
                     @click="artist.id && router.push(`/artist/${artist.id}`)"
                   >
                     {{ artist.name }}
@@ -241,14 +242,17 @@ watch(() => [state.info?.id, userStore.isAuthenticated], refreshLikeState)
             </div>
 
             <div class="flex items-center gap-3">
-              <button
-                class="inline-flex items-center gap-2 rounded-full bg-pink-500 px-6 py-3 font-medium text-white shadow-lg transition-all hover:bg-pink-600 hover:shadow-xl"
+              <Button
+                variant="solid"
+                size="md"
+                rounded="lg"
+                class="gap-2 px-6 py-3"
                 @click="playCurrent"
               >
                 <span v-if="isCurrent && isPlaying" class="icon-[mdi--pause] h-5 w-5"></span>
                 <span v-else class="icon-[mdi--play] h-5 w-5"></span>
                 {{ isCurrent && isPlaying ? '暂停' : '播放' }}
-              </button>
+              </Button>
               <button
                 class="glass-button inline-flex items-center gap-2 px-5 py-3 transition-colors hover:bg-white/20"
                 :class="state.liked ? 'text-pink-300' : ''"
@@ -310,7 +314,7 @@ watch(() => [state.info?.id, userStore.isAuthenticated], refreshLikeState)
                 >
                   <span class="text-primary/40 w-6 text-center text-sm">{{ index + 1 }}</span>
                   <div class="min-w-0 flex-1">
-                    <p class="text-primary truncate text-sm font-medium group-hover:text-pink-300">
+                    <p class="text-primary truncate text-sm font-medium group-hover:text-sky-300">
                       {{ song.name }}
                     </p>
                     <p class="text-primary/60 truncate text-xs">{{ song.artist }}</p>
@@ -351,13 +355,13 @@ watch(() => [state.info?.id, userStore.isAuthenticated], refreshLikeState)
                       :disabled="state.playingPlaylistId === pl.id"
                       @click.stop.prevent="playPlaylist(pl.id)"
                     >
-                      <span class="flex h-12 w-12 items-center justify-center rounded-full bg-pink-500/90 text-white shadow-lg">
+                      <span class="sonora-cover-play-button">
                         <span class="icon-[mdi--play] h-6 w-6"></span>
                       </span>
                     </button>
                   </div>
                   <p
-                    class="text-primary mt-2 truncate text-xs font-medium group-hover:text-pink-300"
+                    class="text-primary mt-2 truncate text-xs font-medium group-hover:text-sky-300"
                   >
                     {{ pl.name }}
                   </p>

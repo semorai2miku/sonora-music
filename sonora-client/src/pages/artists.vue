@@ -72,7 +72,7 @@ onMounted(loadArtists)
 
 <template>
   <div class="flex h-full flex-1 flex-col overflow-hidden">
-    <div class="glass-card mx-4 mb-0 shrink-0 p-5">
+    <div class="glass-card sonora-page-hero mx-4 mb-0 shrink-0 p-5">
       <div class="flex flex-col gap-4">
         <div class="flex items-start justify-between gap-4">
           <div>
@@ -110,7 +110,7 @@ onMounted(loadArtists)
           v-for="artist in state.artists"
           :key="artist.id"
           :to="`/artist/${artist.id}`"
-          class="glass-card group flex h-full flex-col overflow-hidden p-3 transition-all hover:bg-white/10"
+          class="artist-list-card glass-card group flex h-full flex-col overflow-hidden p-3 transition-all"
         >
           <div class="relative mb-3 aspect-square overflow-hidden rounded-2xl">
             <LazyImage
@@ -188,10 +188,27 @@ onMounted(loadArtists)
   justify-content: center;
   border-radius: 9999px;
   padding: 0.5rem 0.8rem;
-  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--glass-border-default);
+  background: var(--glass-bg-subtle);
   color: var(--glass-text-muted);
   font-size: 0.8125rem;
   font-weight: 700;
+}
+
+.artist-list-card {
+  border: 1px solid var(--glass-border-default);
+  background:
+    linear-gradient(180deg, var(--glass-bg-wash), transparent 58%),
+    var(--glass-bg-card);
+  box-shadow: var(--glass-shadow-sm);
+}
+
+.artist-list-card:hover,
+.artist-list-card:focus-visible {
+  border-color: var(--glass-border-strong);
+  background: var(--glass-bg-elevated);
+  box-shadow: var(--glass-shadow-lg);
+  transform: translateY(-2px);
 }
 
 .artist-region-badge {

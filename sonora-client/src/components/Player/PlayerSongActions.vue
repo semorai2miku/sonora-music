@@ -30,11 +30,11 @@ const showSave = computed(() => props.action === 'save' || props.action === 'bot
 
 const buttonClass = computed(() =>
   props.size === 'md'
-    ? 'h-10 w-10 rounded-full'
-    : 'h-9 w-9 rounded-full'
+    ? 'player-song-action-button h-12 w-12 justify-center'
+    : 'player-song-action-button h-9 w-9 justify-center'
 )
 
-const iconClass = computed(() => (props.size === 'md' ? 'h-5 w-5' : 'h-4.5 w-4.5'))
+const iconClass = computed(() => (props.size === 'md' ? 'h-6 w-6' : 'h-4.5 w-4.5'))
 
 const applyLikedState = (liked: boolean) => {
   isLiked.value = liked
@@ -108,14 +108,15 @@ watch(
 
 <template>
   <div class="flex items-center gap-2">
-    <div v-if="showLike" class="group relative flex">
+    <div v-if="showLike" class="flex">
       <Button
         variant="ghost"
         size="none"
+        rounded="full"
         :class="[
           buttonClass,
-          'items-center justify-center transition-all duration-200',
-          isLiked ? 'bg-pink-500/10 text-pink-400' : 'text-primary/70',
+          'items-center justify-center',
+          isLiked ? 'player-song-action-button--liked' : '',
           isSubmitting ? 'scale-95 opacity-80' : '',
         ]"
         :disabled="!currentSong?.id || isSubmitting"
@@ -123,34 +124,29 @@ watch(
       >
         <span
           :class="[
-            isLiked ? 'icon-[mdi--heart] text-pink-400' : 'icon-[mdi--heart-outline] text-primary/70',
+            isLiked ? 'icon-[mdi--heart]' : 'icon-[mdi--heart-outline]',
             iconClass,
             'transition-all duration-200',
             isSubmitting ? 'scale-90' : '',
           ]"
         />
       </Button>
-      <span class="player-action-tooltip">
-        {{ $t(isLiked ? 'common.unlike' : 'common.like') }}
-      </span>
     </div>
 
-    <div v-if="showSave" class="group relative flex">
+    <div v-if="showSave" class="flex">
       <Button
         variant="ghost"
         size="none"
+        rounded="full"
         :class="[
           buttonClass,
-          'items-center justify-center text-primary/70 transition-all duration-200',
+          'items-center justify-center',
         ]"
         :disabled="!currentSong?.id"
         @click="openSaveToPlaylist"
       >
-        <span :class="['icon-[mdi--playlist-plus]', iconClass, 'text-primary/70']" />
+        <span :class="['icon-[mdi--playlist-plus]', iconClass]" />
       </Button>
-      <span class="player-action-tooltip">
-        {{ $t('playlist.dialog.title') }}
-      </span>
     </div>
   </div>
 
@@ -164,30 +160,27 @@ watch(
 </template>
 
 <style scoped>
-.player-action-tooltip {
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 0.5rem);
-  transform: translateX(-50%) translateY(4px);
-  pointer-events: none;
-  white-space: nowrap;
-  border-radius: 0.625rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(15, 23, 42, 0.84);
-  padding: 0.35rem 0.55rem;
-  color: #fff;
-  font-size: 0.75rem;
-  line-height: 1;
-  opacity: 0;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.25);
-  backdrop-filter: blur(10px);
+.player-song-action-button {
+  color: var(--glass-text-secondary);
+  background: transparent;
   transition:
-    opacity 0.18s ease,
-    transform 0.18s ease;
+    color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease;
 }
 
-.group:hover .player-action-tooltip {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
+.player-song-action-button:hover:not(:disabled) {
+  color: var(--glass-text-primary);
+  background: rgba(255, 255, 255, 0.08);
+  transform: scale(1.08);
+}
+
+.player-song-action-button:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.player-song-action-button--liked {
+  color: var(--sonora-blue-soft);
+  background: transparent;
 }
 </style>

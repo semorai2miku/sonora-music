@@ -40,3 +40,7 @@ minio_data/
 
 # ======== Documentation ========
 # Project documentation is versioned under /docs.
+
+# ======== skills ========
+skills-lock.json
+.agents/

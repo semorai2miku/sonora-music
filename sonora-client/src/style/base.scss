@@ -4,12 +4,19 @@ body,
   height: 100%;
   width: 100%;
   font-family:
-    'Inter',
+    var(--sonora-font-ui, 'HarmonyOS Sans SC'),
+    'MiSans',
     'PingFang SC',
     'Microsoft YaHei',
     'Helvetica Neue',
     Arial,
     sans-serif;
+  font-variant-numeric: tabular-nums;
+  text-rendering: geometricPrecision;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 #app {

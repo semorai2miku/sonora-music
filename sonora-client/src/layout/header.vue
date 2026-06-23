@@ -88,7 +88,7 @@ onUnmounted(() => {
     <!-- 左侧：Logo + 导航 -->
     <div class="flex items-center gap-5">
       <!-- Logo -->
-      <router-link to="/" class="flex items-center gap-3">
+      <router-link to="/" class="brand-link flex items-center gap-3 rounded-xl">
         <span class="brand-badge">
           <img src="/branding/sonora-logo-icon.svg" alt="logo" class="w-5.5" />
         </span>
@@ -219,7 +219,11 @@ onUnmounted(() => {
       </Button>
 
       <!-- 用户头像 / 登录按钮 -->
-      <router-link v-if="userStore.isAuthenticated" to="/profile" class="flex items-center gap-2">
+      <router-link
+        v-if="userStore.isAuthenticated"
+        to="/profile"
+        class="profile-link flex items-center gap-2 rounded-xl px-1.5 py-1"
+      >
         <img
           :src="userStore.avatarUrl"
           alt="avatar"
@@ -253,6 +257,21 @@ onUnmounted(() => {
 
 .sonora-header {
   border-radius: 12px;
+  background:
+    linear-gradient(180deg, var(--glass-bg-wash), transparent 70%),
+    var(--glass-bg-subtle);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.brand-link {
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.brand-link:hover {
+  background: var(--glass-row-hover);
+  transform: translateY(-1px);
 }
 
 .brand-badge {
@@ -262,9 +281,22 @@ onUnmounted(() => {
   width: 2.6rem;
   height: 2.6rem;
   border-radius: 0.85rem;
-  background: var(--glass-bg-base);
+  background:
+    linear-gradient(135deg, rgba(31, 124, 255, 0.12), transparent 58%),
+    var(--glass-bg-base);
   border: 1px solid var(--glass-border-default);
-  box-shadow: none;
+  box-shadow: var(--glass-shadow-xs);
+}
+
+.profile-link {
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.profile-link:hover {
+  background: var(--glass-row-hover);
+  transform: translateY(-1px);
 }
 
 /* 搜索清除按钮动画 */

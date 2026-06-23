@@ -22,7 +22,7 @@ const playAll = () => {
 
 <template>
   <div class="flex flex-1 flex-col overflow-hidden p-4">
-    <section class="glass-card mb-6 shrink-0 p-6 md:p-8">
+    <section class="glass-card sonora-page-hero mb-6 shrink-0 p-6 md:p-8">
       <div class="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 class="mb-2 text-3xl font-bold text-primary md:text-4xl">

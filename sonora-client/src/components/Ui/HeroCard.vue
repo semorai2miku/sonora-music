@@ -83,6 +83,10 @@ const handleClick = () => {
   router.push(props.to)
 }
 
+const handleKeydown = () => {
+  router.push(props.to)
+}
+
 // 3D Tilt 悬停效果
 const handleMouseMove = (e: MouseEvent) => {
   if (!props.enableTilt || !cardRef.value) return
@@ -166,13 +170,17 @@ const handleCollectClick = (event: MouseEvent) => {
   <div
     ref="cardRef"
     class="hero-card group cursor-pointer"
+    role="link"
+    tabindex="0"
     @click="handleClick"
+    @keydown.enter.prevent="handleKeydown"
+    @keydown.space.prevent="handleKeydown"
     @mousemove="handleMouseMove"
     @mouseenter="handleMouseEnter"
     @mouseleave="handleMouseLeave"
   >
     <div
-      class="hero-card-inner relative overflow-hidden rounded-2xl shadow-lg transition-shadow duration-300 group-hover:shadow-xl"
+      class="hero-card-inner sonora-lift-card relative overflow-hidden rounded-2xl transition-shadow duration-300"
       :class="aspectRatio === 'video' ? 'aspect-video' : 'aspect-square'"
     >
       <LazyImage
@@ -198,9 +206,13 @@ const handleCollectClick = (event: MouseEvent) => {
       <button
         v-if="collectible"
         type="button"
-        class="absolute top-2 right-2 z-20 flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-black/45 text-white shadow-lg backdrop-blur-sm transition-all duration-200 hover:scale-105"
-        :class="collectDisabled ? 'scale-95 opacity-85' : ''"
+        class="sonora-cover-action-button absolute top-2 right-2 z-20 h-8 w-8"
+        :class="[
+          collected ? 'sonora-cover-action-button--active' : '',
+          collectDisabled ? 'scale-95 opacity-85' : '',
+        ]"
         :disabled="collectDisabled"
+        :aria-pressed="collected"
         @click.stop.prevent="handleCollectClick"
       >
         <span
@@ -236,16 +248,16 @@ const handleCollectClick = (event: MouseEvent) => {
         <button
           v-if="playable"
           type="button"
-          class="flex h-12 w-12 scale-75 items-center justify-center rounded-full bg-white/90 shadow-xl transition-transform duration-300 group-hover:scale-100"
+          class="sonora-cover-play-button"
           @click.stop.prevent="handlePlayClick"
         >
-          <span class="icon-[mdi--play] h-6 w-6 text-sky-500" />
+          <span class="icon-[mdi--play] h-6 w-6 text-white" />
         </button>
         <div
           v-else
-          class="flex h-12 w-12 scale-75 items-center justify-center rounded-full bg-white/90 shadow-xl transition-transform duration-300 group-hover:scale-100"
+          class="sonora-cover-play-button"
         >
-          <span class="icon-[mdi--play] h-6 w-6 text-sky-500" />
+          <span class="icon-[mdi--play] h-6 w-6 text-white" />
         </div>
       </div>
     </div>
@@ -259,7 +271,17 @@ const handleCollectClick = (event: MouseEvent) => {
   transform-style: preserve-3d;
 }
 
+.hero-card:focus-visible {
+  border-radius: 1rem;
+}
+
 .hero-card-inner {
   transform-style: preserve-3d;
+  box-shadow: var(--glass-shadow-sm);
+}
+
+.hero-card:hover .hero-card-inner,
+.hero-card:focus-visible .hero-card-inner {
+  box-shadow: var(--glass-shadow-blue);
 }
 </style>

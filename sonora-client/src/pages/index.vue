@@ -202,7 +202,7 @@ const loadData = async () => {
     state.playlistPool =
       p.status === 'fulfilled'
         ? transformPlaylists(
-            p.value as Record<string, unknown>,
+            p.value as unknown as Record<string, unknown>,
             PLAYLIST_SOURCE_LIMIT,
             t('home.playlistFallback')
           )
@@ -668,6 +668,7 @@ onDeactivated(() => {
 .home-banner-nav:hover {
   background: rgba(15, 23, 42, 0.56);
   border-color: rgba(255, 255, 255, 0.26);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.22);
 }
 
 .home-banner-nav:active {
@@ -684,8 +685,11 @@ onDeactivated(() => {
 
 /* ── 歌曲列表容器 ── */
 .songs-container {
-  background: var(--glass-bg-card);
+  background:
+    linear-gradient(180deg, var(--glass-bg-wash), transparent 55%),
+    var(--glass-bg-card);
   border: 1px solid var(--glass-border-subtle);
+  box-shadow: var(--glass-shadow-sm);
 }
 
 .home-action-button {
@@ -708,8 +712,13 @@ onDeactivated(() => {
 
 .home-action-button:hover {
   color: var(--glass-text-primary);
-  background: var(--glass-interactive-hover-muted);
+  background: var(--glass-row-hover);
   border-color: var(--glass-border-strong);
+  transform: translateY(-1px);
+}
+
+.home-action-button:active {
+  transform: translateY(0) scale(0.98);
 }
 
 .artist-grid,
@@ -726,18 +735,24 @@ onDeactivated(() => {
   min-width: 0;
   border-radius: 1rem;
   border: 1px solid var(--glass-border-subtle);
-  background: var(--glass-bg-elevated);
+  background:
+    linear-gradient(180deg, var(--glass-bg-wash), transparent 62%),
+    var(--glass-bg-elevated);
   padding: 1rem;
+  box-shadow: var(--glass-shadow-sm);
   transition:
     transform 0.2s ease,
     border-color 0.2s ease,
-    background 0.2s ease;
+    background 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
-.artist-focus-card:hover {
+.artist-focus-card:hover,
+.artist-focus-card:focus-visible {
   transform: translateY(-2px);
   border-color: var(--glass-border-strong);
   background: var(--glass-interactive-hover-muted);
+  box-shadow: var(--glass-shadow-lg);
 }
 
 .artist-focus-card__avatar {
@@ -756,17 +771,23 @@ onDeactivated(() => {
   min-width: 0;
   border-radius: 1rem;
   border: 1px solid var(--glass-border-default);
-  background: var(--glass-bg-card);
+  background:
+    linear-gradient(180deg, var(--glass-bg-wash), transparent 58%),
+    var(--glass-bg-card);
+  box-shadow: var(--glass-shadow-sm);
   transition:
     transform 0.2s ease,
     border-color 0.2s ease,
-    background 0.2s ease;
+    background 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
-.album-spotlight-card:hover {
+.album-spotlight-card:hover,
+.album-spotlight-card:focus-visible {
   transform: translateY(-2px);
   border-color: var(--glass-border-strong);
   background: var(--glass-bg-elevated);
+  box-shadow: var(--glass-shadow-lg);
 }
 
 .album-spotlight-card__cover {
@@ -785,17 +806,23 @@ onDeactivated(() => {
   overflow: hidden;
   border: 1px solid var(--glass-border-default);
   border-radius: 1rem;
-  background: var(--glass-bg-card);
+  background:
+    linear-gradient(180deg, var(--glass-bg-wash), transparent 60%),
+    var(--glass-bg-card);
+  box-shadow: var(--glass-shadow-sm);
   transition:
     border-color 0.2s ease,
     background 0.2s ease,
-    transform 0.2s ease;
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
-.playlist-card:hover {
+.playlist-card:hover,
+.playlist-card:focus-visible {
   transform: translateY(-2px);
   border-color: var(--glass-border-strong);
   background: var(--glass-bg-elevated);
+  box-shadow: var(--glass-shadow-lg);
 }
 
 .playlist-card__cover {
@@ -839,9 +866,11 @@ onDeactivated(() => {
   align-items: center;
   justify-content: center;
   border-radius: 0.75rem;
-  background: var(--glass-bg-subtle);
+  background:
+    linear-gradient(135deg, rgba(31, 124, 255, 0.16), rgba(77, 163, 255, 0.08)),
+    var(--glass-bg-subtle);
   border: 1px solid var(--glass-border-default);
-  box-shadow: none;
+  box-shadow: var(--glass-shadow-xs);
 }
 
 .section-icon-badge :deep(span) {

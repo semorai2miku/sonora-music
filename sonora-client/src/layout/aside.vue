@@ -3,11 +3,10 @@ import { createMyPlaylist, myPlaylists, type ClientPlaylist } from '@/api'
 import Button from '@/components/Ui/Button.vue'
 import { useUserStore } from '@/stores/modules/user'
 import { resolveMediaUrl, withImageParam } from '@/utils/media'
-import { gsap } from 'gsap'
 import { useI18n } from 'vue-i18n'
 
 type SidebarPlaylist = ClientPlaylist & {
-  creatorId?: number | null
+  creatorId?: number
   subscribed?: boolean
 }
 
@@ -107,7 +106,7 @@ const loadUserPlaylists = async () => {
           : typeof item.subscribed === 'number'
             ? Boolean(item.subscribed)
             : undefined,
-      creatorId: Number(item?.creator?.userId || item?.creatorId || 0) || null,
+      creatorId: Number(item?.creator?.userId || item?.creatorId || 0) || undefined,
     }))
   } catch {
     state.userPlaylists = []
@@ -166,47 +165,7 @@ const submitCreatePlaylist = async () => {
   }
 }
 
-const indicatorRef = ref<HTMLElement | null>(null)
-const navContainerRef = ref<HTMLElement | null>(null)
-
-const updateIndicator = () => {
-  if (!indicatorRef.value || !navContainerRef.value) return
-
-  const activeLink = navContainerRef.value.querySelector('.nav-link-active') as HTMLElement
-  if (!activeLink) {
-    gsap.to(indicatorRef.value, {
-      opacity: 0,
-      duration: 0.2,
-    })
-    return
-  }
-
-  const containerRect = navContainerRef.value.getBoundingClientRect()
-  const linkRect = activeLink.getBoundingClientRect()
-
-  gsap.to(indicatorRef.value, {
-    y: linkRect.top - containerRect.top,
-    height: linkRect.height,
-    opacity: 1,
-    duration: 0.3,
-    ease: 'power3.out',
-  })
-}
-
-watch(
-  () => route.path,
-  () => {
-    nextTick(() => {
-      updateIndicator()
-    })
-  },
-  { immediate: true }
-)
-
 onMounted(() => {
-  nextTick(() => {
-    updateIndicator()
-  })
   loadUserPlaylists()
   window.addEventListener('sonora:playlists-updated', loadUserPlaylists)
 })
@@ -228,13 +187,7 @@ const isActive = (path: string) => {
 <template>
   <aside class="hidden w-64 shrink-0 p-4 py-0 lg:block">
     <div class="glass-card relative h-full p-4">
-      <div
-        ref="indicatorRef"
-        class="nav-indicator pointer-events-none absolute right-2 left-2 rounded-xl bg-[rgba(31,124,255,0.08)] opacity-0"
-        style="height: 40px; z-index: 0"
-      ></div>
-
-      <div ref="navContainerRef">
+      <div>
         <div v-for="sec in sections.slice(0, 2)" :key="sec.titleKey" class="mb-6">
           <h3 class="text-primary mb-3 text-xs font-semibold tracking-wide uppercase">
             {{ $t(sec.titleKey) }}
@@ -244,9 +197,9 @@ const isActive = (path: string) => {
               v-for="item in sec.items"
               :key="item.to"
               :to="item.to"
-              class="nav-link text-primary/70 hover:text-primary relative z-10 flex items-center space-x-3 rounded-xl p-2 transition-all duration-200"
+              class="nav-link sonora-row text-primary/70 hover:text-primary relative z-10 flex items-center space-x-3 rounded-xl p-2 transition-all duration-200"
               :class="{
-                'nav-link-active text-primary font-medium': isActive(item.to),
+                'nav-link-active sonora-row-active text-primary font-medium': isActive(item.to),
                 'hover:bg-hover-glass': !isActive(item.to),
               }"
             >
@@ -291,8 +244,8 @@ const isActive = (path: string) => {
               v-for="playlist in createdPlaylists"
               :key="playlist.id"
               :to="`/playlist/${playlist.id}`"
-              class="group flex cursor-pointer items-center space-x-3 rounded-xl p-2 transition-all duration-200 hover:bg-hover-glass"
-              :class="{ 'nav-link-active bg-hover-glass': isActive(`/playlist/${playlist.id}`) }"
+              class="group sonora-row flex cursor-pointer items-center space-x-3 rounded-xl p-2 transition-all duration-200 hover:bg-hover-glass"
+              :class="{ 'nav-link-active sonora-row-active': isActive(`/playlist/${playlist.id}`) }"
             >
               <div
                 class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg border border-glass bg-button-glass text-xs text-primary transition-transform duration-200 group-hover:scale-105"
@@ -332,8 +285,8 @@ const isActive = (path: string) => {
               v-for="playlist in collectedPlaylists"
               :key="playlist.id"
               :to="`/playlist/${playlist.id}`"
-              class="group flex cursor-pointer items-center space-x-3 rounded-xl p-2 transition-all duration-200 hover:bg-hover-glass"
-              :class="{ 'nav-link-active bg-hover-glass': isActive(`/playlist/${playlist.id}`) }"
+              class="group sonora-row flex cursor-pointer items-center space-x-3 rounded-xl p-2 transition-all duration-200 hover:bg-hover-glass"
+              :class="{ 'nav-link-active sonora-row-active': isActive(`/playlist/${playlist.id}`) }"
             >
               <div
                 class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg border border-glass bg-button-glass text-xs text-primary transition-transform duration-200 group-hover:scale-105"
@@ -362,9 +315,9 @@ const isActive = (path: string) => {
               v-for="item in sec.items"
               :key="item.to"
               :to="item.to"
-              class="nav-link text-primary/70 hover:text-primary relative z-10 flex items-center space-x-3 rounded-xl p-2 transition-all duration-200"
+              class="nav-link sonora-row text-primary/70 hover:text-primary relative z-10 flex items-center space-x-3 rounded-xl p-2 transition-all duration-200"
               :class="{
-                'nav-link-active text-primary font-medium': isActive(item.to),
+                'nav-link-active sonora-row-active text-primary font-medium': isActive(item.to),
                 'hover:bg-hover-glass': !isActive(item.to),
               }"
             >
@@ -500,10 +453,6 @@ const isActive = (path: string) => {
 </template>
 
 <style scoped>
-.nav-indicator {
-  transition: opacity 0.2s ease;
-}
-
 .nav-link {
   position: relative;
 }
@@ -518,10 +467,16 @@ const isActive = (path: string) => {
 }
 
 .nav-link:hover::before {
-  background: rgba(31, 124, 255, 0.05);
+  background: transparent;
 }
 
 .nav-link-active::before {
   background: transparent;
+}
+
+aside .glass-card {
+  background:
+    linear-gradient(180deg, var(--glass-bg-wash), transparent 34%),
+    var(--glass-bg-card);
 }
 </style>

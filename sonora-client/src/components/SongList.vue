@@ -121,13 +121,6 @@ const playSongWithAnimation = async (song: Song, index: number, event?: MouseEve
   } catch {}
 }
 
-const playSong = async (song: Song, index: number) => {
-  await playSongWithAnimation(song, index)
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _playSong = playSong // 保留以备将来使用
-
 const isCurrent = (s: Song) => {
   const cur = currentSong.value
   if (!cur) return false
@@ -224,35 +217,13 @@ watch(
   { immediate: true }
 )
 </script>
-
-<style scoped>
-/* 歌曲项悬停效果 - 移除位移，改用更平滑的背景过渡 */
-.song-item {
-  transition: all 0.2s ease;
-}
-
-/* 响应式调整 */
-@media (max-width: 768px) {
-  .song-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
-  }
-
-  .song-item .w-12,
-  .song-item .w-24,
-  .song-item .w-20 {
-    width: auto;
-  }
-}
-</style>
 <template>
   <div class="flex h-full flex-col overflow-hidden">
     <div class="glass-card flex flex-1 flex-col overflow-hidden p-2">
       <!-- 列表头部 -->
       <div
         v-if="showHeader"
-        class="text-primary/60 mb-2 hidden items-center border-b border-white/5 py-3 text-xs font-medium tracking-wider uppercase md:flex"
+        class="song-list-header text-primary/60 mb-2 hidden items-center py-3 text-xs font-medium tracking-wider uppercase md:flex"
       >
         <div class="w-14 text-center">#</div>
         <div class="grid min-w-0 flex-1 grid-cols-12 items-center gap-4 px-4">
@@ -310,8 +281,8 @@ watch(
         <div
           v-for="(song, index) in songs"
           :key="song.id || index"
-          class="song-item group flex cursor-pointer items-center rounded-xl p-2 hover:bg-white/10"
-          :class="isCurrent(song) ? 'bg-white/10' : ''"
+          class="song-item sonora-row group flex cursor-pointer items-center rounded-xl p-2"
+          :class="isCurrent(song) ? 'song-item--active sonora-row-active' : ''"
           @dblclick="e => playSongWithAnimation(song, index, e)"
         >
           <!-- 序号/播放状态 -->
@@ -331,7 +302,7 @@ watch(
               v-if="!isCurrent(song)"
               variant="text"
               size="none"
-              class="hidden! transition-colors group-hover:block! hover:text-pink-400"
+              class="song-play-trigger hidden! transition-colors group-hover:block!"
               @click.stop="(e: MouseEvent) => playSongWithAnimation(song, index, e)"
             >
               <span class="icon-[mdi--play] h-6 w-6"></span>
@@ -359,7 +330,7 @@ watch(
                   v-if="song.id"
                   :to="`/song/${song.id}`"
                   :title="song.name"
-                  class="text-primary block truncate text-base font-medium transition-colors group-hover:text-pink-300 hover:text-pink-300"
+                  class="song-title-link text-primary block truncate text-base font-medium transition-colors"
                   :class="copySongName ? 'cursor-text select-text' : ''"
                   @click.stop="preventNavigationWhenSelecting"
                   @dblclick.stop
@@ -369,7 +340,7 @@ watch(
                 <h3
                   v-else
                   :title="song.name"
-                  class="text-primary truncate text-base font-medium transition-colors group-hover:text-pink-300"
+                  class="song-title-link text-primary truncate text-base font-medium transition-colors"
                   :class="copySongName ? 'cursor-text select-text' : ''"
                   @dblclick.stop
                 >
@@ -388,7 +359,7 @@ watch(
                     <RouterLink
                       :to="`/artist/${ar.id}`"
                       :title="ar.name"
-                      class="transition-colors hover:text-pink-400"
+                      class="song-meta-link transition-colors"
                     >
                       {{ ar.name }}
                     </RouterLink>
@@ -400,7 +371,7 @@ watch(
                 <RouterLink
                   :to="`/artist/${song.artistId}`"
                   :title="song.artist"
-                  class="text-primary/80 truncate text-sm transition-colors hover:text-pink-400"
+                  class="song-meta-link text-primary/80 truncate text-sm transition-colors"
                 >
                   {{ song.artist }}
                 </RouterLink>
@@ -435,7 +406,7 @@ watch(
               <button
                 v-if="song.id"
                 type="button"
-                class="text-primary/70 hover:text-primary inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent transition-all duration-300 hover:bg-hover-glass"
+                class="song-action-button text-primary/70 hover:text-primary inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent transition-all duration-300"
                 :class="isSongLiked(song) ? 'text-pink-400' : ''"
                 :title="isSongLiked(song) ? '取消喜欢' : '喜欢'"
                 @click.stop.prevent="toggleLike(song, index)"
@@ -448,7 +419,7 @@ watch(
               <button
                 v-if="song.id"
                 type="button"
-                class="text-primary/70 hover:text-primary inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent transition-all duration-300 hover:bg-hover-glass"
+                class="song-action-button text-primary/70 hover:text-primary inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent transition-all duration-300"
                 title="收藏到歌单"
                 @click.stop.prevent="openSaveToPlaylist(song)"
               >
@@ -457,7 +428,7 @@ watch(
               <button
                 v-if="allowRemove && song.id"
                 type="button"
-                class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-red-300 transition-all duration-300 hover:bg-hover-glass"
+                class="song-action-button inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-red-300 transition-all duration-300"
                 title="从歌单移除"
                 @click.stop.prevent="removeSong(song, index)"
               >
@@ -466,7 +437,7 @@ watch(
               <button
                 v-if="song.mvId"
                 type="button"
-                class="text-primary/70 hover:text-primary inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent transition-all duration-300 hover:bg-hover-glass"
+                class="song-action-button text-primary/70 hover:text-primary inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent transition-all duration-300"
                 :title="t('common.playMV')"
                 @click.stop.prevent="openMV(song, index)"
               >
@@ -475,7 +446,7 @@ watch(
               <button
                 v-if="song.id"
                 type="button"
-                class="text-primary/70 hover:text-primary inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent transition-all duration-300 hover:bg-hover-glass"
+                class="song-action-button text-primary/70 hover:text-primary inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent transition-all duration-300"
                 :title="t('common.detail')"
                 @click.stop.prevent="router.push(`/song/${song.id}`)"
               >
@@ -508,3 +479,60 @@ watch(
     @close="showSaveToPlaylist = false"
   />
 </template>
+
+<style scoped>
+.song-list-header {
+  border-bottom: 1px solid var(--glass-border-subtle);
+  background: linear-gradient(180deg, transparent, var(--glass-bg-wash));
+}
+
+.song-item {
+  transition:
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.song-item:hover {
+  box-shadow: inset 0 0 0 1px var(--glass-border-subtle);
+}
+
+.song-item--active {
+  color: var(--glass-text-primary);
+}
+
+.song-play-trigger,
+.song-title-link:hover,
+.group:hover .song-title-link,
+.song-meta-link:hover {
+  color: var(--sonora-blue);
+}
+
+.song-action-button:hover {
+  background: var(--glass-row-hover);
+  transform: translateY(-1px);
+}
+
+.song-action-button:active {
+  transform: translateY(0) scale(0.96);
+}
+
+.song-action-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+@media (max-width: 768px) {
+  .song-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .song-item .w-12,
+  .song-item .w-24,
+  .song-item .w-20 {
+    width: auto;
+  }
+}
+</style>

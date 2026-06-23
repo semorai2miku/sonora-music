@@ -45,18 +45,35 @@ const openPlayerDrawer = () => {
 </template>
 <style>
 .custom-theme {
-  background: var(--glass-bg-solid);
+  background:
+    linear-gradient(135deg, rgba(31, 124, 255, 0.035), transparent 38%),
+    var(--glass-bg-solid);
+}
+
+.custom-theme::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.42;
+  background-image:
+    linear-gradient(var(--glass-border-subtle) 1px, transparent 1px),
+    linear-gradient(90deg, var(--glass-border-subtle) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.34), transparent 62%);
 }
 
 html.dark .custom-theme {
-  background: var(--glass-bg-solid);
+  background:
+    linear-gradient(135deg, rgba(77, 163, 255, 0.055), transparent 36%),
+    var(--glass-bg-solid);
 }
 
 .shell-frame {
   min-height: calc(100vh - 2rem);
   background: var(--glass-bg-elevated);
   border: 1px solid var(--glass-border-default);
-  box-shadow: none;
+  box-shadow: var(--glass-shadow-float);
 }
 
 .fade-transform-enter-active,

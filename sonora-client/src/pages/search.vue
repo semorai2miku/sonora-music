@@ -139,7 +139,7 @@ const fetchPlaylistResults = async (keyword: string) => {
 
   if (publicRes.status === 'fulfilled') {
     const publicRows = filterPlaylistsByKeyword(
-      transformPlaylists(publicRes.value as Record<string, unknown>),
+      transformPlaylists(publicRes.value as unknown as Record<string, unknown>),
       keyword
     )
     publicRows.forEach(item => merged.set(String(item.id), item))
@@ -540,11 +540,11 @@ onMounted(() => {
             :class="inputFocused ? 'scale-[1.02]' : ''"
           >
             <div
-              class="flex items-center gap-3 rounded-2xl border px-5 py-3.5 backdrop-blur-xl transition-all duration-300"
+              class="search-input-panel flex items-center gap-3 rounded-2xl border px-5 py-3.5 transition-all duration-300"
               :class="[
                 inputFocused
-                  ? 'border-pink-500/30 bg-white/[0.07] shadow-[0_0_30px_rgba(31,124,255,0.08),0_8px_32px_rgba(0,0,0,0.12)]'
-                  : 'border-white/[0.06] bg-white/[0.035] shadow-[0_2px_12px_rgba(0,0,0,0.08)]',
+                  ? 'search-input-panel--focused'
+                  : 'search-input-panel--idle',
               ]"
             >
               <span
@@ -564,7 +564,7 @@ onMounted(() => {
               <Transition name="fade-scale">
                 <button
                   v-if="searchInput"
-                  class="text-primary/30 hover:text-primary/60 flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-white/10"
+                  class="clear-search-button text-primary/30 hover:text-primary/60 flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-colors"
                   @click="searchInput = ''"
                 >
                   <span class="icon-[mdi--close] h-3.5 w-3.5" />
@@ -600,8 +600,8 @@ onMounted(() => {
             <button
               v-for="(keyword, ki) in searchHistory"
               :key="keyword"
-              class="history-chip group flex items-center gap-1.5 rounded-full border border-white/[0.05] bg-white/[0.025] px-3 py-1.5 text-[13px] transition-all duration-200 hover:border-pink-500/15 hover:bg-white/[0.055]"
-              :style="{ animationDelay: `${ki * 35}ms` }"
+              class="history-chip group flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] transition-all duration-200"
+              :style="{ animationDelay: `${Number(ki) * 35}ms` }"
               @click="doSearch(keyword)"
             >
               <span class="text-primary/55 group-hover:text-primary/85 transition-colors">{{
@@ -635,13 +635,11 @@ onMounted(() => {
 
 <style scoped>
 .ambient-a {
-  background: radial-gradient(circle, rgba(31, 124, 255, 0.07) 0%, transparent 65%);
-  animation: ambient-float 12s ease-in-out infinite;
+  display: none;
 }
 
 .ambient-b {
-  background: radial-gradient(circle, rgba(77, 163, 255, 0.05) 0%, transparent 65%);
-  animation: ambient-float 15s ease-in-out infinite reverse;
+  display: none;
 }
 
 @keyframes ambient-float {
@@ -684,6 +682,27 @@ onMounted(() => {
   padding: 0.45rem 0.75rem;
   font-size: 0.75rem;
   font-weight: 500;
+}
+
+.search-input-panel {
+  background:
+    linear-gradient(180deg, var(--glass-bg-wash), transparent 60%),
+    var(--glass-bg-card);
+  border-color: var(--glass-border-default);
+  box-shadow: var(--glass-shadow-sm);
+}
+
+.search-input-panel--focused {
+  border-color: var(--glass-focus-ring);
+  box-shadow: var(--glass-shadow-blue);
+}
+
+.search-input-panel--idle {
+  border-color: var(--glass-border-default);
+}
+
+.clear-search-button:hover {
+  background: var(--glass-row-hover);
 }
 
 .section-header {
@@ -758,6 +777,14 @@ onMounted(() => {
 
 .history-chip {
   animation: chip-in 0.35s var(--glass-ease-out) both;
+  border-color: var(--glass-border-default);
+  background: var(--glass-bg-card);
+}
+
+.history-chip:hover {
+  border-color: var(--glass-border-strong);
+  background: var(--glass-row-hover);
+  transform: translateY(-1px);
 }
 
 @keyframes chip-in {

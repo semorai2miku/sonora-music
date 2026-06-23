@@ -35,7 +35,7 @@ onMounted(loadSongs)
 
 <template>
   <div class="flex flex-1 flex-col overflow-hidden p-4">
-    <section class="glass-card mb-4 shrink-0 p-5">
+    <section class="glass-card sonora-page-hero mb-4 shrink-0 p-5">
       <div class="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 class="text-primary text-2xl font-bold">{{ $t('library.title') }}</h1>

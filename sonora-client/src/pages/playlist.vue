@@ -586,7 +586,7 @@ watch(
                     <LazyImage
                       :src="withImageParam(playlistInfo.coverImgUrl, '500y500')"
                       :alt="$t('components.songList.coverAlt')"
-                      imgClass="h-full w-full object-cover"
+                      imgClass="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                       wrapperClass="h-full w-full"
                     />
                   </div>
@@ -596,17 +596,17 @@ watch(
                     :disabled="!state.songs.length"
                     @click.stop.prevent="playAll"
                   >
-                    <span
-                      class="flex h-18 w-18 items-center justify-center rounded-full bg-black/55 text-white shadow-2xl backdrop-blur-sm"
-                    >
+                    <span class="sonora-cover-play-button sonora-cover-play-button--lg">
                       <span class="icon-[mdi--play] h-8 w-8"></span>
                     </span>
                   </button>
                   <button
                     v-if="showCoverCollectButton"
                     type="button"
-                    class="absolute top-4 right-4 flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-black/55 text-white shadow-lg backdrop-blur-sm"
+                    class="sonora-cover-action-button absolute top-4 right-4 h-11 w-11"
+                    :class="state.isCollected ? 'sonora-cover-action-button--active' : ''"
                     :disabled="playlistActionLoading"
+                    :aria-pressed="state.isCollected"
                     @click.stop="toggleCollect"
                   >
                     <span
@@ -677,23 +677,23 @@ watch(
                     <Button
                       variant="solid"
                       size="md"
-                      rounded="full"
-                      class="px-8 py-3 shadow-lg shadow-pink-500/30 hover:shadow-xl hover:shadow-pink-500/40"
+                      rounded="lg"
+                      class="gap-2 px-8 py-3"
                       :disabled="!state.songs.length"
                       @click="playAll"
                     >
-                      <span class="icon-[mdi--play] mr-2 h-5 w-5"></span>
+                      <span class="icon-[mdi--play] h-5 w-5"></span>
                       {{ $t('actions.playAll') }}
                     </Button>
                     <Button
                       variant="soft"
                       size="md"
-                      rounded="full"
-                      class="px-6 py-3"
+                      rounded="lg"
+                      class="gap-2 px-6 py-3"
                       :disabled="!state.songs.length"
                       @click="shufflePlay"
                     >
-                      <span class="icon-[mdi--shuffle] mr-2 h-5 w-5"></span>
+                      <span class="icon-[mdi--shuffle] h-5 w-5"></span>
                       {{ $t('actions.shufflePlay') }}
                     </Button>
                     <Button

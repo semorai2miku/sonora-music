@@ -86,7 +86,7 @@ onMounted(loadAlbums)
 
 <template>
   <div class="flex h-full flex-1 flex-col overflow-hidden">
-    <div class="glass-card mx-4 mb-0 shrink-0 p-5">
+    <div class="glass-card sonora-page-hero mx-4 mb-0 shrink-0 p-5">
       <div class="flex flex-col gap-4">
         <div class="flex items-start justify-between gap-4">
           <div>
@@ -123,7 +123,7 @@ onMounted(loadAlbums)
         <div
           v-for="album in state.albums"
           :key="album.id"
-          class="glass-card group flex h-full flex-col overflow-hidden p-3 transition-all hover:bg-white/10"
+          class="album-list-card glass-card group flex h-full flex-col overflow-hidden p-3 transition-all"
           role="link"
           tabindex="0"
           @click="router.push(`/album/${album.id}`)"
@@ -143,7 +143,7 @@ onMounted(loadAlbums)
             >
               <button
                 type="button"
-                class="album-play-button"
+                class="sonora-cover-play-button"
                 @click.stop="playAlbum(album.id)"
               >
                 <span
@@ -226,10 +226,27 @@ onMounted(loadAlbums)
   justify-content: center;
   border-radius: 9999px;
   padding: 0.5rem 0.8rem;
-  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--glass-border-default);
+  background: var(--glass-bg-subtle);
   color: var(--glass-text-muted);
   font-size: 0.8125rem;
   font-weight: 700;
+}
+
+.album-list-card {
+  border: 1px solid var(--glass-border-default);
+  background:
+    linear-gradient(180deg, var(--glass-bg-wash), transparent 58%),
+    var(--glass-bg-card);
+  box-shadow: var(--glass-shadow-sm);
+}
+
+.album-list-card:hover,
+.album-list-card:focus-visible {
+  border-color: var(--glass-border-strong);
+  background: var(--glass-bg-elevated);
+  box-shadow: var(--glass-shadow-lg);
+  transform: translateY(-2px);
 }
 
 .album-region-badge {
@@ -247,24 +264,4 @@ onMounted(loadAlbums)
   backdrop-filter: blur(10px);
 }
 
-.album-play-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 3.25rem;
-  height: 3.25rem;
-  border: 0;
-  border-radius: 9999px;
-  background: rgba(15, 23, 42, 0.55);
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.35);
-  backdrop-filter: blur(12px);
-  transition:
-    transform 0.2s ease,
-    background 0.2s ease;
-}
-
-.album-play-button:hover {
-  transform: scale(1.06);
-  background: rgba(37, 99, 235, 0.78);
-}
 </style>
