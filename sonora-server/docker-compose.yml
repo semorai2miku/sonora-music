@@ -1,6 +1,6 @@
 # Docker Compose — Sonora Music 基础服务
 # 使用: docker compose up -d
-# 启动 MySQL 8.0 + Redis 7 + MinIO
+# 启动 MySQL 8.0 + Redis 7 + RabbitMQ + MinIO
 
 services:
   mysql:
@@ -27,6 +27,19 @@ services:
     restart: unless-stopped
     ports:
       - "6379:6379"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: sonora-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: sonora
+      RABBITMQ_DEFAULT_PASS: sonora123
+      RABBITMQ_DEFAULT_VHOST: /sonora
+      TZ: Asia/Shanghai
+    ports:
+      - "5672:5672"
+      - "15672:15672"
 
   minio:
     image: minio/minio:latest

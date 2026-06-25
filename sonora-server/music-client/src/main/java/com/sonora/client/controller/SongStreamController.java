@@ -3,6 +3,7 @@ package com.sonora.client.controller;
 import com.sonora.file.service.MinioService;
 import com.sonora.service.SongService;
 import com.sonora.service.SongStreamInfo;
+import com.sonora.service.mq.MusicEventPublisher;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -10,6 +11,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.apache.catalina.connector.ClientAbortException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,10 +33,14 @@ public class SongStreamController {
 
     private final SongService songService;
     private final MinioService minioService;
+    private final MusicEventPublisher musicEventPublisher;
 
-    public SongStreamController(SongService songService, MinioService minioService) {
+    public SongStreamController(SongService songService,
+                                MinioService minioService,
+                                MusicEventPublisher musicEventPublisher) {
         this.songService = songService;
         this.minioService = minioService;
+        this.musicEventPublisher = musicEventPublisher;
     }
 
     @Operation(summary = "流式播放歌曲 (支持 Range)")
@@ -61,6 +67,10 @@ public class SongStreamController {
             }
             start = range[0];
             end = range[1];
+        }
+
+        if (!partial || start == 0) {
+            musicEventPublisher.publishSongPlayed(id, currentUserId());
         }
 
         long contentLength = end - start + 1;
@@ -120,6 +130,22 @@ public class SongStreamController {
                 end = Math.min(end, fileSize - 1);
             }
             return new long[]{start, end};
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private Long currentUserId() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getPrincipal() == null || "anonymousUser".equals(auth.getPrincipal())) {
+            return null;
+        }
+        Object principal = auth.getPrincipal();
+        if (principal instanceof Long id) {
+            return id;
+        }
+        try {
+            return Long.valueOf(String.valueOf(principal));
         } catch (Exception e) {
             return null;
         }

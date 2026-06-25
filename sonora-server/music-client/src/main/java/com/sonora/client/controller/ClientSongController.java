@@ -79,6 +79,7 @@ public class ClientSongController {
         data.put("format", song.getFormat());
         data.put("fileSize", song.getFileSize());
         data.put("playCount", song.getPlayCount());
+        data.put("likeCount", song.getLikeCount() == null ? 0L : song.getLikeCount());
         data.put("streamUrl", "/api/client/songs/" + id + "/stream");
         return R.ok(data);
     }
@@ -139,6 +140,8 @@ public class ClientSongController {
         track.put("duration", song.getDuration() == null ? 0 : song.getDuration() * 1000);
         track.put("cover", coverOf(song.getAlbumId()));
         track.put("artistIds", song.getArtistIds());
+        track.put("playCount", song.getPlayCount() == null ? 0L : song.getPlayCount());
+        track.put("likeCount", song.getLikeCount() == null ? 0L : song.getLikeCount());
         track.put("artistName", artistNameOf(song.getArtistIds(), artistMap));
         track.put("al", albumItem(song, albumMap));
         track.put("album", albumItem(song, albumMap));

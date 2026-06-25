@@ -136,6 +136,7 @@ CREATE TABLE t_song (
     cover       VARCHAR(512) DEFAULT NULL COMMENT '封面URL',
     lyrics      MEDIUMTEXT   DEFAULT NULL COMMENT 'LRC歌词',
     play_count  BIGINT       DEFAULT 0 COMMENT '播放次数',
+    like_count  BIGINT       DEFAULT 0 COMMENT '喜欢次数',
     status      TINYINT      DEFAULT 1 COMMENT '1-上架 0-下架',
     created_at  DATETIME     DEFAULT CURRENT_TIMESTAMP,
     updated_at  DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

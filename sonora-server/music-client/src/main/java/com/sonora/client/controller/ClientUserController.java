@@ -8,6 +8,8 @@ import com.sonora.common.util.JwtUtil;
 import com.sonora.file.service.MinioService;
 import com.sonora.mapper.*;
 import com.sonora.model.entity.*;
+import com.sonora.service.lock.DistributedLockService;
+import com.sonora.service.mq.MusicEventPublisher;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -52,6 +54,8 @@ public class ClientUserController {
     private final AlbumMapper albumMapper;
     private final MinioService minioService;
     private final PasswordEncoder passwordEncoder;
+    private final DistributedLockService distributedLockService;
+    private final MusicEventPublisher musicEventPublisher;
 
     public ClientUserController(UserMapper userMapper,
                                 RoleMapper roleMapper,
@@ -64,7 +68,9 @@ public class ClientUserController {
                                 ArtistMapper artistMapper,
                                 AlbumMapper albumMapper,
                                 MinioService minioService,
-                                PasswordEncoder passwordEncoder) {
+                                PasswordEncoder passwordEncoder,
+                                DistributedLockService distributedLockService,
+                                MusicEventPublisher musicEventPublisher) {
         this.userMapper = userMapper;
         this.roleMapper = roleMapper;
         this.userRoleMapper = userRoleMapper;
@@ -77,6 +83,8 @@ public class ClientUserController {
         this.albumMapper = albumMapper;
         this.minioService = minioService;
         this.passwordEncoder = passwordEncoder;
+        this.distributedLockService = distributedLockService;
+        this.musicEventPublisher = musicEventPublisher;
     }
 
     @Operation(summary = "客户端注册")
@@ -493,7 +501,6 @@ public class ClientUserController {
 
     @Operation(summary = "收藏歌单")
     @PostMapping("/me/likes/playlists/{playlistId}")
-    @Transactional
     public R<Map<String, Object>> collectPlaylist(@PathVariable Long playlistId) {
         Long userId = currentUserId();
         if (userId == null) {
@@ -506,21 +513,21 @@ public class ClientUserController {
         if (Objects.equals(playlist.getUserId(), userId)) {
             return R.badRequest("不能收藏自己的歌单");
         }
-        if (!existsFavorite(userId, FAVORITE_TYPE_PLAYLIST, playlistId)) {
-            UserFavorite favorite = new UserFavorite();
-            favorite.setUserId(userId);
-            favorite.setTargetType(FAVORITE_TYPE_PLAYLIST);
-            favorite.setTargetId(playlistId);
-            userFavoriteMapper.insert(favorite);
-            playlist.setCollectCount((playlist.getCollectCount() == null ? 0L : playlist.getCollectCount()) + 1);
-            playlistMapper.updateById(playlist);
-        }
-        return R.ok(playlistOf(playlistMapper.selectById(playlistId), true));
+        return distributedLockService.execute(playlistCollectLockKey(userId, playlistId), 3, 10, () -> {
+            if (!existsFavorite(userId, FAVORITE_TYPE_PLAYLIST, playlistId)) {
+                UserFavorite favorite = new UserFavorite();
+                favorite.setUserId(userId);
+                favorite.setTargetType(FAVORITE_TYPE_PLAYLIST);
+                favorite.setTargetId(playlistId);
+                userFavoriteMapper.insert(favorite);
+                musicEventPublisher.publishPlaylistCollectCountRefresh(playlistId);
+            }
+            return R.ok(playlistOf(playlistMapper.selectById(playlistId), true));
+        });
     }
 
     @Operation(summary = "取消收藏歌单")
     @DeleteMapping("/me/likes/playlists/{playlistId}")
-    @Transactional
     public R<Map<String, Object>> uncollectPlaylist(@PathVariable Long playlistId) {
         Long userId = currentUserId();
         if (userId == null) {
@@ -530,17 +537,17 @@ public class ClientUserController {
         if (playlist == null || !Objects.equals(playlist.getType(), PLAYLIST_TYPE_NORMAL)) {
             return R.notFound("歌单不存在");
         }
-        boolean removed = userFavoriteMapper.delete(
-                new LambdaQueryWrapper<UserFavorite>()
-                        .eq(UserFavorite::getUserId, userId)
-                        .eq(UserFavorite::getTargetType, FAVORITE_TYPE_PLAYLIST)
-                        .eq(UserFavorite::getTargetId, playlistId)) > 0;
-        if (removed) {
-            long currentCount = playlist.getCollectCount() == null ? 0L : playlist.getCollectCount();
-            playlist.setCollectCount(Math.max(0L, currentCount - 1));
-            playlistMapper.updateById(playlist);
-        }
-        return R.ok(playlistOf(playlistMapper.selectById(playlistId), false));
+        return distributedLockService.execute(playlistCollectLockKey(userId, playlistId), 3, 10, () -> {
+            boolean removed = userFavoriteMapper.delete(
+                    new LambdaQueryWrapper<UserFavorite>()
+                            .eq(UserFavorite::getUserId, userId)
+                            .eq(UserFavorite::getTargetType, FAVORITE_TYPE_PLAYLIST)
+                            .eq(UserFavorite::getTargetId, playlistId)) > 0;
+            if (removed) {
+                musicEventPublisher.publishPlaylistCollectCountRefresh(playlistId);
+            }
+            return R.ok(playlistOf(playlistMapper.selectById(playlistId), false));
+        });
     }
 
     @Operation(summary = "收藏歌曲到我的歌单")
@@ -656,7 +663,6 @@ public class ClientUserController {
 
     @Operation(summary = "喜欢歌曲")
     @PostMapping("/me/likes/songs/{songId}")
-    @Transactional
     public R<Map<String, Object>> likeSong(@PathVariable Long songId) {
         Long userId = currentUserId();
         if (userId == null) {
@@ -667,48 +673,59 @@ public class ClientUserController {
             return R.notFound("歌曲不存在");
         }
 
-        if (!existsFavorite(userId, songId)) {
-            UserFavorite favorite = new UserFavorite();
-            favorite.setUserId(userId);
-            favorite.setTargetType(FAVORITE_TYPE_SONG);
-            favorite.setTargetId(songId);
-            userFavoriteMapper.insert(favorite);
-        }
+        return distributedLockService.execute(songLikeLockKey(userId, songId), 3, 10, () -> {
+            boolean changed = false;
+            if (!existsFavorite(userId, songId)) {
+                UserFavorite favorite = new UserFavorite();
+                favorite.setUserId(userId);
+                favorite.setTargetType(FAVORITE_TYPE_SONG);
+                favorite.setTargetId(songId);
+                userFavoriteMapper.insert(favorite);
+                changed = true;
+            }
 
-        Playlist liked = ensureLikedPlaylist(userId);
-        if (!existsPlaylistSong(liked.getId(), songId)) {
-            PlaylistSong ps = new PlaylistSong();
-            ps.setPlaylistId(liked.getId());
-            ps.setSongId(songId);
-            ps.setSort(nextPlaylistSongSort(liked.getId()));
-            playlistSongMapper.insert(ps);
-        }
-        if (!hasManualPlaylistCover(liked.getCover())) {
-            refreshPlaylistCover(liked);
-        }
-        return R.ok(songOf(song, true));
+            Playlist liked = ensureLikedPlaylist(userId);
+            if (!existsPlaylistSong(liked.getId(), songId)) {
+                PlaylistSong ps = new PlaylistSong();
+                ps.setPlaylistId(liked.getId());
+                ps.setSongId(songId);
+                ps.setSort(nextPlaylistSongSort(liked.getId()));
+                playlistSongMapper.insert(ps);
+            }
+            if (!hasManualPlaylistCover(liked.getCover())) {
+                refreshPlaylistCover(liked);
+            }
+            if (changed) {
+                musicEventPublisher.publishSongLikeCountRefresh(songId);
+            }
+            return R.ok(songOf(songMapper.selectById(songId), true));
+        });
     }
 
     @Operation(summary = "取消喜欢歌曲")
     @DeleteMapping("/me/likes/songs/{songId}")
-    @Transactional
     public R<Void> unlikeSong(@PathVariable Long songId) {
         Long userId = currentUserId();
         if (userId == null) {
             return R.unauthorized("请先登录");
         }
-        userFavoriteMapper.delete(
-                new LambdaQueryWrapper<UserFavorite>()
-                        .eq(UserFavorite::getUserId, userId)
-                        .eq(UserFavorite::getTargetType, FAVORITE_TYPE_SONG)
-                        .eq(UserFavorite::getTargetId, songId));
-        Playlist liked = ensureLikedPlaylist(userId);
-        playlistSongMapper.delete(
-                new LambdaQueryWrapper<PlaylistSong>()
-                        .eq(PlaylistSong::getPlaylistId, liked.getId())
-                        .eq(PlaylistSong::getSongId, songId));
-        refreshPlaylistCover(liked);
-        return R.ok();
+        return distributedLockService.execute(songLikeLockKey(userId, songId), 3, 10, () -> {
+            boolean removed = userFavoriteMapper.delete(
+                    new LambdaQueryWrapper<UserFavorite>()
+                            .eq(UserFavorite::getUserId, userId)
+                            .eq(UserFavorite::getTargetType, FAVORITE_TYPE_SONG)
+                            .eq(UserFavorite::getTargetId, songId)) > 0;
+            Playlist liked = ensureLikedPlaylist(userId);
+            playlistSongMapper.delete(
+                    new LambdaQueryWrapper<PlaylistSong>()
+                            .eq(PlaylistSong::getPlaylistId, liked.getId())
+                            .eq(PlaylistSong::getSongId, songId));
+            refreshPlaylistCover(liked);
+            if (removed) {
+                musicEventPublisher.publishSongLikeCountRefresh(songId);
+            }
+            return R.ok();
+        });
     }
 
     public record AuthRequest(String username, String email, String password) {}
@@ -843,6 +860,7 @@ public class ClientUserController {
         data.put("duration", song.getDuration() == null ? 0 : song.getDuration() * 1000);
         data.put("cover", cover);
         data.put("liked", liked);
+        data.put("likeCount", song.getLikeCount() == null ? 0L : song.getLikeCount());
         Map<String, Object> albumData = new LinkedHashMap<>();
         albumData.put("id", song.getAlbumId() == null ? 0 : song.getAlbumId());
         albumData.put("name", album == null || album.getName() == null ? "" : album.getName());
@@ -856,25 +874,39 @@ public class ClientUserController {
     }
 
     private Playlist ensureLikedPlaylist(Long userId) {
-        Playlist playlist = playlistMapper.selectOne(
-                new LambdaQueryWrapper<Playlist>()
-                        .eq(Playlist::getUserId, userId)
-                        .eq(Playlist::getType, PLAYLIST_TYPE_LIKED)
-                        .last("LIMIT 1"));
-        if (playlist != null) {
+        return distributedLockService.execute(likedPlaylistLockKey(userId), 3, 10, () -> {
+            Playlist playlist = playlistMapper.selectOne(
+                    new LambdaQueryWrapper<Playlist>()
+                            .eq(Playlist::getUserId, userId)
+                            .eq(Playlist::getType, PLAYLIST_TYPE_LIKED)
+                            .last("LIMIT 1"));
+            if (playlist != null) {
+                return playlist;
+            }
+            playlist = new Playlist();
+            playlist.setName("我喜欢的音乐");
+            playlist.setUserId(userId);
+            playlist.setType(PLAYLIST_TYPE_LIKED);
+            playlist.setPinned(1);
+            playlist.setDescription("自动收藏你点红心的歌曲");
+            playlist.setPlayCount(0L);
+            playlist.setCollectCount(0L);
+            playlist.setStatus(0);
+            playlistMapper.insert(playlist);
             return playlist;
-        }
-        playlist = new Playlist();
-        playlist.setName("我喜欢的音乐");
-        playlist.setUserId(userId);
-        playlist.setType(PLAYLIST_TYPE_LIKED);
-        playlist.setPinned(1);
-        playlist.setDescription("自动收藏你点红心的歌曲");
-        playlist.setPlayCount(0L);
-        playlist.setCollectCount(0L);
-        playlist.setStatus(0);
-        playlistMapper.insert(playlist);
-        return playlist;
+        });
+    }
+
+    private String songLikeLockKey(Long userId, Long songId) {
+        return "sonora:lock:song-like:" + userId + ":" + songId;
+    }
+
+    private String likedPlaylistLockKey(Long userId) {
+        return "sonora:lock:liked-playlist:" + userId;
+    }
+
+    private String playlistCollectLockKey(Long userId, Long playlistId) {
+        return "sonora:lock:playlist-collect:" + userId + ":" + playlistId;
     }
 
     private Playlist getOwnPlaylist(Long userId, Long playlistId) {

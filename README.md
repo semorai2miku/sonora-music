@@ -23,7 +23,8 @@ flowchart LR
     Client[Web 客户端\nVue 3 + Pinia] -->|REST / HTTP Range| Server[Spring Boot 3]
     Admin[管理端\nVue 3 + Element Plus] -->|REST + JWT| Server
     Server --> MySQL[(MySQL 8\n业务数据)]
-    Server --> Redis[(Redis 7\n刷新令牌)]
+    Server --> Redis[(Redis 7\n刷新令牌 + 分布式锁)]
+    Server --> RabbitMQ[(RabbitMQ\n异步统计事件)]
     Server --> MinIO[(MinIO\n音频与图片)]
 ```
 
@@ -41,7 +42,7 @@ sonora-music/
 | 模块 | 主要技术 |
 |------|----------|
 | 后端 | Java 17、Spring Boot 3.3.5、Spring Security、JWT、MyBatis-Plus、Druid、SpringDoc |
-| 数据与存储 | MySQL 8、Redis 7、MinIO |
+| 数据与存储 | MySQL 8、Redis 7、RabbitMQ、MinIO |
 | 管理端 | Vue 3、TypeScript、Element Plus、Pinia、Vite、Tailwind CSS |
 | Web 客户端 | Vue 3、TypeScript、Pinia、Vue I18n、Swiper、GSAP、Vite |
 | 工程化 | Maven 多模块、pnpm、Docker Compose |
@@ -73,6 +74,8 @@ sonora-music/
 - MyBatis-Plus 分页和事务化业务操作
 - MinIO 对象存储、稳定预览地址与按偏移读取
 - 音频接口支持 HTTP Range、`206 Partial Content` 和拖动续播
+- RabbitMQ 异步处理播放量、喜欢数和收藏数统计
+- Redisson 分布式锁保护红心歌曲、默认歌单创建和歌单收藏并发写入
 - 网易云风格api兼容层，用于承接客户端既有数据结构
 - Swagger UI 与 OpenAPI JSON 在线接口文档
 
@@ -80,7 +83,9 @@ sonora-music/
 
 - **流式播放**：浏览器通过 `Range` 请求音频片段，服务端解析字节区间并从 MinIO 按 `offset + length` 读取，避免每次将整首歌曲载入内存。
 - **鉴权闭环**：短期访问令牌负责接口访问，刷新令牌保存在 Redis；管理接口使用 `ADMIN` 角色保护，用户私有数据按当前登录用户隔离。
-- **数据一致性**：喜欢歌曲会同步写入收藏关系和默认歌单，关键操作使用事务，关联表通过唯一约束防止重复收藏。
+- **异步统计**：播放歌曲、播放歌单、红心歌曲和收藏歌单只在主链路写入必要业务关系，计数刷新通过 RabbitMQ 消费者异步落库，降低接口延迟。
+- **并发一致性**：红心歌曲、默认“我喜欢的音乐”歌单创建、收藏/取消收藏歌单使用 Redisson 分布式锁；数据库唯一索引作为最终兜底，避免同一用户重复插入关系和计数错乱。
+- **面试高并发点**：项目包含 HTTP Range 分段读取、消息队列削峰解耦、Redis 分布式锁、唯一索引幂等、分页和最大数量限制，适合围绕性能、并发和数据一致性展开说明。
 
 ## 快速启动
 
@@ -99,7 +104,15 @@ cd sonora-server
 docker compose up -d
 ```
 
-Docker Compose 会启动 MySQL、Redis 和 MinIO，并在首次创建数据库卷时执行 `sonora-server/docs/sonora_music.sql`。
+Docker Compose 会启动 MySQL、Redis、RabbitMQ 和 MinIO，并在首次创建数据库卷时执行 `sonora-server/docs/sonora_music.sql`。
+
+已有数据库需要手动执行增量脚本：
+
+```sql
+source sonora-server/docs/20260625_rabbitmq_lock_counters.sql;
+```
+
+该脚本会补充 `t_song.like_count`，并按现有收藏关系回填歌曲喜欢数和歌单收藏数。
 
 ### 2. 启动后端
 
@@ -137,6 +150,8 @@ pnpm dev
 | OpenAPI JSON | `http://localhost:8080/v3/api-docs` | 机器可读定义 |
 | MySQL | `localhost:13306` | 容器内部仍为 `3306` |
 | Redis | `localhost:6379` | 刷新令牌存储 |
+| RabbitMQ | `localhost:5672` | AMQP 连接端口 |
+| RabbitMQ Console | `http://localhost:15672` | `sonora` / `sonora123` |
 | MinIO API | `http://localhost:9000` | 对象存储接口 |
 | MinIO Console | `http://localhost:9001` | `admin` / `admin123456` |
 

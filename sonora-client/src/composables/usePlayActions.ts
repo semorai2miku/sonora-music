@@ -4,7 +4,7 @@
  * 消除各页面（playlist、artist、album、charts）中的重复代码
  */
 import { useAudio } from '@/composables/useAudio'
-import { albumDetail, clientPlaylistDetail } from '@/api'
+import { albumDetail, clientPlaylistDetail, recordClientPlaylistPlay } from '@/api'
 import type { Song as StoreSong } from '@/stores/interface'
 import { transformAlbumSongs, transformAlbumDetail, type SongData } from '@/utils/transformers'
 import { transformSongs } from '@/utils/transformers'
@@ -107,7 +107,9 @@ export function usePlayActions() {
     if (!playlistId) return
     const res = await clientPlaylistDetail(playlistId)
     const songs = transformSongs(res as Record<string, unknown>, 500)
+    if (!songs.length) return
     playAll(songs)
+    recordClientPlaylistPlay(playlistId).catch(() => {})
   }
 
   return { playAll, shufflePlay, playAlbum, playPlaylist, mapToStoreSong, mapToStoreSongs }

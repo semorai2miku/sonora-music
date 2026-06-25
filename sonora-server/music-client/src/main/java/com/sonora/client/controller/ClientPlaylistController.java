@@ -13,6 +13,7 @@ import com.sonora.mapper.UserMapper;
 import com.sonora.mapper.AlbumMapper;
 import com.sonora.mapper.ArtistMapper;
 import com.sonora.model.entity.*;
+import com.sonora.service.mq.MusicEventPublisher;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -44,6 +45,7 @@ public class ClientPlaylistController {
     private final AlbumMapper albumMapper;
     private final ArtistMapper artistMapper;
     private final MinioService minioService;
+    private final MusicEventPublisher musicEventPublisher;
 
     public ClientPlaylistController(PlaylistMapper playlistMapper,
                                     PlaylistSongMapper playlistSongMapper,
@@ -52,7 +54,8 @@ public class ClientPlaylistController {
                                     UserMapper userMapper,
                                     AlbumMapper albumMapper,
                                     ArtistMapper artistMapper,
-                                    MinioService minioService) {
+                                    MinioService minioService,
+                                    MusicEventPublisher musicEventPublisher) {
         this.playlistMapper = playlistMapper;
         this.playlistSongMapper = playlistSongMapper;
         this.songMapper = songMapper;
@@ -61,6 +64,7 @@ public class ClientPlaylistController {
         this.albumMapper = albumMapper;
         this.artistMapper = artistMapper;
         this.minioService = minioService;
+        this.musicEventPublisher = musicEventPublisher;
     }
 
     @Operation(summary = "推荐歌单 (按收藏数)")
@@ -118,6 +122,17 @@ public class ClientPlaylistController {
             return R.notFound("歌单不存在");
         }
         return R.ok(playlistDetailOf(playlist, currentUserId()));
+    }
+
+    @Operation(summary = "记录歌单播放")
+    @PostMapping("/playlists/{id}/play")
+    public R<Void> play(@PathVariable Long id) {
+        Playlist playlist = playlistMapper.selectById(id);
+        if (playlist == null || playlist.getStatus() == 0 || !Objects.equals(playlist.getType(), PLAYLIST_TYPE_NORMAL)) {
+            return R.notFound("歌单不存在");
+        }
+        musicEventPublisher.publishPlaylistPlayed(id, currentUserId());
+        return R.ok();
     }
 
     @Operation(summary = "排行榜 (按播放量)")
@@ -209,6 +224,7 @@ public class ClientPlaylistController {
         data.put("duration", song.getDuration() == null ? 0 : song.getDuration() * 1000);
         data.put("cover", cover);
         data.put("liked", false);
+        data.put("likeCount", song.getLikeCount() == null ? 0L : song.getLikeCount());
         Map<String, Object> albumData = new LinkedHashMap<>();
         albumData.put("id", song.getAlbumId() == null ? 0 : song.getAlbumId());
         albumData.put("name", album == null || album.getName() == null ? "" : album.getName());

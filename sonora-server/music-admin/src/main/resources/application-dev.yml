@@ -15,6 +15,23 @@ spring:
       port: 6379
       timeout: 3000ms
 
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: sonora
+    password: sonora123
+    virtual-host: /sonora
+    listener:
+      simple:
+        acknowledge-mode: auto
+        missing-queues-fatal: false
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 1000ms
+          multiplier: 2
+          max-interval: 10000ms
+
 # MinIO 配置
 minio:
   endpoint: http://localhost:9000
